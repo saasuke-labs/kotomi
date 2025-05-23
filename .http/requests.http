@@ -1,0 +1,11 @@
+GET http://localhost:8080/api/site/some-site-id/page/some-page-id/comments
+
+###
+
+POST http://localhost:8080/api/site/some-site-id/page/some-page-id/comments
+content-type: application/json
+
+{
+  "text": "This is a comment.",
+  "author":"John Doe"
+}

@@ -1,160 +1,497 @@
 <!DOCTYPE html>
-<html lang="en" class="">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kotomi – Comments & Reactions for Static Sites</title>
+
+    <!-- Dark mode toggle -->
     <script>
       function toggleDarkMode() {
-        document.documentElement.classList.toggle("dark");
+        document.documentElement.classList.toggle("dark")
       }
     </script>
-    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Analytics -->
     <script
       async
       src="https://www.googletagmanager.com/gtag/js?id=G-7ZYXW0159J"
     ></script>
     <script>
-      window.dataLayer = window.dataLayer || [];
+      window.dataLayer = window.dataLayer || []
       function gtag() {
-        dataLayer.push(arguments);
+        dataLayer.push(arguments)
       }
-      gtag("js", new Date());
-
-      gtag("config", "G-7ZYXW0159J");
+      gtag("js", new Date())
+      gtag("config", "G-7ZYXW0159J")
     </script>
+
+    <!-- Styles: Tailwind-free CSS -->
+    <style>
+      /* --- Theme variables --- */
+      :root {
+        --bg: #ffffff;
+        --text: #1f2937; /* gray-800 */
+        --muted: #6b7280; /* gray-500/600 */
+        --panel-bg: #ffffff;
+        --alt-bg: #f3f4f6; /* gray-100 */
+        --accent: #db2777; /* pink-600 */
+        --accent-hover: #be185d; /* darker */
+        --accent-400: #f472b6; /* pink-400 */
+        --border: #d1d5db; /* gray-300 */
+        --border-dark: #9ca3af; /* gray-400 */
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      }
+      html.dark {
+        --bg: #111827; /* gray-900 */
+        --text: #f3f4f6; /* gray-100 */
+        --muted: #d1d5db; /* gray-300 */
+        --panel-bg: #0b1220; /* near gray-900 but distinct */
+        --alt-bg: #1f2937; /* gray-800 */
+        --accent: #f472b6; /* pink-400 in dark */
+        --accent-hover: #f9a8d4; /* pink-300 */
+        --accent-400: #f472b6;
+        --border: #374151; /* gray-700 */
+        --border-dark: #4b5563; /* gray-600 */
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+      }
+
+      /* --- Base --- */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji",
+          "Segoe UI Emoji", "Segoe UI Symbol";
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+      img {
+        max-width: 100%;
+        display: block;
+      }
+      a {
+        color: inherit;
+      }
+
+      /* --- Layout helpers --- */
+      .container {
+        max-width: 72rem;
+        margin: 0 auto;
+        padding: 0 1rem;
+      }
+      .flex {
+        display: flex;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .justify-between {
+        justify-content: space-between;
+      }
+      .gap-1 {
+        gap: 0.25rem;
+      }
+      .gap-2 {
+        gap: 0.5rem;
+      }
+
+      /* --- Header --- */
+      header.site-header {
+        background: var(--panel-bg);
+        box-shadow: var(--shadow);
+      }
+      .site-header-inner {
+        padding: 1rem 1rem;
+      }
+      @media (min-width: 640px) {
+        .site-header-inner {
+          padding: 1rem;
+        }
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .brand img {
+        height: 40px;
+        width: auto;
+      }
+      .brand-name {
+        font-size: 1.5rem; /* 24px */
+        font-weight: 700;
+        color: var(--accent);
+      }
+
+      nav.site-nav {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      .nav-link {
+        color: #4b5563; /* gray-600 */
+        text-decoration: none;
+        transition: color 0.2s ease;
+      }
+      html.dark .nav-link {
+        color: #d1d5db;
+      }
+      .nav-link:hover {
+        color: var(--accent);
+      }
+
+      .btn-outline {
+        font-size: 0.875rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.5rem;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+      }
+      .btn-outline:hover {
+        background: rgba(107, 114, 128, 0.1);
+      }
+      html.dark .btn-outline {
+        border-color: var(--border-dark);
+      }
+      html.dark .btn-outline:hover {
+        background: rgba(55, 65, 81, 0.5);
+      }
+
+      /* --- Hero --- */
+      .hero {
+        text-align: center;
+        padding: 6rem 1.5rem;
+      }
+      .hero-title {
+        margin: 0 0 1rem 0;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        color: var(--text);
+        font-size: 2.25rem; /* 36px */
+      }
+      @media (min-width: 640px) {
+        .hero-title {
+          font-size: 3rem; /* 48px */
+        }
+      }
+      .hero-sub {
+        margin: 0 auto 1.5rem auto;
+        max-width: 40rem;
+        font-size: 1.125rem;
+        color: var(--muted);
+      }
+      .emoji-row {
+        display: inline-flex;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+        font-size: 1.5rem;
+      }
+      .btn-primary {
+        display: inline-block;
+        background: var(--accent);
+        color: #ffffff;
+        padding: 0.75rem 1.5rem;
+        border-radius: 9999px;
+        text-decoration: none;
+        box-shadow: 0 4px 10px rgba(219, 39, 119, 0.25);
+        transition: background-color 0.2s ease, transform 0.05s ease;
+      }
+      .btn-primary:hover {
+        background: var(--accent-hover);
+      }
+      .btn-primary:active {
+        transform: translateY(1px);
+      }
+
+      /* --- Sections --- */
+      .section-alt {
+        background: var(--alt-bg);
+      }
+      .section {
+        padding: 5rem 1.5rem;
+      }
+
+      .section-title {
+        text-align: center;
+        margin: 0 0 3rem 0;
+        font-size: 1.875rem; /* 30px */
+        font-weight: 700;
+        color: var(--text);
+      }
+
+      /* --- Cards --- */
+      .features {
+        max-width: 56rem;
+        margin: 0 auto;
+      }
+      .card {
+        background: var(--panel-bg);
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow);
+        padding: 1.5rem;
+        margin-bottom: 2.5rem;
+      }
+      .card h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--accent);
+      }
+      .card p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      /* --- Footer --- */
+      footer.site-footer {
+        text-align: center;
+        font-size: 0.875rem;
+        color: #6b7280; /* gray-500 */
+        padding: 1.5rem 1rem;
+        background: var(--panel-bg);
+      }
+      html.dark footer.site-footer {
+        color: #9ca3af;
+      }
+      .link-accent {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .link-accent:hover {
+        text-decoration: underline;
+      }
+    </style>
   </head>
-  <body
-    class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-sans transition-colors duration-300"
-  >
+  <body>
     <!-- Header -->
-    <header class="bg-white dark:bg-gray-800 shadow">
+    <header class="site-header">
       <div
-        class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center"
+        class="container site-header-inner flex justify-between items-center"
       >
-        <div class="flex items-center space-x-3">
+        <div class="brand">
           <img
-            src="../static/logo.png"
+            src="https://saasuke-labs.github.io/static/logo.png"
             alt="Saasuke-Labs Logo"
-            class="h-10 w-auto"
           />
-          <span class="text-2xl font-bold text-pink-600 dark:text-pink-400"
-            >Kotomi</span
-          >
+          <span class="brand-name">Kotomi</span>
         </div>
-        <nav class="flex items-center space-x-4">
-          <a
-            href="#features"
-            class="text-gray-600 dark:text-gray-300 hover:text-pink-600 dark:hover:text-pink-400"
-            >Features</a
-          >
-          <a
-            href="https://github.com/saasuke-labs/kotomi"
-            class="text-gray-600 dark:text-gray-300 hover:text-pink-600 dark:hover:text-pink-400"
+        <nav class="site-nav">
+          <a href="#features" class="nav-link">Features</a>
+          <a href="https://github.com/saasuke-labs/kotomi" class="nav-link"
             >GitHub</a
           >
-          <button
-            onclick="toggleDarkMode()"
-            class="text-sm px-3 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-          >
+          <button onclick="toggleDarkMode()" class="btn-outline">
             Toggle Dark Mode
           </button>
+          <div>
+            <script
+              type="text/javascript"
+              src="https://storage.ko-fi.com/cdn/widget/Widget_2.js"
+            ></script>
+            <script type="text/javascript">
+              kofiwidget2.init("Support me on Ko-fi", "#f472b6", "V7V61FM5Z5")
+              kofiwidget2.draw()
+            </script>
+            <style>
+              img.kofiimg {
+                display: initial !important;
+                vertical-align: middle;
+                height: 13px !important;
+                width: 20px !important;
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
+                border: none;
+                margin-top: 0;
+                margin-right: 5px !important;
+                margin-left: 0 !important;
+                margin-bottom: 3px !important;
+                content: url("https://storage.ko-fi.com/cdn/cup-border.png");
+              }
+              .kofiimg:after {
+                vertical-align: middle;
+                height: 25px;
+                padding-top: 0;
+                padding-bottom: 0;
+                border: none;
+                margin-top: 0;
+                margin-right: 6px;
+                margin-left: 0;
+                margin-bottom: 4px !important;
+                content: url("https://storage.ko-fi.com/cdn/whitelogo.svg");
+              }
+              .btn-container {
+                display: inline-block !important;
+                white-space: nowrap;
+                min-width: 160px;
+              }
+              span.kofitext {
+                color: #fff !important;
+                letter-spacing: -0.15px !important;
+                text-wrap: none;
+                vertical-align: middle;
+                line-height: 33px !important;
+                padding: 0;
+                text-align: center;
+                text-decoration: none !important;
+                text-shadow: 0 1px 1px rgba(34, 34, 34, 0.05);
+              }
+              .kofitext a {
+                color: #fff !important;
+                text-decoration: none important;
+              }
+              .kofitext a:hover {
+                color: #fff !important;
+                text-decoration: none;
+              }
+              a.kofi-button {
+                box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.2);
+                line-height: 36px !important;
+                min-width: 150px;
+                display: inline-block !important;
+                background-color: #29abe0;
+                padding: 2px 12px !important;
+                text-align: center !important;
+                border-radius: 7px;
+                color: #fff;
+                cursor: pointer;
+                overflow-wrap: break-word;
+                vertical-align: middle;
+                border: 0 none #fff !important;
+                font-family: "Quicksand", Helvetica, Century Gothic, sans-serif !important;
+                text-decoration: none;
+                text-shadow: none;
+                font-weight: 700 !important;
+                font-size: 14px !important;
+              }
+              a.kofi-button:visited {
+                color: #fff !important;
+                text-decoration: none !important;
+              }
+              a.kofi-button:hover {
+                opacity: 0.85;
+                color: #f5f5f5 !important;
+                text-decoration: none !important;
+              }
+              a.kofi-button:active {
+                color: #f5f5f5 !important;
+                text-decoration: none !important;
+              }
+              .kofitext img.kofiimg {
+                height: 15px !important;
+                width: 22px !important;
+                display: initial;
+                animation: kofi-wiggle 3s infinite;
+              }
+              @keyframes kofi-wiggle {
+                0% {
+                  transform: rotate(0) scale(1);
+                }
+                60% {
+                  transform: rotate(0) scale(1);
+                }
+                75% {
+                  transform: rotate(0) scale(1.12);
+                }
+                80% {
+                  transform: rotate(0) scale(1.1);
+                }
+                84% {
+                  transform: rotate(-10deg) scale(1.1);
+                }
+                88% {
+                  transform: rotate(10deg) scale(1.1);
+                }
+                92% {
+                  transform: rotate(-10deg) scale(1.1);
+                }
+                96% {
+                  transform: rotate(10deg) scale(1.1);
+                }
+                100% {
+                  transform: rotate(0) scale(1);
+                }
+              }
+            </style>
+            <link
+              href="https://fonts.googleapis.com/css?family=Quicksand:400,700"
+              rel="stylesheet"
+              type="text/css"
+            />
+          </div>
         </nav>
       </div>
     </header>
 
     <!-- Hero -->
-    <main
-      class="flex flex-col items-center justify-center text-center px-6 py-24"
-    >
-      <h1
-        class="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight"
-      >
-        Kotomi
-      </h1>
-      <p class="text-lg text-gray-600 dark:text-gray-300 max-w-xl mb-6">
+    <main class="hero">
+      <h1 class="hero-title">Kotomi</h1>
+      <p class="hero-sub">
         Lightweight comments and reactions — made for static sites, enhanced
         with AI moderation.
       </p>
-      <div class="flex gap-2 mb-8">
-        <span class="text-2xl">💬</span>
-        <span class="text-2xl">❤️</span>
-        <span class="text-2xl">⚡</span>
-        <span class="text-2xl">🤖</span>
-      </div>
-      <a
-        href="#features"
-        class="bg-pink-600 text-white px-6 py-3 rounded-full shadow hover:bg-pink-700 transition"
-      >
-        See Features
-      </a>
+      <a href="#features" class="btn-primary">See Features</a>
     </main>
 
     <!-- Features -->
-    <section id="features" class="bg-gray-100 dark:bg-gray-800 py-20 px-6">
-      <div class="max-w-4xl mx-auto text-left">
-        <h2
-          class="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white"
-        >
-          What Makes Kotomi Special?
-        </h2>
-        <div class="space-y-10">
-          <div class="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
-            <h3
-              class="text-xl font-semibold text-pink-600 dark:text-pink-400 mb-2"
-            >
-              Drop-In Simplicity
-            </h3>
-            <p class="text-gray-700 dark:text-gray-300">
-              Just embed one script and Kotomi handles the rest — no backend, no
-              database, no headaches.
-            </p>
-          </div>
-          <div class="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
-            <h3
-              class="text-xl font-semibold text-pink-600 dark:text-pink-400 mb-2"
-            >
-              Reactions & Emojis
-            </h3>
-            <p class="text-gray-700 dark:text-gray-300">
-              Let users express themselves with likes, laughs, or love — no
-              account required.
-            </p>
-          </div>
-          <div class="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
-            <h3
-              class="text-xl font-semibold text-pink-600 dark:text-pink-400 mb-2"
-            >
-              AI-Powered Moderation
-            </h3>
-            <p class="text-gray-700 dark:text-gray-300">
-              Premium plans include GPT-style content filtering to keep your
-              site safe and civil.
-            </p>
-          </div>
-          <div class="bg-white dark:bg-gray-900 rounded-xl shadow p-6">
-            <h3
-              class="text-xl font-semibold text-pink-600 dark:text-pink-400 mb-2"
-            >
-              Privacy-Respecting
-            </h3>
-            <p class="text-gray-700 dark:text-gray-300">
-              No tracking, no cookies, no third-party scripts — just local
-              storage and good vibes.
-            </p>
-          </div>
+    <section id="features" class="section section-alt">
+      <div class="features">
+        <h2 class="section-title">What Makes Kotomi Special?</h2>
+
+        <div class="card">
+          <h3>Drop-In Simplicity</h3>
+          <p>
+            Just embed one script and Kotomi handles the rest — no backend, no
+            database, no headaches.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>Reactions &amp; Emojis</h3>
+          <p>
+            Let users express themselves with likes, laughs, or love — no
+            account required.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>AI-Powered Moderation</h3>
+          <p>
+            Premium plans include GPT-style content filtering to keep your site
+            safe and civil.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>Privacy-Respecting</h3>
+          <p>
+            No tracking, no cookies, no third-party scripts — just local storage
+            and good vibes.
+          </p>
         </div>
       </div>
     </section>
 
     <!-- Footer -->
-    <footer
-      class="bg-white dark:bg-gray-900 text-center text-sm text-gray-500 dark:text-gray-400 py-6"
-    >
+    <footer class="site-footer">
       Built by
-      <a
-        href="https://saasuke-labs.github.io"
-        class="text-pink-600 dark:text-pink-400 hover:underline"
+      <a href="https://saasuke-labs.github.io" class="link-accent"
         >Saasuke-Labs</a
       >
       – © 2025

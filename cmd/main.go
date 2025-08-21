@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/google/uuid"
@@ -73,11 +74,37 @@ func getCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(comments)
 }
 
-func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/site/{siteId}/page/{pageId}/comments", getCommentsHandler)
-	mux.HandleFunc("POST /api/site/{siteId}/page/{pageId}/comments", postCommentsHandler)
+func writeJsonResponse(w http.ResponseWriter, data interface{}) {
 
-	log.Println("Server running at http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	w.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(w).Encode(data)
+
+}
+
+func getHealthz(w http.ResponseWriter, r *http.Request) {
+
+	jsonResponse := struct {
+		Message string `json:"message,omitempty"`
+	}{
+		Message: "OK",
+	}
+
+	writeJsonResponse(w, jsonResponse)
+}
+
+func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", getHealthz)
+
+	// mux.HandleFunc("GET /api/site/{siteId}/page/{pageId}/comments", getCommentsHandler)
+	// mux.HandleFunc("POST /api/site/{siteId}/page/{pageId}/comments", postCommentsHandler)
+
+	log.Printf("Server running at http://localhost:%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, mux))
 }

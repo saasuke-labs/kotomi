@@ -1,0 +1,51 @@
+name: Build and Deploy Kotomi
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+
+      - name: Read VERSION and metadata
+        id: vars
+        run: |
+          echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
+          echo "commit=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "build_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE="gcr.io/${{ secrets.GCP_PROJECT_ID }}/kotomi:${{ steps.vars.outputs.version }}"
+          echo "Building image: $IMAGE"
+
+          docker build . \
+            --build-arg VERSION=${{ steps.vars.outputs.version }} \
+            --build-arg COMMIT=${{ steps.vars.outputs.commit }} \
+            --build-arg BUILD_TIME=${{ steps.vars.outputs.build_time }} \
+            -t "$IMAGE"
+
+          echo "Authenticating Docker"
+          gcloud auth configure-docker --quiet
+
+          docker push "$IMAGE"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy kotomi-prod \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/kotomi:${{ steps.vars.outputs.version }} \
+            --region ${{ secrets.GCP_REGION }} \
+            --platform managed \
+            --allow-unauthenticated

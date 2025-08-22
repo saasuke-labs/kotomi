@@ -26,9 +26,10 @@ jobs:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
 
-      - name: Configure Docker for Artifact Registry
+      - name: Docker login with access token
         run: |
-          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
+            echo "Logging in manually to Artifact Registry"
+            gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://${{ secrets.GCP_REGION }}-docker.pkg.dev
       - name: Print Docker config
         run: cat ~/.docker/config.json
 

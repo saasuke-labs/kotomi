@@ -44,6 +44,7 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
+          echo "Pushing ${{ secrets.GCP_REGION}}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/kotomi/kotomi:${{ steps.vars.outputs.version }} to Cloud Run"
           gcloud run deploy kotomi-prod \
             --image ${{ secrets.GCP_REGION}}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/kotomi/kotomi:${{ steps.vars.outputs.version }} \
             --region ${{ secrets.GCP_REGION }} \

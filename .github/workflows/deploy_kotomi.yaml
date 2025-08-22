@@ -45,7 +45,7 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy kotomi-prod \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/kotomi:${{ steps.vars.outputs.version }} \
+            --image ${{ secrets.GCP_REGION}}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/kotomi/kotomi:${{ steps.vars.outputs.version }} \
             --region ${{ secrets.GCP_REGION }} \
             --platform managed \
             --allow-unauthenticated

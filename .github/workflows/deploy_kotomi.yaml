@@ -28,7 +28,7 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          IMAGE="gcr.io/${{ secrets.GCP_PROJECT_ID }}/kotomi:${{ steps.vars.outputs.version }}"
+          IMAGE="${{ secrets.GCP_REGION}}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/kotomi/kotomi:${{ steps.vars.outputs.version }}"
           echo "Building image: $IMAGE"
 
           docker build . \

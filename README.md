@@ -94,7 +94,7 @@ go test ./pkg/comments/integration_test.go -v
 
 ### E2E Tests
 
-E2E tests use browser automation to test the API endpoints. To run E2E tests:
+E2E tests validate the API endpoints by starting a real server and making HTTP requests. To run E2E tests:
 
 ```bash
 # Set environment variable to enable E2E tests

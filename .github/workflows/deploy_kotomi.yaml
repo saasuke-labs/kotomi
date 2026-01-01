@@ -12,6 +12,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Run tests
+        run: |
+          go test ./... -v -cover
+
       - name: Read VERSION and metadata
         id: vars
         run: |

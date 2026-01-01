@@ -71,7 +71,7 @@ func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(comment)
+	writeJsonResponse(w, comment)
 }
 
 // Expecting  /api/site/:site-id/page/:page-id/comments
@@ -114,7 +114,7 @@ func getCommentsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(comments)
+	writeJsonResponse(w, comments)
 }
 
 func writeJsonResponse(w http.ResponseWriter, data interface{}) {

@@ -60,13 +60,20 @@ func (s *SQLiteStore) AddPageComment(site, page string, comment Comment) error {
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
+	// Convert empty ParentID to NULL
+	var parentID sql.NullString
+	if comment.ParentID != "" {
+		parentID.String = comment.ParentID
+		parentID.Valid = true
+	}
+
 	_, err := s.db.Exec(query,
 		comment.ID,
 		site,
 		page,
 		comment.Author,
 		comment.Text,
-		comment.ParentID,
+		parentID,
 		comment.CreatedAt,
 		comment.UpdatedAt,
 	)

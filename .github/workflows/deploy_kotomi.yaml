@@ -36,7 +36,7 @@ jobs:
 
       - name: Run integration tests
         run: |
-          go test ./pkg/.../integration_test.go -v
+          go test ./pkg/comments/ -run Integration -v
 
       - name: Run E2E tests
         run: |

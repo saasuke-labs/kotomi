@@ -1,6 +1,9 @@
 package comments
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 func NewSitePagesIndex() *SitePagesIndex {
 	return &SitePagesIndex{
@@ -10,10 +13,12 @@ func NewSitePagesIndex() *SitePagesIndex {
 
 // Comment represents a comment or a reply.
 type Comment struct {
-	ID       string `json:"id"`
-	Author   string `json:"author"`
-	Text     string `json:"text"`
-	ParentID string `json:"parent_id,omitempty"`
+	ID        string    `json:"id"`
+	Author    string    `json:"author"`
+	Text      string    `json:"text"`
+	ParentID  string    `json:"parent_id,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type SitePagesIndex struct {

@@ -235,7 +235,7 @@ func (s *SQLiteStore) GetCommentsBySite(siteID string, status string) ([]Comment
 	var comments []Comment
 	for rows.Next() {
 		var c Comment
-		var siteID, pageID sql.NullString
+		var siteID, pageID string // Not used but needed for Scan
 		var parentID sql.NullString
 		var moderatedBy sql.NullString
 		var moderatedAt sql.NullTime
@@ -278,7 +278,7 @@ func (s *SQLiteStore) GetCommentByID(commentID string) (*Comment, error) {
 	`
 
 	var c Comment
-	var siteID, pageID sql.NullString
+	var siteID, pageID string // Not used but needed for Scan
 	var parentID sql.NullString
 	var moderatedBy sql.NullString
 	var moderatedAt sql.NullTime
@@ -333,4 +333,20 @@ func (s *SQLiteStore) DeleteComment(commentID string) error {
 	}
 
 	return nil
+}
+
+// GetCommentSiteID retrieves the site ID for a comment
+func (s *SQLiteStore) GetCommentSiteID(commentID string) (string, error) {
+	query := `SELECT site_id FROM comments WHERE id = ?`
+
+	var siteID string
+	err := s.db.QueryRow(query, commentID).Scan(&siteID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("comment not found")
+		}
+		return "", fmt.Errorf("failed to query comment site: %w", err)
+	}
+
+	return siteID, nil
 }

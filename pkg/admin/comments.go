@@ -130,8 +130,19 @@ func (h *CommentsHandler) ApproveComment(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Verify site ownership (comment doesn't have site_id in struct, need to query)
-	// For now, we trust the request since we're authenticated
+	// Get site ID for the comment and verify ownership
+	siteID, err := h.commentStore.GetCommentSiteID(commentID)
+	if err != nil {
+		http.Error(w, "Failed to verify comment ownership", http.StatusInternalServerError)
+		return
+	}
+
+	siteStore := models.NewSiteStore(h.db)
+	site, err := siteStore.GetByID(siteID)
+	if err != nil || site.OwnerID != userID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
 
 	err = h.commentStore.UpdateCommentStatus(commentID, "approved", userID)
 	if err != nil {
@@ -142,6 +153,7 @@ func (h *CommentsHandler) ApproveComment(w http.ResponseWriter, r *http.Request)
 	// For HTMX requests, return updated comment row
 	if r.Header.Get("HX-Request") == "true" {
 		comment.Status = "approved"
+		comment.ModeratedBy = userID
 		if h.templates != nil {
 			err = h.templates.ExecuteTemplate(w, "comments/row.html", map[string]interface{}{
 				"Comment": comment,
@@ -174,6 +186,20 @@ func (h *CommentsHandler) RejectComment(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Get site ID for the comment and verify ownership
+	siteID, err := h.commentStore.GetCommentSiteID(commentID)
+	if err != nil {
+		http.Error(w, "Failed to verify comment ownership", http.StatusInternalServerError)
+		return
+	}
+
+	siteStore := models.NewSiteStore(h.db)
+	site, err := siteStore.GetByID(siteID)
+	if err != nil || site.OwnerID != userID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
 	err = h.commentStore.UpdateCommentStatus(commentID, "rejected", userID)
 	if err != nil {
 		http.Error(w, "Failed to reject comment", http.StatusInternalServerError)
@@ -183,6 +209,7 @@ func (h *CommentsHandler) RejectComment(w http.ResponseWriter, r *http.Request) 
 	// For HTMX requests, return updated comment row
 	if r.Header.Get("HX-Request") == "true" {
 		comment.Status = "rejected"
+		comment.ModeratedBy = userID
 		if h.templates != nil {
 			err = h.templates.ExecuteTemplate(w, "comments/row.html", map[string]interface{}{
 				"Comment": comment,
@@ -212,6 +239,20 @@ func (h *CommentsHandler) DeleteComment(w http.ResponseWriter, r *http.Request) 
 	_, err := h.commentStore.GetCommentByID(commentID)
 	if err != nil {
 		http.Error(w, "Comment not found", http.StatusNotFound)
+		return
+	}
+
+	// Get site ID for the comment and verify ownership
+	siteID, err := h.commentStore.GetCommentSiteID(commentID)
+	if err != nil {
+		http.Error(w, "Failed to verify comment ownership", http.StatusInternalServerError)
+		return
+	}
+
+	siteStore := models.NewSiteStore(h.db)
+	site, err := siteStore.GetByID(siteID)
+	if err != nil || site.OwnerID != userID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 

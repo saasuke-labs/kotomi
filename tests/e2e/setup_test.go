@@ -16,6 +16,7 @@ import (
 var (
 	testServerCmd *exec.Cmd
 	testDBPath    string
+	testLogFile   *os.File
 	testPort      = "8888"
 	testBaseURL   = "http://localhost:8888"
 )
@@ -62,12 +63,7 @@ func setupTestEnvironment() error {
 	if err != nil {
 		return err
 	}
-	// Ensure log file is closed on any error
-	defer func() {
-		if err != nil {
-			logFile.Close()
-		}
-	}()
+	testLogFile = logFile
 
 	// Start the server
 	testServerCmd = exec.Command("go", "run", "cmd/main.go")
@@ -83,6 +79,7 @@ func setupTestEnvironment() error {
 	testServerCmd.Stderr = logFile
 
 	if err = testServerCmd.Start(); err != nil {
+		logFile.Close()
 		return err
 	}
 
@@ -138,6 +135,11 @@ func teardownTestEnvironment() {
 		case <-done:
 			// Process exited successfully
 		}
+	}
+
+	// Close log file
+	if testLogFile != nil {
+		testLogFile.Close()
 	}
 
 	// Clean up test database

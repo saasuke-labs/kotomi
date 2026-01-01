@@ -50,20 +50,39 @@ func setupTestEnvironment() error {
 	}
 	testDBPath = filepath.Join(tmpDir, "kotomi_test.db")
 
+	// Get the project root directory (go up from tests/e2e/)
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	projectRoot := filepath.Join(wd, "../..")
+
+	// Create log file for server output
+	logFile, err := os.Create(filepath.Join(tmpDir, "server.log"))
+	if err != nil {
+		return err
+	}
+
 	// Start the server
-	testServerCmd = exec.Command("go", "run", "../../cmd/main.go")
-	testServerCmd.Dir = tmpDir
+	testServerCmd = exec.Command("go", "run", "cmd/main.go")
+	testServerCmd.Dir = projectRoot
 	testServerCmd.Env = append(os.Environ(),
 		"PORT="+testPort,
 		"DB_PATH="+testDBPath,
 		"TEST_MODE=true",
 	)
-	testServerCmd.Stdout = os.Stdout
-	testServerCmd.Stderr = os.Stderr
+	
+	// Always log to file for debugging
+	testServerCmd.Stdout = logFile
+	testServerCmd.Stderr = logFile
 
 	if err := testServerCmd.Start(); err != nil {
+		logFile.Close()
 		return err
 	}
+
+	log.Printf("Started test server with PID %d, DB at %s, logs at %s", 
+		testServerCmd.Process.Pid, testDBPath, logFile.Name())
 
 	// Wait for server to be ready
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -73,6 +92,7 @@ func setupTestEnvironment() error {
 	for {
 		select {
 		case <-ctx.Done():
+			logFile.Close()
 			return ctx.Err()
 		default:
 			resp, err := http.Get(healthURL)

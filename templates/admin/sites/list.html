@@ -2,7 +2,7 @@
 <div id="sites-list">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h2>Your Sites</h2>
-        <a href="/admin/sites/new" hx-get="/admin/sites/new" hx-target="#main-content" role="button">New Site</a>
+        <a href="/admin/sites/new" role="button">New Site</a>
     </div>
 
     {{if .Sites}}
@@ -23,7 +23,7 @@
                     <td>{{if .Domain}}{{.Domain}}{{else}}-{{end}}</td>
                     <td>{{.CreatedAt.Format "2006-01-02"}}</td>
                     <td>
-                        <a href="/admin/sites/{{.ID}}/edit" hx-get="/admin/sites/{{.ID}}/edit" hx-target="#main-content">Edit</a>
+                        <a href="/admin/sites/{{.ID}}/edit">Edit</a>
                         <a href="#" hx-delete="/admin/sites/{{.ID}}" hx-confirm="Are you sure you want to delete this site?" style="color: red;">Delete</a>
                     </td>
                 </tr>
@@ -34,7 +34,7 @@
     {{else}}
     <article>
         <p>You don't have any sites yet. Create your first site to get started!</p>
-        <a href="/admin/sites/new" hx-get="/admin/sites/new" hx-target="#main-content" role="button">Create Your First Site</a>
+        <a href="/admin/sites/new" role="button">Create Your First Site</a>
     </article>
     {{end}}
 </div>

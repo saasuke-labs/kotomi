@@ -155,9 +155,7 @@ func (h *CommentsHandler) ApproveComment(w http.ResponseWriter, r *http.Request)
 		comment.Status = "approved"
 		comment.ModeratedBy = userID
 		if h.templates != nil {
-			err = h.templates.ExecuteTemplate(w, "comments/row.html", map[string]interface{}{
-				"Comment": comment,
-			})
+			err = h.templates.ExecuteTemplate(w, "comments/row.html", comment)
 			if err != nil {
 				http.Error(w, "Template error", http.StatusInternalServerError)
 			}
@@ -211,9 +209,7 @@ func (h *CommentsHandler) RejectComment(w http.ResponseWriter, r *http.Request) 
 		comment.Status = "rejected"
 		comment.ModeratedBy = userID
 		if h.templates != nil {
-			err = h.templates.ExecuteTemplate(w, "comments/row.html", map[string]interface{}{
-				"Comment": comment,
-			})
+			err = h.templates.ExecuteTemplate(w, "comments/row.html", comment)
 			if err != nil {
 				http.Error(w, "Template error", http.StatusInternalServerError)
 			}

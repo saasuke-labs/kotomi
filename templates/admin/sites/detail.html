@@ -25,7 +25,7 @@
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h3>Pages</h3>
-        <a href="/admin/sites/{{.Site.ID}}/pages/new" hx-get="/admin/sites/{{.Site.ID}}/pages/new" hx-target="#main-content" role="button" class="secondary">Add Page</a>
+        <a href="/admin/sites/{{.Site.ID}}/pages/new" role="button" class="secondary">Add Page</a>
     </div>
 
     {{if .Pages}}
@@ -46,7 +46,7 @@
                     <td>{{if .Title}}{{.Title}}{{else}}-{{end}}</td>
                     <td>{{.CreatedAt.Format "2006-01-02"}}</td>
                     <td>
-                        <a href="/admin/sites/{{$.Site.ID}}/pages/{{.ID}}/edit" hx-get="/admin/sites/{{$.Site.ID}}/pages/{{.ID}}/edit" hx-target="#main-content">Edit</a>
+                        <a href="/admin/sites/{{$.Site.ID}}/pages/{{.ID}}/edit">Edit</a>
                         <a href="#" hx-delete="/admin/sites/{{$.Site.ID}}/pages/{{.ID}}" hx-confirm="Are you sure?" style="color: red;">Delete</a>
                     </td>
                 </tr>

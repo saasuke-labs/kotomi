@@ -9,7 +9,7 @@
 
     <h2>{{if .IsEdit}}Edit Site{{else}}Create New Site{{end}}</h2>
 
-    <form {{if .IsEdit}}hx-put="/admin/sites/{{.Site.ID}}"{{else}}hx-post="/admin/sites"{{end}} hx-target="#main-content">
+    <form {{if .IsEdit}}hx-put="/admin/sites/{{.Site.ID}}"{{else}}hx-post="/admin/sites"{{end}}>
         <label for="name">
             Name
             <input type="text" id="name" name="name" {{if .Site}}value="{{.Site.Name}}"{{end}} required>

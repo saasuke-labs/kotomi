@@ -10,7 +10,7 @@
 
     <h2>{{if .IsEdit}}Edit Page{{else}}Add New Page{{end}}</h2>
 
-    <form {{if .IsEdit}}hx-put="/admin/sites/{{.SiteID}}/pages/{{.Page.ID}}"{{else}}hx-post="/admin/sites/{{.SiteID}}/pages"{{end}} hx-target="#main-content">
+    <form {{if .IsEdit}}hx-put="/admin/sites/{{.SiteID}}/pages/{{.Page.ID}}"{{else}}hx-post="/admin/sites/{{.SiteID}}/pages"{{end}}>
         <label for="path">
             Path
             <input type="text" id="path" name="path" {{if .Page}}value="{{.Page.Path}}"{{end}} placeholder="/blog/my-post" required>

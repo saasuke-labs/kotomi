@@ -62,6 +62,12 @@ func setupTestEnvironment() error {
 	if err != nil {
 		return err
 	}
+	// Ensure log file is closed on any error
+	defer func() {
+		if err != nil {
+			logFile.Close()
+		}
+	}()
 
 	// Start the server
 	testServerCmd = exec.Command("go", "run", "cmd/main.go")
@@ -76,8 +82,7 @@ func setupTestEnvironment() error {
 	testServerCmd.Stdout = logFile
 	testServerCmd.Stderr = logFile
 
-	if err := testServerCmd.Start(); err != nil {
-		logFile.Close()
+	if err = testServerCmd.Start(); err != nil {
 		return err
 	}
 
@@ -92,11 +97,10 @@ func setupTestEnvironment() error {
 	for {
 		select {
 		case <-ctx.Done():
-			logFile.Close()
 			return ctx.Err()
 		default:
-			resp, err := http.Get(healthURL)
-			if err == nil && resp.StatusCode == http.StatusOK {
+			resp, httpErr := http.Get(healthURL)
+			if httpErr == nil && resp.StatusCode == http.StatusOK {
 				resp.Body.Close()
 				log.Println("Test server is ready")
 				return nil
@@ -112,8 +116,28 @@ func setupTestEnvironment() error {
 func teardownTestEnvironment() {
 	if testServerCmd != nil && testServerCmd.Process != nil {
 		log.Println("Stopping test server...")
-		testServerCmd.Process.Kill()
-		testServerCmd.Wait()
+		
+		// Try graceful shutdown first with SIGTERM
+		if err := testServerCmd.Process.Signal(os.Interrupt); err != nil {
+			// If SIGTERM fails, fall back to Kill
+			testServerCmd.Process.Kill()
+		}
+		
+		// Wait for process to exit with timeout
+		done := make(chan error, 1)
+		go func() {
+			done <- testServerCmd.Wait()
+		}()
+		
+		select {
+		case <-time.After(5 * time.Second):
+			// Timeout - force kill
+			log.Println("Server did not stop gracefully, forcing kill")
+			testServerCmd.Process.Kill()
+			testServerCmd.Wait()
+		case <-done:
+			// Process exited successfully
+		}
 	}
 
 	// Clean up test database

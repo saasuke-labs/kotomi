@@ -205,6 +205,11 @@ func (s *SQLiteStore) Close() error {
 	return nil
 }
 
+// GetDB returns the underlying database connection
+func (s *SQLiteStore) GetDB() *sql.DB {
+	return s.db
+}
+
 // GetCommentsBySite retrieves all comments for a specific site
 func (s *SQLiteStore) GetCommentsBySite(siteID string, status string) ([]Comment, error) {
 	query := `

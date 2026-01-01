@@ -1,0 +1,32 @@
+{{define "pages/form.html"}}
+<div id="page-form">
+    <nav aria-label="breadcrumb">
+        <ul>
+            <li><a href="/admin/sites">Sites</a></li>
+            <li><a href="/admin/sites/{{.SiteID}}">Site</a></li>
+            <li>{{if .IsEdit}}Edit Page{{else}}New Page{{end}}</li>
+        </ul>
+    </nav>
+
+    <h2>{{if .IsEdit}}Edit Page{{else}}Add New Page{{end}}</h2>
+
+    <form {{if .IsEdit}}hx-put="/admin/sites/{{.SiteID}}/pages/{{.Page.ID}}"{{else}}hx-post="/admin/sites/{{.SiteID}}/pages"{{end}} hx-target="#main-content">
+        <label for="path">
+            Path
+            <input type="text" id="path" name="path" {{if .Page}}value="{{.Page.Path}}"{{end}} placeholder="/blog/my-post" required>
+            <small>The URL path for this page</small>
+        </label>
+
+        <label for="title">
+            Title
+            <input type="text" id="title" name="title" {{if .Page}}value="{{.Page.Title}}"{{end}} placeholder="My Blog Post">
+            <small>Optional: Display title for the page</small>
+        </label>
+
+        <div style="display: flex; gap: 1rem;">
+            <button type="submit">{{if .IsEdit}}Update{{else}}Add{{end}}</button>
+            <a href="/admin/sites/{{.SiteID}}" role="button" class="secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{{end}}

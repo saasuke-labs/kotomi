@@ -1,0 +1,33 @@
+{{define "pages/list.html"}}
+<div id="pages-list">
+    <h3>Pages</h3>
+
+    {{if .Pages}}
+    <figure>
+        <table>
+            <thead>
+                <tr>
+                    <th>Path</th>
+                    <th>Title</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Pages}}
+                <tr>
+                    <td><code>{{.Path}}</code></td>
+                    <td>{{if .Title}}{{.Title}}{{else}}-{{end}}</td>
+                    <td>
+                        <a href="/admin/sites/{{.SiteID}}/pages/{{.ID}}/edit">Edit</a>
+                        <a href="#" hx-delete="/admin/sites/{{.SiteID}}/pages/{{.ID}}" hx-confirm="Are you sure?" style="color: red;">Delete</a>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </figure>
+    {{else}}
+    <p>No pages yet.</p>
+    {{end}}
+</div>
+{{end}}

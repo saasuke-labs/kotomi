@@ -1,0 +1,36 @@
+{{define "sites/form.html"}}
+<div id="site-form">
+    <nav aria-label="breadcrumb">
+        <ul>
+            <li><a href="/admin/sites">Sites</a></li>
+            <li>{{if .IsEdit}}Edit Site{{else}}New Site{{end}}</li>
+        </ul>
+    </nav>
+
+    <h2>{{if .IsEdit}}Edit Site{{else}}Create New Site{{end}}</h2>
+
+    <form {{if .IsEdit}}hx-put="/admin/sites/{{.Site.ID}}"{{else}}hx-post="/admin/sites"{{end}} hx-target="#main-content">
+        <label for="name">
+            Name
+            <input type="text" id="name" name="name" {{if .Site}}value="{{.Site.Name}}"{{end}} required>
+        </label>
+
+        <label for="domain">
+            Domain
+            <input type="text" id="domain" name="domain" {{if .Site}}value="{{.Site.Domain}}"{{end}} placeholder="example.com">
+            <small>Optional: Your site's domain name</small>
+        </label>
+
+        <label for="description">
+            Description
+            <textarea id="description" name="description" rows="3">{{if .Site}}{{.Site.Description}}{{end}}</textarea>
+            <small>Optional: Brief description of your site</small>
+        </label>
+
+        <div style="display: flex; gap: 1rem;">
+            <button type="submit">{{if .IsEdit}}Update{{else}}Create{{end}}</button>
+            <a href="/admin/sites" role="button" class="secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{{end}}

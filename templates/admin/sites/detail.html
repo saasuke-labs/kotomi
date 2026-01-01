@@ -1,0 +1,63 @@
+{{define "sites/detail.html"}}
+<div id="site-detail">
+    <nav aria-label="breadcrumb">
+        <ul>
+            <li><a href="/admin/sites">Sites</a></li>
+            <li>{{.Site.Name}}</li>
+        </ul>
+    </nav>
+
+    <hgroup>
+        <h2>{{.Site.Name}}</h2>
+        {{if .Site.Domain}}<h3>{{.Site.Domain}}</h3>{{end}}
+    </hgroup>
+
+    {{if .Site.Description}}
+    <p>{{.Site.Description}}</p>
+    {{end}}
+
+    <div style="margin-bottom: 2rem;">
+        <a href="/admin/sites/{{.Site.ID}}/edit" role="button" class="secondary">Edit Site</a>
+        <a href="/admin/sites/{{.Site.ID}}/comments" role="button">View Comments</a>
+    </div>
+
+    <hr>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3>Pages</h3>
+        <a href="/admin/sites/{{.Site.ID}}/pages/new" hx-get="/admin/sites/{{.Site.ID}}/pages/new" hx-target="#main-content" role="button" class="secondary">Add Page</a>
+    </div>
+
+    {{if .Pages}}
+    <figure>
+        <table>
+            <thead>
+                <tr>
+                    <th>Path</th>
+                    <th>Title</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Pages}}
+                <tr>
+                    <td><code>{{.Path}}</code></td>
+                    <td>{{if .Title}}{{.Title}}{{else}}-{{end}}</td>
+                    <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+                    <td>
+                        <a href="/admin/sites/{{$.Site.ID}}/pages/{{.ID}}/edit" hx-get="/admin/sites/{{$.Site.ID}}/pages/{{.ID}}/edit" hx-target="#main-content">Edit</a>
+                        <a href="#" hx-delete="/admin/sites/{{$.Site.ID}}/pages/{{.ID}}" hx-confirm="Are you sure?" style="color: red;">Delete</a>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </figure>
+    {{else}}
+    <article>
+        <p>No pages yet. Add a page to start tracking comments.</p>
+    </article>
+    {{end}}
+</div>
+{{end}}

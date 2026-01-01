@@ -1,0 +1,152 @@
+package e2e
+
+import (
+	"context"
+	"log"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/saasuke-labs/kotomi/pkg/comments"
+)
+
+var (
+	testServerCmd *exec.Cmd
+	testDBPath    string
+	testPort      = "8888"
+	testBaseURL   = "http://localhost:8888"
+)
+
+// TestMain sets up and tears down the test environment
+func TestMain(m *testing.M) {
+	// Skip E2E tests if not in test mode
+	if os.Getenv("RUN_E2E_TESTS") == "" {
+		log.Println("Skipping E2E tests. Set RUN_E2E_TESTS=true to run them.")
+		os.Exit(0)
+	}
+
+	// Setup
+	if err := setupTestEnvironment(); err != nil {
+		log.Fatalf("Failed to setup test environment: %v", err)
+	}
+
+	// Run tests
+	code := m.Run()
+
+	// Teardown
+	teardownTestEnvironment()
+
+	os.Exit(code)
+}
+
+func setupTestEnvironment() error {
+	// Create temporary directory for test database
+	tmpDir, err := os.MkdirTemp("", "kotomi-e2e-*")
+	if err != nil {
+		return err
+	}
+	testDBPath = filepath.Join(tmpDir, "kotomi_test.db")
+
+	// Start the server
+	testServerCmd = exec.Command("go", "run", "../../cmd/main.go")
+	testServerCmd.Dir = tmpDir
+	testServerCmd.Env = append(os.Environ(),
+		"PORT="+testPort,
+		"DB_PATH="+testDBPath,
+		"TEST_MODE=true",
+	)
+	testServerCmd.Stdout = os.Stdout
+	testServerCmd.Stderr = os.Stderr
+
+	if err := testServerCmd.Start(); err != nil {
+		return err
+	}
+
+	// Wait for server to be ready
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	healthURL := testBaseURL + "/healthz"
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			resp, err := http.Get(healthURL)
+			if err == nil && resp.StatusCode == http.StatusOK {
+				resp.Body.Close()
+				log.Println("Test server is ready")
+				return nil
+			}
+			if resp != nil {
+				resp.Body.Close()
+			}
+			time.Sleep(200 * time.Millisecond)
+		}
+	}
+}
+
+func teardownTestEnvironment() {
+	if testServerCmd != nil && testServerCmd.Process != nil {
+		log.Println("Stopping test server...")
+		testServerCmd.Process.Kill()
+		testServerCmd.Wait()
+	}
+
+	// Clean up test database
+	if testDBPath != "" {
+		os.Remove(testDBPath)
+		os.RemoveAll(filepath.Dir(testDBPath))
+	}
+}
+
+// SeedTestData seeds the database with test data
+func SeedTestData(t *testing.T, dbPath string) {
+	t.Helper()
+
+	store, err := comments.NewSQLiteStore(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	// Add some test comments
+	testComments := []struct {
+		siteID  string
+		pageID  string
+		comment comments.Comment
+	}{
+		{
+			siteID: "test-site-1",
+			pageID: "test-page-1",
+			comment: comments.Comment{
+				ID:        "comment-1",
+				Author:    "Alice",
+				Text:      "This is a test comment",
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+		},
+		{
+			siteID: "test-site-1",
+			pageID: "test-page-1",
+			comment: comments.Comment{
+				ID:        "comment-2",
+				Author:    "Bob",
+				Text:      "This is another test comment",
+				ParentID:  "comment-1",
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+		},
+	}
+
+	for _, tc := range testComments {
+		if err := store.AddPageComment(tc.siteID, tc.pageID, tc.comment); err != nil {
+			t.Fatalf("failed to seed test data: %v", err)
+		}
+	}
+}

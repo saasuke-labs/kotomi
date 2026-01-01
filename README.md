@@ -71,22 +71,64 @@ docker run -p 8080:8080 -v kotomi-data:/app/data kotomi
 
 **Note:** The `-v kotomi-data:/app/data` flag creates a Docker volume to persist your comment database across container restarts.
 
-### Running Tests
+## Running Tests
 
-Run all tests:
+### Unit Tests
+
+Run all unit tests:
 ```bash
-go test ./...
+go test ./pkg/... ./cmd/... -v
 ```
 
 Run tests with coverage:
 ```bash
-go test ./... -cover
+go test ./pkg/... ./cmd/... -cover
 ```
 
 Run tests for a specific package:
 ```bash
-go test ./pkg/comments/...
+go test ./pkg/comments/... -v
 ```
+
+### Integration Tests
+
+Run integration tests:
+```bash
+go test ./pkg/comments/integration_test.go -v
+```
+
+### E2E Tests
+
+E2E tests validate the API endpoints by starting a real server and making HTTP requests. To run E2E tests:
+
+```bash
+# Set environment variable to enable E2E tests
+export RUN_E2E_TESTS=true
+export TEST_MODE=true
+export DB_PATH=./kotomi_test.db
+
+# Run E2E tests
+go test ./tests/e2e/... -v -timeout=10m
+```
+
+**Note:** E2E tests will start a test server automatically on port 8888.
+
+### All Tests
+
+Run all tests (unit, integration, and E2E):
+```bash
+RUN_E2E_TESTS=true go test ./... -v -cover
+```
+
+### With Coverage Report
+
+Generate a detailed coverage report:
+```bash
+go test ./pkg/... ./cmd/... -coverprofile=coverage.out
+go tool cover -html=coverage.out -o coverage.html
+```
+
+Then open `coverage.html` in your browser.
 
 ### Health Check
 

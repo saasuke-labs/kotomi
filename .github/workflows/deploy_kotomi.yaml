@@ -3,10 +3,14 @@ name: Build and Deploy Kotomi
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  build-and-deploy:
+  test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -17,9 +21,56 @@ jobs:
         with:
           go-version: '1.24'
 
-      - name: Run tests
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run unit tests
         run: |
-          go test ./... -v -cover
+          go test ./pkg/... ./cmd/... -v -race -coverprofile=coverage.out -covermode=atomic
+
+      - name: Run integration tests
+        run: |
+          go test ./pkg/comments/ -run Integration -v
+
+      - name: Run E2E tests
+        run: |
+          RUN_E2E_TESTS=true go test ./tests/e2e/... -v -timeout=10m
+        env:
+          TEST_MODE: true
+          DB_PATH: ./kotomi_test.db
+          PORT: 8888
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.out
+          flags: unittests
+          fail_ci_if_error: false
+
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
 
       - name: Read VERSION and metadata
         id: vars

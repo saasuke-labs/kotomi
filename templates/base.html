@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{block "title" .}}Kotomi Admin{{end}}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="/static/css/admin.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+    <nav class="container-fluid">
+        <ul>
+            <li><strong>Kotomi Admin</strong></li>
+        </ul>
+        <ul>
+            <li><a href="/admin/dashboard">Dashboard</a></li>
+            <li><a href="/admin/sites">Sites</a></li>
+            {{if .User}}
+            <li>
+                <details role="list">
+                    <summary aria-haspopup="listbox">{{.User.Email}}</summary>
+                    <ul role="listbox">
+                        <li><a href="/logout">Logout</a></li>
+                    </ul>
+                </details>
+            </li>
+            {{end}}
+        </ul>
+    </nav>
+
+    <main class="container">
+        {{block "content" .}}
+        <h1>Welcome to Kotomi Admin</h1>
+        {{end}}
+    </main>
+
+    <footer class="container">
+        <small>Kotomi &copy; 2024 - Give your pages a voice</small>
+    </footer>
+</body>
+</html>

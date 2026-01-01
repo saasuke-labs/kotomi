@@ -1,0 +1,48 @@
+/* Admin panel custom styles */
+
+:root {
+    --del-color: #ef4444;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 0.25rem;
+    background-color: var(--secondary);
+    color: white;
+}
+
+.badge[data-status="pending"] {
+    background-color: #f59e0b;
+}
+
+.badge[data-status="approved"] {
+    background-color: #10b981;
+}
+
+.badge[data-status="rejected"] {
+    background-color: #ef4444;
+}
+
+nav[aria-label="breadcrumb"] ul {
+    padding: 0;
+    margin: 0 0 1rem 0;
+    list-style: none;
+    display: flex;
+    gap: 0.5rem;
+}
+
+nav[aria-label="breadcrumb"] li:not(:last-child)::after {
+    content: "/";
+    margin-left: 0.5rem;
+    color: var(--muted-color);
+}
+
+code {
+    background-color: var(--code-background-color);
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+}

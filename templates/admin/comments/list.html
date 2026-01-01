@@ -1,0 +1,27 @@
+{{define "comments/list.html"}}
+<div id="comments-list">
+    <hgroup>
+        <h2>Comments</h2>
+        <h3>Moderate comments for your site</h3>
+    </hgroup>
+
+    <div class="grid" style="margin-bottom: 1rem;">
+        <button hx-get="/admin/sites/{{.SiteID}}/comments" hx-target="#comments-list" {{if eq .Status ""}}class="contrast"{{end}}>All</button>
+        <button hx-get="/admin/sites/{{.SiteID}}/comments?status=pending" hx-target="#comments-list" {{if eq .Status "pending"}}class="contrast"{{end}}>Pending</button>
+        <button hx-get="/admin/sites/{{.SiteID}}/comments?status=approved" hx-target="#comments-list" {{if eq .Status "approved"}}class="contrast"{{end}}>Approved</button>
+        <button hx-get="/admin/sites/{{.SiteID}}/comments?status=rejected" hx-target="#comments-list" {{if eq .Status "rejected"}}class="contrast"{{end}}>Rejected</button>
+    </div>
+
+    <div class="comments">
+        {{if .Comments}}
+        {{range .Comments}}
+        {{template "comments/row.html" .}}
+        {{end}}
+        {{else}}
+        <article>
+            <p>No comments found.</p>
+        </article>
+        {{end}}
+    </div>
+</div>
+{{end}}

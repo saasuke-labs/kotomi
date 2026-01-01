@@ -1,0 +1,38 @@
+{{template "base.html" .}}
+
+{{define "title"}}Dashboard - Kotomi Admin{{end}}
+
+{{define "content"}}
+<hgroup>
+    <h1>Dashboard</h1>
+    <h2>Welcome back{{if .User.Name}}, {{.User.Name}}{{end}}!</h2>
+</hgroup>
+
+<div class="grid">
+    <article>
+        <header><strong>Sites</strong></header>
+        <p>{{.SitesCount}} site{{if ne .SitesCount 1}}s{{end}}</p>
+        <footer>
+            <a href="/admin/sites" role="button">Manage Sites</a>
+        </footer>
+    </article>
+
+    <article>
+        <header><strong>Comments</strong></header>
+        <p>{{.PendingCount}} pending comment{{if ne .PendingCount 1}}s{{end}}</p>
+        <footer>
+            <a href="/admin/comments?status=pending" role="button">Moderate</a>
+        </footer>
+    </article>
+</div>
+
+{{if eq .SitesCount 0}}
+<article>
+    <header><strong>Get Started</strong></header>
+    <p>Create your first site to start managing comments on your pages.</p>
+    <footer>
+        <a href="/admin/sites/new" role="button">Create Your First Site</a>
+    </footer>
+</article>
+{{end}}
+{{end}}

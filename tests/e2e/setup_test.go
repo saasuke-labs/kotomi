@@ -51,7 +51,8 @@ func setupTestEnvironment() error {
 	}
 	testDBPath = filepath.Join(tmpDir, "kotomi_test.db")
 
-	// Get the project root directory (go up from tests/e2e/)
+	// Get the project root directory (go up from tests/e2e/ to module root)
+	// This works because tests are always run from within the module
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -65,7 +66,9 @@ func setupTestEnvironment() error {
 	}
 	testLogFile = logFile
 
-	// Start the server
+	// Start the server using go run
+	// We use 'go run' instead of pre-building to avoid managing build artifacts
+	// and to ensure we're always testing the current source code
 	testServerCmd = exec.Command("go", "run", "cmd/main.go")
 	testServerCmd.Dir = projectRoot
 	testServerCmd.Env = append(os.Environ(),
@@ -114,9 +117,10 @@ func teardownTestEnvironment() {
 	if testServerCmd != nil && testServerCmd.Process != nil {
 		log.Println("Stopping test server...")
 		
-		// Try graceful shutdown first with SIGTERM
+		// Try graceful shutdown first with SIGINT (os.Interrupt)
+		// Note: On Unix, this sends SIGINT; on Windows, it generates a Ctrl+C event
 		if err := testServerCmd.Process.Signal(os.Interrupt); err != nil {
-			// If SIGTERM fails, fall back to Kill
+			// If signal fails, fall back to Kill (SIGKILL)
 			testServerCmd.Process.Kill()
 		}
 		

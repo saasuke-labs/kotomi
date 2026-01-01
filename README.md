@@ -21,7 +21,7 @@ Give your pages a voice
 Kotomi is built with simplicity and performance in mind:
 
 - **Go 1.24** - Modern, fast, and efficient
-- **In-memory storage** - Lightning-fast data access
+- **SQLite Storage** - Persistent, reliable database with zero configuration
 - **REST API** - Standard HTTP endpoints for easy integration
 - **Docker** - Containerized for easy deployment
 
@@ -61,7 +61,26 @@ docker build -t kotomi .
 
 2. Run the container:
 ```bash
-docker run -p 8080:8080 kotomi
+docker run -p 8080:8080 -v kotomi-data:/app/data kotomi
+```
+
+**Note:** The `-v kotomi-data:/app/data` flag creates a Docker volume to persist your comment database across container restarts.
+
+### Running Tests
+
+Run all tests:
+```bash
+go test ./...
+```
+
+Run tests with coverage:
+```bash
+go test ./... -cover
+```
+
+Run tests for a specific package:
+```bash
+go test ./pkg/comments/...
 ```
 
 ### Health Check
@@ -94,10 +113,60 @@ Returns the health status of the service.
 
 ### Comments API
 
-The comments API endpoints are currently under development and will be available in the next release:
+**Get Comments**
 
-- `GET /api/site/{siteId}/page/{pageId}/comments` - Get comments for a page (Coming soon)
-- `POST /api/site/{siteId}/page/{pageId}/comments` - Post a comment (Coming soon)
+**Endpoint:** `GET /api/site/{siteId}/page/{pageId}/comments`
+
+Retrieve all comments for a specific page.
+
+**Parameters:**
+- `siteId` - Unique identifier for your site
+- `pageId` - Unique identifier for the page
+
+**Response:**
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "author": "John Doe",
+    "text": "Great article!",
+    "parent_id": "",
+    "created_at": "2024-01-01T12:00:00Z",
+    "updated_at": "2024-01-01T12:00:00Z"
+  }
+]
+```
+
+**Post Comment**
+
+**Endpoint:** `POST /api/site/{siteId}/page/{pageId}/comments`
+
+Create a new comment on a page.
+
+**Parameters:**
+- `siteId` - Unique identifier for your site
+- `pageId` - Unique identifier for the page
+
+**Request Body:**
+```json
+{
+  "author": "John Doe",
+  "text": "This is my comment",
+  "parent_id": ""
+}
+```
+
+**Response:**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "author": "John Doe",
+  "text": "This is my comment",
+  "parent_id": "",
+  "created_at": "2024-01-01T12:00:00Z",
+  "updated_at": "2024-01-01T12:00:00Z"
+}
+```
 
 ## Configuration
 
@@ -106,10 +175,23 @@ Kotomi can be configured using environment variables:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PORT` | Server port | `8080` |
+| `DB_PATH` | Path to SQLite database file | `./kotomi.db` |
 
 Example:
 ```bash
-PORT=3000 go run cmd/main.go
+PORT=3000 DB_PATH=/data/comments.db go run cmd/main.go
+```
+
+### Docker Configuration
+
+When running with Docker, use environment variables and volumes:
+
+```bash
+docker run -p 8080:8080 \
+  -e PORT=8080 \
+  -e DB_PATH=/app/data/kotomi.db \
+  -v kotomi-data:/app/data \
+  kotomi
 ```
 
 ## Project Structure
@@ -135,18 +217,46 @@ kotomi/
 ### v0.1.0 - Current Focus
 
 - ✅ Basic server setup with health check
-- ✅ In-memory comment storage
-- 🚧 REST API for comments
+- ✅ SQLite persistent storage
+- ✅ REST API for comments
+- ✅ Comprehensive test coverage (>90%)
 - 🚧 CORS configuration
 - 🚧 Basic moderation features
 
 ### Future Versions
 
 - **v0.2.0** - Reactions and voting system
-- **v0.3.0** - Persistent storage options
+- **v0.3.0** - Additional storage backends
 - **v0.4.0** - Authentication and user management
 - **v0.5.0** - Advanced moderation tools
 - **v1.0.0** - Production-ready release
+
+## Development
+
+### Testing
+
+Kotomi has comprehensive test coverage (>90%). To run tests:
+
+```bash
+# Run all tests
+go test ./...
+
+# Run with coverage
+go test ./... -cover
+
+# Run with verbose output
+go test ./... -v
+
+# Run specific package tests
+go test ./pkg/comments/...
+```
+
+### Code Style
+
+- Follow standard Go formatting (`gofmt`)
+- Write meaningful test names: `TestFunctionName_Scenario_ExpectedResult`
+- Include error handling for all operations
+- Use prepared statements for database queries
 
 ## Contributing
 

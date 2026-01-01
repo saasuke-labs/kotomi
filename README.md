@@ -10,8 +10,11 @@ Give your pages a voice
 ## Features
 
 - 💬 **Comments System** - Enable discussions on your static pages
-- 👍 **Reactions** - Let users express themselves with reactions
-- 🛡️ **Moderation** - Tools to manage and moderate content
+- 🔐 **Admin Panel** - Web-based dashboard with Auth0 authentication
+- 🏢 **Multi-Site Management** - Manage multiple sites from a single instance
+- 📄 **Page Tracking** - Organize comments by pages within sites
+- 🛡️ **Comment Moderation** - Approve, reject, or delete comments with ease
+- ⚡ **HTMX Interface** - Smooth, no-reload UI updates
 - 🪶 **Lightweight** - Built with Go for minimal resource usage
 - 🔌 **Easy Integration** - Simple REST API for seamless integration
 - 🔒 **Privacy-Focused** - Designed with user privacy in mind
@@ -23,6 +26,8 @@ Kotomi is built with simplicity and performance in mind:
 - **Go 1.24** - Modern, fast, and efficient
 - **SQLite Storage** - Persistent, reliable database with zero configuration
 - **REST API** - Standard HTTP endpoints for easy integration
+- **HTMX** - Server-side rendering with smooth interactivity
+- **Auth0** - Secure authentication for admin panel
 - **Docker** - Containerized for easy deployment
 
 ## Quick Start
@@ -111,6 +116,63 @@ Returns the health status of the service.
 }
 ```
 
+## Admin Panel
+
+Kotomi includes a web-based admin panel for managing sites, pages, and moderating comments. The admin panel uses Auth0 for authentication and provides a smooth HTMX-based interface.
+
+### Accessing the Admin Panel
+
+1. Configure Auth0 (see Configuration section above)
+2. Start Kotomi with Auth0 environment variables set
+3. Visit `http://localhost:8080/admin`
+4. Click "Login with Auth0"
+5. Authenticate using your Auth0 credentials
+
+### Features
+
+**Site Management:**
+- Create and manage multiple sites
+- Track site metadata (name, domain, description)
+- View all pages associated with each site
+- Delete sites (cascade deletes all associated pages and comments)
+
+**Page Management:**
+- Add pages to your sites
+- Track page paths and titles
+- Edit or remove pages
+
+**Comment Moderation:**
+- View all comments across your sites
+- Filter by status (pending, approved, rejected)
+- Approve or reject comments with one click
+- Delete spam or inappropriate comments
+- Real-time updates without page refreshes
+
+### Admin Panel Routes
+
+- `/admin` - Redirects to dashboard
+- `/admin/dashboard` - Overview of sites and pending comments
+- `/admin/sites` - List all sites
+- `/admin/sites/{siteId}` - View site details and pages
+- `/admin/sites/{siteId}/comments` - Moderate comments for a site
+- `/login` - Auth0 login
+- `/logout` - Logout and clear session
+
+## API Documentation
+
+### Health Check
+
+**Endpoint:** `GET /healthz`
+
+Returns the health status of the service.
+
+**Response:**
+```json
+{
+  "message": "OK"
+}
+```
+
 ### Comments API
 
 **Get Comments**
@@ -172,15 +234,52 @@ Create a new comment on a page.
 
 Kotomi can be configured using environment variables:
 
+### Basic Configuration
+
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PORT` | Server port | `8080` |
 | `DB_PATH` | Path to SQLite database file | `./kotomi.db` |
 
-Example:
+### Admin Panel Configuration (Optional)
+
+To enable the admin panel with Auth0 authentication, set these environment variables:
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `AUTH0_DOMAIN` | Your Auth0 tenant domain (e.g., `your-tenant.auth0.com`) | Yes |
+| `AUTH0_CLIENT_ID` | Auth0 application client ID | Yes |
+| `AUTH0_CLIENT_SECRET` | Auth0 application client secret | Yes |
+| `AUTH0_CALLBACK_URL` | Callback URL for Auth0 | No (default: `http://localhost:8080/callback`) |
+| `SESSION_SECRET` | Secret key for encrypting session cookies | No (auto-generated in dev) |
+
+**Setting up Auth0:**
+
+1. Create a free account at [auth0.com](https://auth0.com)
+2. Create a new "Regular Web Application"
+3. Configure the following settings in your Auth0 application:
+   - **Allowed Callback URLs**: `http://localhost:8080/callback` (or your custom URL)
+   - **Allowed Logout URLs**: `http://localhost:8080/`
+   - **Allowed Web Origins**: `http://localhost:8080`
+4. Copy your Domain, Client ID, and Client Secret from the application settings
+5. Set the environment variables before starting Kotomi
+
+Example with Auth0:
 ```bash
+export AUTH0_DOMAIN=your-tenant.auth0.com
+export AUTH0_CLIENT_ID=your_client_id
+export AUTH0_CLIENT_SECRET=your_client_secret
+export AUTH0_CALLBACK_URL=http://localhost:8080/callback
+export SESSION_SECRET=your-random-secret-key-minimum-32-chars
 PORT=3000 DB_PATH=/data/comments.db go run cmd/main.go
 ```
+
+**Admin Panel Features:**
+- Manage multiple sites
+- Track pages within each site
+- Moderate comments (approve, reject, delete)
+- Real-time updates with HTMX
+- User authentication via Auth0
 
 ### Docker Configuration
 
@@ -190,6 +289,11 @@ When running with Docker, use environment variables and volumes:
 docker run -p 8080:8080 \
   -e PORT=8080 \
   -e DB_PATH=/app/data/kotomi.db \
+  -e AUTH0_DOMAIN=your-tenant.auth0.com \
+  -e AUTH0_CLIENT_ID=your_client_id \
+  -e AUTH0_CLIENT_SECRET=your_client_secret \
+  -e AUTH0_CALLBACK_URL=http://localhost:8080/callback \
+  -e SESSION_SECRET=your-random-secret \
   -v kotomi-data:/app/data \
   kotomi
 ```
@@ -201,7 +305,14 @@ kotomi/
 ├── cmd/                # Application entry point
 │   └── main.go
 ├── pkg/                # Public packages
-│   └── comments/
+│   ├── admin/          # Admin handlers
+│   ├── auth/           # Auth0 authentication
+│   ├── comments/       # Comments storage
+│   └── models/         # Data models (users, sites, pages)
+├── templates/          # HTML templates
+│   ├── admin/          # Admin panel templates
+│   └── base.html
+├── static/             # Static assets (CSS)
 ├── docs/               # Documentation
 ├── internal_docs/      # Internal documentation
 ├── .github/            # GitHub workflows and configurations
@@ -220,8 +331,12 @@ kotomi/
 - ✅ SQLite persistent storage
 - ✅ REST API for comments
 - ✅ Comprehensive test coverage (>90%)
+- ✅ Admin panel with Auth0 authentication
+- ✅ Multi-site and page management
+- ✅ Comment moderation (approve, reject, delete)
+- ✅ HTMX-based UI
 - 🚧 CORS configuration
-- 🚧 Basic moderation features
+- 🚧 Rate limiting
 
 ### Future Versions
 

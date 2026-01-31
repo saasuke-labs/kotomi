@@ -1,0 +1,531 @@
+# Kotomi - Current Status Report
+
+**Version:** 0.0.1  
+**Last Updated:** January 31, 2026  
+**Status:** Early Development / Not Production Ready
+
+> ⚠️ **Important:** Kotomi is currently in early development (v0.0.1) and is **not recommended for production use** yet. This document provides an overview of the current state of implemented features and what remains to be completed before deployment.
+
+---
+
+## Executive Summary
+
+Kotomi is a dynamic content service designed to add comments, reactions, and moderation capabilities to static websites. The project has made significant progress on core infrastructure and admin capabilities, but several key features remain incomplete or not yet implemented.
+
+**Ready for Deployment:** ❌ Not yet  
+**Recommended Next Steps:** Complete reaction system, implement CORS, add rate limiting, and conduct security audit
+
+---
+
+## Feature Status Overview
+
+### ✅ Fully Implemented Features
+
+#### 1. **Authentication (Auth0 Integration)** ✅
+- **Status:** Fully Implemented
+- **Details:**
+  - Auth0 integration for secure authentication
+  - Session management with encrypted cookies
+  - User registration and login flow
+  - Callback handling and token exchange
+  - Logout functionality
+  - Role-based access control middleware
+- **Location:** `pkg/auth/auth0.go`, `pkg/auth/middleware.go`
+- **Database:** User table with Auth0 sub, email, and name fields
+- **Configuration Required:**
+  - `AUTH0_DOMAIN`
+  - `AUTH0_CLIENT_ID`
+  - `AUTH0_CLIENT_SECRET`
+  - `AUTH0_CALLBACK_URL` (optional, defaults to `http://localhost:8080/callback`)
+  - `SESSION_SECRET` (optional, auto-generated in dev)
+
+#### 2. **Admin Panel** ✅
+- **Status:** Fully Implemented
+- **Details:**
+  - Web-based dashboard with Auth0 authentication
+  - HTMX-based interface for smooth, no-reload updates
+  - Comprehensive management capabilities
+- **Key Features:**
+  - **Dashboard:** Overview of sites and pending comments
+  - **Site Management:** Create, read, update, delete (CRUD) operations for sites
+  - **Page Management:** CRUD operations for pages within sites
+  - **Comment Moderation:** Approve, reject, or delete comments
+  - **Real-time Updates:** HTMX provides smooth UI updates without page refreshes
+- **Routes:**
+  - `/admin` - Redirects to dashboard
+  - `/admin/dashboard` - Main dashboard
+  - `/admin/sites` - List all sites
+  - `/admin/sites/{siteId}` - View site details and pages
+  - `/admin/sites/{siteId}/comments` - Moderate comments for a site
+  - `/login` - Auth0 login page
+  - `/logout` - Logout endpoint
+- **Location:** `pkg/admin/`, `templates/admin/`
+- **Technologies:** HTMX, HTML templates, Gorilla Mux
+
+#### 3. **Comments API - Store & Retrieve** ✅
+- **Status:** Fully Implemented
+- **Details:**
+  - RESTful API for comments storage and retrieval
+  - SQLite persistent storage with full schema
+  - Comment moderation status (pending, approved, rejected)
+  - Support for threaded/nested comments (parent_id field)
+- **Endpoints:**
+  - `POST /api/site/{siteId}/page/{pageId}/comments` - Create a new comment
+  - `GET /api/site/{siteId}/page/{pageId}/comments` - Retrieve all comments for a page
+- **Database Schema:**
+  - `id` (TEXT PRIMARY KEY)
+  - `site_id` (TEXT NOT NULL)
+  - `page_id` (TEXT NOT NULL)
+  - `author` (TEXT NOT NULL)
+  - `text` (TEXT NOT NULL)
+  - `parent_id` (TEXT, for nested replies)
+  - `status` (TEXT, 'pending', 'approved', 'rejected')
+  - `moderated_by` (TEXT)
+  - `moderated_at` (TIMESTAMP)
+  - `created_at` (TIMESTAMP)
+  - `updated_at` (TIMESTAMP)
+- **Location:** `cmd/main.go`, `pkg/comments/sqlite.go`
+- **Testing:** Unit tests, integration tests, and E2E tests (>90% coverage)
+
+#### 4. **Database & Persistence** ✅
+- **Status:** Fully Implemented
+- **Details:**
+  - SQLite database with full schema
+  - Tables: users, sites, pages, comments
+  - Foreign key constraints and cascading deletes
+  - Indexes for query optimization
+  - Comprehensive test coverage
+- **Schema Features:**
+  - User management with Auth0 integration
+  - Multi-site support with ownership tracking
+  - Page tracking within sites (unique constraint on site_id + path)
+  - Comment moderation workflow
+- **Location:** `pkg/comments/sqlite.go`
+- **Configuration:** `DB_PATH` environment variable (defaults to `./kotomi.db`)
+
+#### 5. **Multi-Site Management** ✅
+- **Status:** Fully Implemented
+- **Details:**
+  - Each authenticated user can manage multiple sites
+  - Sites include metadata: name, domain, description
+  - Cascade delete: deleting a site removes all associated pages and comments
+  - Full CRUD operations via admin panel
+- **Database Model:**
+  - `id` (TEXT PRIMARY KEY)
+  - `owner_id` (TEXT NOT NULL, FOREIGN KEY to users)
+  - `name` (TEXT NOT NULL)
+  - `domain` (TEXT)
+  - `description` (TEXT)
+  - `created_at` (TIMESTAMP)
+  - `updated_at` (TIMESTAMP)
+- **Location:** `pkg/models/site.go`, `pkg/admin/sites.go`
+
+#### 6. **Page Tracking** ✅
+- **Status:** Fully Implemented
+- **Details:**
+  - Pages are tracked within each site
+  - Unique constraint on site_id + path combination
+  - Full CRUD operations via admin panel
+- **Database Model:**
+  - `id` (TEXT PRIMARY KEY)
+  - `site_id` (TEXT NOT NULL, FOREIGN KEY to sites)
+  - `path` (TEXT NOT NULL)
+  - `title` (TEXT)
+  - `created_at` (TIMESTAMP)
+  - `updated_at` (TIMESTAMP)
+- **Location:** `pkg/models/page.go`, `pkg/admin/pages.go`
+
+#### 7. **Comment Moderation** ✅
+- **Status:** Fully Implemented
+- **Details:**
+  - Three-state moderation: pending, approved, rejected
+  - Comments default to "pending" status when created
+  - Admin panel provides one-click approve/reject/delete functionality
+  - Tracks who moderated and when
+- **Moderation Actions:**
+  - Approve: Changes status from pending to approved
+  - Reject: Changes status from pending to rejected
+  - Delete: Permanently removes the comment from database
+- **Location:** `pkg/admin/comments.go`, `pkg/comments/sqlite.go`
+
+#### 8. **Testing Infrastructure** ✅
+- **Status:** Fully Implemented
+- **Details:**
+  - Comprehensive test coverage (>90%)
+  - Unit tests for all packages
+  - Integration tests for database operations
+  - End-to-end (E2E) tests for API endpoints
+- **Test Types:**
+  - Unit tests: `pkg/**/*_test.go`
+  - Integration tests: `pkg/comments/integration_test.go`
+  - E2E tests: `tests/e2e/api_test.go`
+- **Commands:**
+  - `go test ./pkg/... ./cmd/... -v` - Run all unit tests
+  - `RUN_E2E_TESTS=true go test ./tests/e2e/... -v` - Run E2E tests
+  - `go test ./... -cover` - Run with coverage report
+
+#### 9. **Docker Support** ✅
+- **Status:** Fully Implemented
+- **Details:**
+  - Dockerfile included for containerized deployment
+  - Volume support for persistent data
+  - Environment variable configuration
+- **Location:** `Dockerfile`
+- **Usage:**
+  ```bash
+  docker build -t kotomi .
+  docker run -p 8080:8080 -v kotomi-data:/app/data kotomi
+  ```
+
+---
+
+### ❌ Not Implemented Features
+
+#### 1. **Reactions System** ❌
+- **Status:** Not Implemented
+- **Description:** Users should be able to react to comments with predefined reactions (e.g., like, love, clap)
+- **Requirements from PRD:**
+  - Users can react with predefined options
+  - Multiple reaction types supported per site
+  - Aggregate reaction counts displayed per post or comment
+  - **Site-specific configuration:** Way to configure which reactions are allowed on each site
+- **What's Missing:**
+  - No database schema for reactions
+  - No API endpoints to store reactions (`POST /api/site/{siteId}/page/{pageId}/comments/{commentId}/reactions`)
+  - No API endpoints to retrieve reactions (`GET /api/site/{siteId}/page/{pageId}/comments/{commentId}/reactions`)
+  - No admin panel UI for configuring allowed reactions per site
+  - No database table/field to store site-specific reaction configuration
+- **Priority:** High (mentioned in v0.2.0 roadmap)
+- **Estimated Work:** Medium (requires database schema design, API endpoints, admin UI)
+
+#### 2. **CORS Configuration** 🚧
+- **Status:** Not Implemented
+- **Description:** Cross-Origin Resource Sharing (CORS) headers are needed for the API to work with static sites hosted on different domains
+- **What's Missing:**
+  - No CORS middleware in the request pipeline
+  - Cannot configure allowed origins, methods, headers
+  - Will block API requests from static sites on different domains
+- **Priority:** Critical for production (blocking issue for deployment)
+- **Estimated Work:** Small (add CORS middleware, configuration options)
+- **Suggested Implementation:**
+  - Add CORS middleware using `github.com/rs/cors` or similar
+  - Configure via environment variables:
+    - `CORS_ALLOWED_ORIGINS` (comma-separated list or `*`)
+    - `CORS_ALLOWED_METHODS`
+    - `CORS_ALLOWED_HEADERS`
+
+#### 3. **Rate Limiting** 🚧
+- **Status:** Not Implemented
+- **Description:** Rate limiting is essential to prevent spam and abuse
+- **What's Missing:**
+  - No rate limiting on API endpoints
+  - Vulnerable to spam attacks and abuse
+  - No IP-based or user-based throttling
+- **Priority:** Critical for production (security concern)
+- **Estimated Work:** Medium (requires rate limiting middleware, configuration)
+- **Suggested Implementation:**
+  - Add rate limiting middleware
+  - Configure limits per endpoint:
+    - POST /comments: 5 requests per minute per IP
+    - GET /comments: 100 requests per minute per IP
+  - Store rate limit data in memory or Redis
+
+#### 4. **Automatic Moderation / AI Moderation** ❌
+- **Status:** Not Implemented
+- **Description:** Automatic moderation using AI to flag spam, offensive language, or off-topic comments
+- **Requirements from PRD:**
+  - AI-powered moderation option
+  - Flagging spam, offensive language, ads, aggressive messages
+  - Yellow flag for potentially off-topic messages
+  - Integration with OpenAI Chat GPT (mentioned in v0.1.md)
+- **What's Missing:**
+  - No integration with OpenAI or other AI services
+  - No automatic flagging system
+  - No confidence scoring for moderation
+- **Priority:** Medium (nice to have, but manual moderation works for now)
+- **Estimated Work:** Large (requires API integration, configuration, testing)
+
+#### 5. **Frontend Widget / JavaScript Embed** ❌
+- **Status:** Not Implemented
+- **Description:** JavaScript widget for easy integration into static sites
+- **What's Missing:**
+  - No JavaScript SDK/library for embedding comments
+  - No HTML snippet for easy integration
+  - No UI components for displaying comments on static sites
+  - Site owners must build their own frontend integration
+- **Priority:** High (needed for end-users to integrate Kotomi)
+- **Estimated Work:** Large (requires JavaScript development, styling, documentation)
+
+#### 6. **User Authentication for Comments** ❌
+- **Status:** Not Implemented (only admin authentication exists)
+- **Description:** End-users (commenters) cannot authenticate, all comments are anonymous
+- **Current State:**
+  - Only admin panel has authentication
+  - Public API accepts any author name (no verification)
+  - No way to track authenticated users vs. guests
+- **What's Missing:**
+  - User authentication for comment authors
+  - Optional guest/anonymous posting
+  - Edit/delete own comments (requires authentication)
+  - User profiles
+- **Priority:** Medium (depends on use case, many comment systems allow anonymous)
+- **Estimated Work:** Large (requires auth flow for end-users, not just admins)
+
+#### 7. **Email Notifications** ❌
+- **Status:** Not Implemented
+- **Description:** Notifications for site owners and users
+- **What's Missing:**
+  - No email notifications when new comments are posted
+  - No notifications when comments are moderated
+  - No reply notifications for users
+- **Priority:** Low (nice to have)
+- **Estimated Work:** Medium (requires email service integration)
+
+#### 8. **Analytics & Reporting** ❌
+- **Status:** Not Implemented
+- **Description:** Analytics for site owners to track engagement
+- **Requirements from PRD:**
+  - Comment counts
+  - Active users
+  - Reaction breakdowns
+- **What's Missing:**
+  - No analytics dashboard
+  - No API endpoints for analytics data
+  - No metrics tracking
+- **Priority:** Low (can be added later)
+- **Estimated Work:** Medium
+
+#### 9. **Export/Import Functionality** ❌
+- **Status:** Not Implemented
+- **Description:** Ability to export/import comments in JSON or CSV format
+- **Requirements from PRD:**
+  - Export comments (JSON/CSV)
+  - Import comments (JSON/CSV)
+- **What's Missing:**
+  - No export functionality in admin panel
+  - No import functionality
+  - No data portability
+- **Priority:** Low (nice to have)
+- **Estimated Work:** Small (straightforward API endpoints)
+
+#### 10. **API Versioning** ❌
+- **Status:** Not Implemented
+- **Description:** API endpoints lack versioning
+- **Current State:**
+  - Endpoints like `/api/site/{siteId}/...` have no version prefix
+  - Breaking changes would affect all clients
+- **What's Missing:**
+  - Version prefix like `/api/v1/site/{siteId}/...`
+  - Deprecation strategy
+- **Priority:** Medium (important for API stability)
+- **Estimated Work:** Small (refactor route paths, add versioning convention)
+
+---
+
+## Deployment Readiness Assessment
+
+### 🔴 Blocking Issues (Must Fix Before Production)
+
+1. **CORS Configuration** - API will not work from static sites on different domains
+2. **Rate Limiting** - Service is vulnerable to spam and abuse
+3. **Security Audit** - No formal security review has been conducted
+4. **Reaction System Not Implemented** - One of the core features mentioned in requirements
+5. **Frontend Widget Missing** - No easy way for site owners to integrate Kotomi
+
+### 🟡 Important Issues (Should Fix Before Production)
+
+1. **API Versioning** - Breaking changes could affect clients
+2. **Error Handling** - Some endpoints may not have comprehensive error handling
+3. **Logging & Monitoring** - Limited observability for production debugging
+4. **Documentation** - Limited API documentation for developers integrating Kotomi
+5. **Configuration Management** - Limited validation of environment variables
+
+### 🟢 Nice-to-Have (Can Be Added Post-Launch)
+
+1. Automatic/AI moderation
+2. Email notifications
+3. Analytics & reporting
+4. Export/import functionality
+5. User authentication for commenters
+6. Additional storage backends (PostgreSQL, MySQL)
+7. Horizontal scaling support
+
+---
+
+## Technology Stack
+
+### Backend
+- **Language:** Go 1.24
+- **Web Framework:** Gorilla Mux (router)
+- **Database:** SQLite 3
+- **Authentication:** Auth0 (OAuth 2.0)
+- **Session Management:** Gorilla Sessions
+
+### Frontend (Admin Panel)
+- **Template Engine:** Go `html/template`
+- **JavaScript Library:** HTMX (for dynamic updates)
+- **CSS:** Custom CSS (located in `static/`)
+
+### Deployment
+- **Container:** Docker
+- **Deployment Target:** Not yet configured (mentioned GCP as possibility)
+
+---
+
+## Configuration Requirements
+
+### Required Environment Variables
+- `AUTH0_DOMAIN` - Your Auth0 tenant domain
+- `AUTH0_CLIENT_ID` - Auth0 application client ID
+- `AUTH0_CLIENT_SECRET` - Auth0 application client secret
+
+### Optional Environment Variables
+- `PORT` - Server port (default: 8080)
+- `DB_PATH` - SQLite database path (default: `./kotomi.db`)
+- `AUTH0_CALLBACK_URL` - Auth0 callback URL (default: `http://localhost:8080/callback`)
+- `SESSION_SECRET` - Session encryption key (auto-generated in dev)
+
+### Missing Configuration Options
+- CORS settings (origins, methods, headers)
+- Rate limiting settings (requests per minute, burst size)
+- Moderation settings (auto-approve, require approval)
+- Reaction configuration per site
+- Email service credentials (for notifications)
+
+---
+
+## Recommendations for Deployment
+
+### Short-term (Before Initial Deployment)
+1. **Implement CORS** - Critical for API to work with external sites
+2. **Add Rate Limiting** - Protect against spam and abuse
+3. **Implement Reactions System** - Core feature that's currently missing
+4. **Create Frontend Widget** - Make it easy for site owners to integrate
+5. **Security Audit** - Review code for vulnerabilities, especially:
+   - SQL injection (verify all queries use prepared statements)
+   - XSS attacks (verify template escaping)
+   - CSRF protection
+   - Session security
+6. **Add API Versioning** - Prefix routes with `/api/v1/`
+7. **Improve Error Handling** - Consistent error responses
+8. **Add Logging** - Structured logging for production debugging
+
+### Medium-term (After Initial Deployment)
+1. Add automatic moderation with AI
+2. Implement email notifications
+3. Add analytics and reporting
+4. Create comprehensive API documentation
+5. Add export/import functionality
+6. Support additional databases (PostgreSQL, MySQL)
+7. Implement user authentication for commenters
+
+### Long-term (Future Versions)
+1. Advanced moderation tools
+2. Mobile-responsive improvements
+3. Localization/internationalization
+4. WebSocket support for real-time updates
+5. Advanced analytics and insights
+6. Plugin/extension system
+7. GraphQL API option
+
+---
+
+## Testing Status
+
+### Coverage
+- **Overall:** >90% code coverage
+- **Unit Tests:** ✅ Comprehensive
+- **Integration Tests:** ✅ Database operations tested
+- **E2E Tests:** ✅ API endpoints tested
+- **Security Tests:** ❌ Not yet conducted
+- **Load Tests:** ❌ Not yet conducted
+- **Performance Tests:** ❌ Not yet conducted
+
+### Test Commands
+```bash
+# Run all tests
+go test ./... -v
+
+# Run with coverage
+go test ./... -cover
+
+# Run E2E tests
+RUN_E2E_TESTS=true go test ./tests/e2e/... -v
+
+# Generate coverage report
+go test ./pkg/... ./cmd/... -coverprofile=coverage.out
+go tool cover -html=coverage.out -o coverage.html
+```
+
+---
+
+## Known Limitations & Issues
+
+1. **No CORS Support** - API requests from different domains will be blocked
+2. **No Rate Limiting** - Vulnerable to spam and abuse
+3. **SQLite Only** - Not suitable for high-concurrency scenarios (consider PostgreSQL for production)
+4. **No Automatic Backups** - Database backups must be managed manually
+5. **Session Store** - Uses cookie-based sessions (consider Redis for distributed deployments)
+6. **No Health Metrics** - `/healthz` endpoint only returns "OK", no detailed metrics
+7. **Limited Error Messages** - Some errors return generic HTTP 500 without details
+8. **No Request Logging** - HTTP requests are not logged in structured format
+9. **Template Loading** - Templates loaded at startup, requires restart to update
+
+---
+
+## File Structure Summary
+
+```
+kotomi/
+├── cmd/                    # Application entry point
+│   └── main.go            # Main server with routes and handlers
+├── pkg/                   # Public packages
+│   ├── admin/             # Admin panel handlers (sites, pages, comments)
+│   ├── auth/              # Auth0 authentication & middleware
+│   ├── comments/          # Comments storage (SQLite implementation)
+│   └── models/            # Data models (users, sites, pages)
+├── templates/             # HTML templates
+│   ├── admin/             # Admin panel templates
+│   ├── base.html          # Base template
+│   └── login.html         # Login page
+├── static/                # Static assets (CSS)
+├── tests/                 # E2E tests
+│   └── e2e/
+├── docs/                  # Public documentation
+├── internal_docs/         # Internal requirements and specs
+├── .github/               # GitHub Actions workflows
+├── Dockerfile             # Docker configuration
+├── README.md              # Project documentation
+├── VERSION                # Current version (0.0.1)
+└── Status.md              # This file
+```
+
+---
+
+## Conclusion
+
+Kotomi has a **solid foundation** with authentication, admin panel, comments storage/retrieval, and moderation capabilities fully implemented. However, several **critical features are missing** before it can be deployed to production:
+
+### Must-Have Before Deployment
+- ✅ Authentication - **COMPLETE**
+- ✅ Admin Panel - **COMPLETE**
+- ✅ Store Comments - **COMPLETE**
+- ✅ Retrieve Comments - **COMPLETE**
+- ❌ Store Reactions - **NOT IMPLEMENTED**
+- ❌ Retrieve Reactions - **NOT IMPLEMENTED**
+- ❌ Configure Reactions per Site - **NOT IMPLEMENTED**
+- ❌ CORS Configuration - **BLOCKING**
+- ❌ Rate Limiting - **BLOCKING**
+
+### Deployment Timeline Estimate
+- **With reactions system:** 2-3 weeks of development + 1 week testing/security audit
+- **Without reactions (minimal viable):** 1 week (CORS, rate limiting, security audit)
+
+### Recommendation
+If deploying to GCP is urgent, consider deploying a **minimal viable version** with just comments (no reactions) after implementing CORS, rate limiting, and conducting a security audit. The reactions system can be added in a subsequent release (v0.2.0).
+
+---
+
+**Document Version:** 1.0  
+**Author:** Kotomi Development Team  
+**Last Reviewed:** January 31, 2026

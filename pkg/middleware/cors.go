@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/rs/cors"
@@ -55,7 +56,15 @@ func NewCORSMiddleware() *cors.Cors {
 	}
 
 	// Parse allow credentials
-	credentials := allowCredentials == "true"
+	credentials := false
+	if allowCredentials != "" {
+		var err error
+		credentials, err = strconv.ParseBool(allowCredentials)
+		if err != nil {
+			// If parsing fails, default to false
+			credentials = false
+		}
+	}
 
 	// Create CORS handler
 	c := cors.New(cors.Options{

@@ -388,10 +388,6 @@ func main() {
 	apiRouter.Use(corsMiddleware.Handler)
 	apiRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", getCommentsHandler).Methods("GET")
 	apiRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", postCommentsHandler).Methods("POST")
-	apiRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", func(w http.ResponseWriter, r *http.Request) {
-		// OPTIONS requests are handled by CORS middleware
-		w.WriteHeader(http.StatusOK)
-	}).Methods("OPTIONS")
 
 	// Health check endpoint (no CORS needed, but harmless if included)
 	router.HandleFunc("/healthz", getHealthz).Methods("GET")

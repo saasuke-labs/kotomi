@@ -11,6 +11,7 @@ Give your pages a voice
 
 - 💬 **Comments System** - Enable discussions on your static pages
 - 👍 **Reactions System** - Allow users to react to pages and comments with configurable emoji
+- 🤖 **AI Moderation** - Automatic content moderation using OpenAI GPT (optional)
 - 🔐 **Admin Panel** - Web-based dashboard with Auth0 authentication
 - 🏢 **Multi-Site Management** - Manage multiple sites from a single instance
 - 📄 **Page Tracking** - Organize comments by pages within sites
@@ -603,8 +604,48 @@ PORT=3000 DB_PATH=/data/comments.db go run cmd/main.go
 - Manage multiple sites
 - Track pages within each site
 - Moderate comments (approve, reject, delete)
+- Configure AI moderation per site
 - Real-time updates with HTMX
 - User authentication via Auth0
+
+### AI Moderation Configuration (Optional)
+
+Kotomi supports automatic content moderation using OpenAI GPT models or a built-in rule-based moderator.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENAI_API_KEY` | OpenAI API key for AI-powered moderation | None (uses mock moderator if not set) |
+
+**Features:**
+- Automatically analyze comments for spam, offensive language, aggressive tone, and off-topic content
+- Configurable confidence thresholds per site
+- Three-tier decision system:
+  - **Auto-Approve**: Comments with low confidence scores (< 0.30 by default)
+  - **Manual Review**: Comments with medium confidence scores (0.30 - 0.85)
+  - **Auto-Reject**: Comments with high confidence scores (> 0.85 by default)
+- Admin UI for configuration at `/admin/sites/{siteId}/moderation`
+
+**Setting up OpenAI:**
+
+1. Create an account at [platform.openai.com](https://platform.openai.com)
+2. Generate an API key from your account settings
+3. Set the environment variable:
+   ```bash
+   export OPENAI_API_KEY=sk-your-api-key-here
+   ```
+
+**Cost Estimate:** ~$0.75-$1.00 per 1000 comments analyzed with GPT-3.5-turbo
+
+**Without OpenAI:** If no API key is provided, Kotomi uses a rule-based mock moderator that checks for common spam patterns, offensive words, and aggressive language.
+
+Example with AI moderation:
+```bash
+export OPENAI_API_KEY=sk-your-api-key-here
+export AUTH0_DOMAIN=your-tenant.auth0.com
+export AUTH0_CLIENT_ID=your_client_id
+export AUTH0_CLIENT_SECRET=your_client_secret
+go run cmd/main.go
+```
 
 ### Docker Configuration
 
@@ -663,6 +704,7 @@ kotomi/
 - ✅ CORS configuration
 - ✅ Rate limiting
 - ✅ Reactions system (emoji reactions to comments)
+- ✅ AI moderation (OpenAI GPT integration)
 
 ### Future Versions
 

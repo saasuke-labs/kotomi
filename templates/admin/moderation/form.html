@@ -1,0 +1,107 @@
+{{define "moderation/form.html"}}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Moderation Configuration</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Moderation Configuration</h1>
+        <p>Configure automatic moderation for your site's comments.</p>
+
+        <form hx-post="/admin/sites/{{.SiteID}}/moderation" 
+              hx-swap="outerHTML"
+              hx-target="#form-response"
+              class="moderation-form">
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="enabled" {{if .Config.Enabled}}checked{{end}}>
+                    Enable AI Moderation
+                </label>
+                <p class="help-text">Automatically moderate comments using AI analysis</p>
+            </div>
+
+            <h3>Moderation Thresholds</h3>
+            <div class="form-group">
+                <label for="auto_reject_threshold">Auto-Reject Threshold (0.0 - 1.0)</label>
+                <input type="number" 
+                       id="auto_reject_threshold" 
+                       name="auto_reject_threshold" 
+                       step="0.01" 
+                       min="0" 
+                       max="1" 
+                       value="{{.Config.AutoRejectThreshold}}"
+                       required>
+                <p class="help-text">Comments with confidence above this will be automatically rejected (default: 0.85)</p>
+            </div>
+
+            <div class="form-group">
+                <label for="auto_approve_threshold">Auto-Approve Threshold (0.0 - 1.0)</label>
+                <input type="number" 
+                       id="auto_approve_threshold" 
+                       name="auto_approve_threshold" 
+                       step="0.01" 
+                       min="0" 
+                       max="1" 
+                       value="{{.Config.AutoApproveThreshold}}"
+                       required>
+                <p class="help-text">Comments with confidence below this will be automatically approved (default: 0.30)</p>
+            </div>
+
+            <h3>Check For</h3>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="check_spam" {{if .Config.CheckSpam}}checked{{end}}>
+                    Spam Content
+                </label>
+                <p class="help-text">Detect promotional content, links, and spam patterns</p>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="check_offensive" {{if .Config.CheckOffensive}}checked{{end}}>
+                    Offensive Language
+                </label>
+                <p class="help-text">Detect profanity and offensive language</p>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="check_aggressive" {{if .Config.CheckAggressive}}checked{{end}}>
+                    Aggressive Tone
+                </label>
+                <p class="help-text">Detect hostile or aggressive communication</p>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="check_off_topic" {{if .Config.CheckOffTopic}}checked{{end}}>
+                    Off-Topic Content
+                </label>
+                <p class="help-text">Detect content that may be unrelated to the discussion</p>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Configuration</button>
+                <a href="/admin/sites/{{.SiteID}}" class="btn btn-secondary">Back to Site</a>
+            </div>
+
+            <div id="form-response"></div>
+        </form>
+
+        <div class="info-box">
+            <h3>How It Works</h3>
+            <ul>
+                <li><strong>Confidence Score:</strong> AI assigns a score from 0 to 1 indicating how problematic the content is</li>
+                <li><strong>Auto-Reject:</strong> Comments above the reject threshold are automatically rejected</li>
+                <li><strong>Auto-Approve:</strong> Comments below the approve threshold are automatically approved</li>
+                <li><strong>Manual Review:</strong> Comments between thresholds are flagged for manual review</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
+{{end}}

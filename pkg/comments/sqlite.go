@@ -114,6 +114,23 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 	CREATE INDEX IF NOT EXISTS idx_reactions_page ON reactions(page_id);
 	CREATE INDEX IF NOT EXISTS idx_reactions_comment ON reactions(comment_id);
 	CREATE INDEX IF NOT EXISTS idx_reactions_allowed ON reactions(allowed_reaction_id);
+
+	CREATE TABLE IF NOT EXISTS moderation_config (
+		id TEXT PRIMARY KEY,
+		site_id TEXT NOT NULL UNIQUE,
+		enabled INTEGER DEFAULT 0,
+		auto_reject_threshold REAL DEFAULT 0.85,
+		auto_approve_threshold REAL DEFAULT 0.30,
+		check_spam INTEGER DEFAULT 1,
+		check_offensive INTEGER DEFAULT 1,
+		check_aggressive INTEGER DEFAULT 1,
+		check_off_topic INTEGER DEFAULT 0,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_moderation_config_site ON moderation_config(site_id);
 	`
 
 	if _, err := db.Exec(schema); err != nil {

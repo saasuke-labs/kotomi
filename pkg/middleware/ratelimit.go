@@ -107,12 +107,9 @@ func (rl *RateLimiter) Handler(next http.Handler) http.Handler {
 			// Calculate retry-after in seconds
 			var retryAfter int
 			if r.Method == "POST" || r.Method == "PUT" || r.Method == "DELETE" {
-				retryAfter = int((1.0 - v.limiterPOST.tokens) / v.limiterPOST.refillRate)
+				retryAfter = v.limiterPOST.getRetryAfter()
 			} else {
-				retryAfter = int((1.0 - v.limiterGET.tokens) / v.limiterGET.refillRate)
-			}
-			if retryAfter < 1 {
-				retryAfter = 1
+				retryAfter = v.limiterGET.getRetryAfter()
 			}
 			
 			w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
@@ -198,6 +195,19 @@ func (tb *tokenBucket) getTokens() float64 {
 	tb.mu.Lock()
 	defer tb.mu.Unlock()
 	return tb.tokens
+}
+
+// getRetryAfter returns seconds until next token is available (thread-safe)
+func (tb *tokenBucket) getRetryAfter() int {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+	
+	// Calculate seconds needed for 1 token
+	retryAfter := int((1.0 - tb.tokens) / tb.refillRate)
+	if retryAfter < 1 {
+		retryAfter = 1
+	}
+	return retryAfter
 }
 
 // getEnvInt retrieves an integer from environment variable or returns default

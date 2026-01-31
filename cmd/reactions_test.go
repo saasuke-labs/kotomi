@@ -76,8 +76,8 @@ func TestGetAllowedReactions(t *testing.T) {
 
 	// Create some allowed reactions
 	allowedStore := models.NewAllowedReactionStore(db)
-	allowedStore.Create(siteID, "thumbs_up", "👍")
-	allowedStore.Create(siteID, "heart", "❤️")
+	allowedStore.Create(siteID, "thumbs_up", "👍", "comment")
+	allowedStore.Create(siteID, "heart", "❤️", "comment")
 
 	// Make request
 	req := httptest.NewRequest("GET", "/api/site/"+siteID+"/allowed-reactions", nil)
@@ -105,7 +105,7 @@ func TestAddReaction(t *testing.T) {
 
 	// Create an allowed reaction
 	allowedStore := models.NewAllowedReactionStore(db)
-	allowed, _ := allowedStore.Create(siteID, "thumbs_up", "👍")
+	allowed, _ := allowedStore.Create(siteID, "thumbs_up", "👍", "comment")
 
 	// Prepare request
 	reqBody := map[string]string{
@@ -139,7 +139,7 @@ func TestAddReaction_Toggle(t *testing.T) {
 
 	// Create an allowed reaction
 	allowedStore := models.NewAllowedReactionStore(db)
-	allowed, _ := allowedStore.Create(siteID, "thumbs_up", "👍")
+	allowed, _ := allowedStore.Create(siteID, "thumbs_up", "👍", "comment")
 
 	// Prepare request
 	reqBody := map[string]string{
@@ -177,8 +177,8 @@ func TestGetReactionCounts(t *testing.T) {
 
 	// Create allowed reactions
 	allowedStore := models.NewAllowedReactionStore(db)
-	thumbsUp, _ := allowedStore.Create(siteID, "thumbs_up", "👍")
-	heart, _ := allowedStore.Create(siteID, "heart", "❤️")
+	thumbsUp, _ := allowedStore.Create(siteID, "thumbs_up", "👍", "comment")
+	heart, _ := allowedStore.Create(siteID, "heart", "❤️", "comment")
 
 	// Add some reactions
 	reactionStore := models.NewReactionStore(db)
@@ -222,7 +222,7 @@ func TestGetReactionsByComment(t *testing.T) {
 
 	// Create allowed reaction
 	allowedStore := models.NewAllowedReactionStore(db)
-	allowed, _ := allowedStore.Create(siteID, "thumbs_up", "👍")
+	allowed, _ := allowedStore.Create(siteID, "thumbs_up", "👍", "comment")
 
 	// Add a reaction
 	reactionStore := models.NewReactionStore(db)

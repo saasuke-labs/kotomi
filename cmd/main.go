@@ -127,6 +127,206 @@ func getCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	writeJsonResponse(w, comments)
 }
 
+// Reaction handlers
+func getAllowedReactionsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	siteID := vars["siteId"]
+
+	// Check if type filter is provided
+	reactionType := r.URL.Query().Get("type")
+
+	allowedReactionStore := models.NewAllowedReactionStore(db)
+	var reactions []models.AllowedReaction
+	var err error
+
+	if reactionType != "" && (reactionType == "page" || reactionType == "comment") {
+		reactions, err = allowedReactionStore.GetBySiteAndType(siteID, reactionType)
+	} else {
+		reactions, err = allowedReactionStore.GetBySite(siteID)
+	}
+
+	if err != nil {
+		log.Printf("Error retrieving allowed reactions: %v", err)
+		http.Error(w, "Failed to retrieve allowed reactions", http.StatusInternalServerError)
+		return
+	}
+
+	writeJsonResponse(w, reactions)
+}
+
+func addReactionHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	commentID := vars["commentId"]
+
+	var req struct {
+		AllowedReactionID string `json:"allowed_reaction_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.AllowedReactionID == "" {
+		http.Error(w, "allowed_reaction_id is required", http.StatusBadRequest)
+		return
+	}
+
+	// Get user identifier (IP address for now, could be user ID if authenticated)
+	userIdentifier := getUserIdentifier(r)
+
+	reactionStore := models.NewReactionStore(db)
+	reaction, err := reactionStore.AddReaction(commentID, req.AllowedReactionID, userIdentifier)
+	if err != nil {
+		log.Printf("Error adding reaction: %v", err)
+		http.Error(w, "Failed to add reaction", http.StatusInternalServerError)
+		return
+	}
+
+	// If reaction is nil, it means the user toggled off their reaction
+	if reaction == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	writeJsonResponse(w, reaction)
+}
+
+func getReactionsByCommentHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	commentID := vars["commentId"]
+
+	reactionStore := models.NewReactionStore(db)
+	reactions, err := reactionStore.GetReactionsByComment(commentID)
+	if err != nil {
+		log.Printf("Error retrieving reactions: %v", err)
+		http.Error(w, "Failed to retrieve reactions", http.StatusInternalServerError)
+		return
+	}
+
+	writeJsonResponse(w, reactions)
+}
+
+func getReactionCountsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	commentID := vars["commentId"]
+
+	reactionStore := models.NewReactionStore(db)
+	counts, err := reactionStore.GetReactionCounts(commentID)
+	if err != nil {
+		log.Printf("Error retrieving reaction counts: %v", err)
+		http.Error(w, "Failed to retrieve reaction counts", http.StatusInternalServerError)
+		return
+	}
+
+	writeJsonResponse(w, counts)
+}
+
+// Page reaction handlers
+func addPageReactionHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	pageID := vars["pageId"]
+
+	var req struct {
+		AllowedReactionID string `json:"allowed_reaction_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.AllowedReactionID == "" {
+		http.Error(w, "allowed_reaction_id is required", http.StatusBadRequest)
+		return
+	}
+
+	// Get user identifier (IP address for now, could be user ID if authenticated)
+	userIdentifier := getUserIdentifier(r)
+
+	reactionStore := models.NewReactionStore(db)
+	reaction, err := reactionStore.AddPageReaction(pageID, req.AllowedReactionID, userIdentifier)
+	if err != nil {
+		log.Printf("Error adding page reaction: %v", err)
+		http.Error(w, "Failed to add reaction", http.StatusInternalServerError)
+		return
+	}
+
+	// If reaction is nil, it means the user toggled off their reaction
+	if reaction == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	writeJsonResponse(w, reaction)
+}
+
+func getReactionsByPageHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	pageID := vars["pageId"]
+
+	reactionStore := models.NewReactionStore(db)
+	reactions, err := reactionStore.GetReactionsByPage(pageID)
+	if err != nil {
+		log.Printf("Error retrieving page reactions: %v", err)
+		http.Error(w, "Failed to retrieve reactions", http.StatusInternalServerError)
+		return
+	}
+
+	writeJsonResponse(w, reactions)
+}
+
+func getPageReactionCountsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	pageID := vars["pageId"]
+
+	reactionStore := models.NewReactionStore(db)
+	counts, err := reactionStore.GetPageReactionCounts(pageID)
+	if err != nil {
+		log.Printf("Error retrieving page reaction counts: %v", err)
+		http.Error(w, "Failed to retrieve reaction counts", http.StatusInternalServerError)
+		return
+	}
+
+	writeJsonResponse(w, counts)
+}
+
+func removeReactionHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	reactionID := vars["reactionId"]
+
+	reactionStore := models.NewReactionStore(db)
+	if err := reactionStore.RemoveReaction(reactionID); err != nil {
+		log.Printf("Error removing reaction: %v", err)
+		http.Error(w, "Failed to remove reaction", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func getUserIdentifier(r *http.Request) string {
+	// Extract IP address without port
+	userIdentifier := r.RemoteAddr
+	if idx := strings.LastIndex(userIdentifier, ":"); idx != -1 {
+		userIdentifier = userIdentifier[:idx]
+	}
+	
+	// Prefer X-Real-IP or X-Forwarded-For if behind a reverse proxy
+	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		userIdentifier = realIP
+	} else if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		// X-Forwarded-For can contain multiple IPs, take the first one
+		if idx := strings.Index(forwarded, ","); idx != -1 {
+			userIdentifier = strings.TrimSpace(forwarded[:idx])
+		} else {
+			userIdentifier = strings.TrimSpace(forwarded)
+		}
+	}
+	
+	return userIdentifier
+}
+
 func writeJsonResponse(w http.ResponseWriter, data interface{}) {
 
 	w.Header().Set("Content-Type", "application/json")
@@ -364,6 +564,8 @@ func main() {
 			"templates/admin/pages/form.html",
 			"templates/admin/comments/list.html",
 			"templates/admin/comments/row.html",
+			"templates/admin/reactions/list.html",
+			"templates/admin/reactions/form.html",
 		}
 		for _, file := range templateFiles {
 			_, err := templates.ParseFiles(file)
@@ -392,6 +594,22 @@ func main() {
 	apiRouter.Use(rateLimiter.Handler)
 	apiRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", getCommentsHandler).Methods("GET")
 	apiRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", postCommentsHandler).Methods("POST")
+	
+	// Reaction routes
+	apiRouter.HandleFunc("/site/{siteId}/allowed-reactions", getAllowedReactionsHandler).Methods("GET")
+	
+	// Comment reactions
+	apiRouter.HandleFunc("/comments/{commentId}/reactions", addReactionHandler).Methods("POST")
+	apiRouter.HandleFunc("/comments/{commentId}/reactions", getReactionsByCommentHandler).Methods("GET")
+	apiRouter.HandleFunc("/comments/{commentId}/reactions/counts", getReactionCountsHandler).Methods("GET")
+	
+	// Page reactions
+	apiRouter.HandleFunc("/pages/{pageId}/reactions", addPageReactionHandler).Methods("POST")
+	apiRouter.HandleFunc("/pages/{pageId}/reactions", getReactionsByPageHandler).Methods("GET")
+	apiRouter.HandleFunc("/pages/{pageId}/reactions/counts", getPageReactionCountsHandler).Methods("GET")
+	
+	// Remove any reaction
+	apiRouter.HandleFunc("/reactions/{reactionId}", removeReactionHandler).Methods("DELETE")
 
 	// Health check endpoint (no CORS needed, but harmless if included)
 	router.HandleFunc("/healthz", getHealthz).Methods("GET")
@@ -439,6 +657,16 @@ func main() {
 		adminRouter.HandleFunc("/comments/{commentId}/approve", commentsHandler.ApproveComment).Methods("POST")
 		adminRouter.HandleFunc("/comments/{commentId}/reject", commentsHandler.RejectComment).Methods("POST")
 		adminRouter.HandleFunc("/comments/{commentId}", commentsHandler.DeleteComment).Methods("DELETE")
+
+		// Reactions handlers
+		reactionsHandler := admin.NewReactionsHandler(db, templates)
+		adminRouter.HandleFunc("/sites/{siteId}/reactions", reactionsHandler.ListAllowedReactions).Methods("GET")
+		adminRouter.HandleFunc("/sites/{siteId}/reactions/new", reactionsHandler.ShowReactionForm).Methods("GET")
+		adminRouter.HandleFunc("/sites/{siteId}/reactions", reactionsHandler.CreateAllowedReaction).Methods("POST")
+		adminRouter.HandleFunc("/sites/{siteId}/reactions/{reactionId}/edit", reactionsHandler.ShowReactionForm).Methods("GET")
+		adminRouter.HandleFunc("/sites/{siteId}/reactions/{reactionId}", reactionsHandler.UpdateAllowedReaction).Methods("PUT")
+		adminRouter.HandleFunc("/sites/{siteId}/reactions/{reactionId}", reactionsHandler.DeleteAllowedReaction).Methods("DELETE")
+		adminRouter.HandleFunc("/sites/{siteId}/reactions/stats", reactionsHandler.GetReactionStats).Methods("GET")
 
 		// Redirect /admin to dashboard
 		router.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {

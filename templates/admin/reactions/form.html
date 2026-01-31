@@ -1,0 +1,58 @@
+{{define "reactions/form.html"}}
+<div>
+    <h2>{{if .IsEdit}}Edit{{else}}Add{{end}} Reaction for {{.Site.Name}}</h2>
+    
+    <form method="POST" action="{{if .IsEdit}}/admin/sites/{{.Site.ID}}/reactions/{{.Reaction.ID}}{{else}}/admin/sites/{{.Site.ID}}/reactions{{end}}">
+        {{if .IsEdit}}
+        <input type="hidden" name="_method" value="PUT">
+        {{end}}
+
+        <label for="name">
+            Name (internal identifier)
+            <input type="text" id="name" name="name" value="{{if .Reaction}}{{.Reaction.Name}}{{end}}" 
+                   placeholder="e.g., thumbs_up, heart, celebrate" required>
+            <small>Unique name for admins and logging. Use lowercase with underscores.</small>
+        </label>
+
+        <label for="emoji">
+            Emoji
+            <input type="text" id="emoji" name="emoji" value="{{if .Reaction}}{{.Reaction.Emoji}}{{end}}" 
+                   placeholder="e.g., 👍 ❤️ 🎉" required maxlength="20">
+            <small>The emoji that users will see and click.</small>
+        </label>
+
+        <label for="reaction_type">
+            Reaction Type
+            <select id="reaction_type" name="reaction_type" required>
+                <option value="comment" {{if .Reaction}}{{if eq .Reaction.ReactionType "comment"}}selected{{end}}{{else}}selected{{end}}>💬 Comments Only</option>
+                <option value="page" {{if .Reaction}}{{if eq .Reaction.ReactionType "page"}}selected{{end}}{{end}}>📄 Pages Only</option>
+                <option value="both" {{if .Reaction}}{{if eq .Reaction.ReactionType "both"}}selected{{end}}{{end}}>🔗 Both Pages & Comments</option>
+            </select>
+            <small>Choose where this reaction can be used.</small>
+        </label>
+
+        <div>
+            <button type="submit">{{if .IsEdit}}Update{{else}}Create{{end}} Reaction</button>
+            <a href="/admin/sites/{{.Site.ID}}/reactions" role="button" class="secondary">Cancel</a>
+        </div>
+    </form>
+
+    {{if not .IsEdit}}
+    <article style="margin-top: 2rem;">
+        <h4>Common Reactions</h4>
+        <p>Here are some commonly used reactions you might want to add:</p>
+        <ul>
+            <li>👍 <code>thumbs_up</code> - Like or agree</li>
+            <li>❤️ <code>heart</code> - Love or favorite</li>
+            <li>😂 <code>laugh</code> - Funny</li>
+            <li>🤔 <code>thinking</code> - Interesting or thought-provoking</li>
+            <li>🎉 <code>celebrate</code> - Exciting or congratulations</li>
+            <li>👏 <code>clap</code> - Applause or appreciation</li>
+            <li>🚀 <code>rocket</code> - Innovative or impressive</li>
+            <li>👀 <code>eyes</code> - Watching or monitoring</li>
+        </ul>
+        <p><strong>Tip:</strong> Use "Both" type for reactions that make sense for both pages and comments, or create separate reactions for each type to give users more specific options.</p>
+    </article>
+    {{end}}
+</div>
+{{end}}

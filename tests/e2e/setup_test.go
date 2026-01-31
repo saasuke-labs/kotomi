@@ -75,6 +75,8 @@ func setupTestEnvironment() error {
 		"PORT="+testPort,
 		"DB_PATH="+testDBPath,
 		"TEST_MODE=true",
+		"RATE_LIMIT_GET=1000",  // High limit for E2E testing
+		"RATE_LIMIT_POST=1000", // High limit for E2E testing
 	)
 	
 	// Always log to file for debugging

@@ -1,0 +1,55 @@
+{{define "reactions/list.html"}}
+<div id="reactions-list">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Allowed Reactions for {{.Site.Name}}</h2>
+        <div>
+            <a href="/admin/sites/{{.Site.ID}}" role="button" class="secondary">Back to Site</a>
+            <a href="/admin/sites/{{.Site.ID}}/reactions/new" role="button">Add Reaction</a>
+        </div>
+    </div>
+
+    {{if .Reactions}}
+    <figure>
+        <table>
+            <thead>
+                <tr>
+                    <th>Emoji</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Reactions}}
+                <tr id="reaction-{{.ID}}">
+                    <td style="font-size: 2em;">{{.Emoji}}</td>
+                    <td>{{.Name}}</td>
+                    <td>
+                        {{if eq .ReactionType "page"}}<span style="color: #3b82f6;">📄 Page</span>
+                        {{else if eq .ReactionType "comment"}}<span style="color: #10b981;">💬 Comment</span>
+                        {{else}}<span style="color: #8b5cf6;">🔗 Both</span>{{end}}
+                    </td>
+                    <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+                    <td>
+                        <a href="/admin/sites/{{.SiteID}}/reactions/{{.ID}}/edit">Edit</a>
+                        <a href="#" hx-delete="/admin/sites/{{.SiteID}}/reactions/{{.ID}}" 
+                           hx-target="#reaction-{{.ID}}" 
+                           hx-swap="outerHTML"
+                           hx-confirm="Are you sure you want to delete this reaction? All user reactions of this type will also be deleted." 
+                           style="color: red;">Delete</a>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </figure>
+    {{else}}
+    <article>
+        <p>No reactions configured yet. Add reactions to allow users to react to pages and comments.</p>
+        <p><small>Common reactions include: 👍 (thumbs_up), ❤️ (heart), 😂 (laugh), 🤔 (thinking), 🎉 (celebrate)</small></p>
+        <a href="/admin/sites/{{.Site.ID}}/reactions/new" role="button">Add Your First Reaction</a>
+    </article>
+    {{end}}
+</div>
+{{end}}

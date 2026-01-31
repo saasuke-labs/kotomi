@@ -20,6 +20,13 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
+	// Enable foreign key constraints
+	_, err = db.Exec("PRAGMA foreign_keys = ON")
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
+	}
+
 	// Create table and indexes if they don't exist
 	schema := `
 	CREATE TABLE IF NOT EXISTS users (
@@ -74,6 +81,39 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 	CREATE INDEX IF NOT EXISTS idx_site_page ON comments(site_id, page_id);
 	CREATE INDEX IF NOT EXISTS idx_parent ON comments(parent_id);
 	CREATE INDEX IF NOT EXISTS idx_comments_status ON comments(status);
+
+	CREATE TABLE IF NOT EXISTS allowed_reactions (
+		id TEXT PRIMARY KEY,
+		site_id TEXT NOT NULL,
+		name TEXT NOT NULL,
+		emoji TEXT NOT NULL,
+		reaction_type TEXT NOT NULL DEFAULT 'comment' CHECK(reaction_type IN ('page', 'comment', 'both')),
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+		UNIQUE(site_id, name, reaction_type)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_allowed_reactions_site ON allowed_reactions(site_id);
+	CREATE INDEX IF NOT EXISTS idx_allowed_reactions_type ON allowed_reactions(reaction_type);
+
+	CREATE TABLE IF NOT EXISTS reactions (
+		id TEXT PRIMARY KEY,
+		page_id TEXT,
+		comment_id TEXT,
+		allowed_reaction_id TEXT NOT NULL,
+		user_identifier TEXT NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE,
+		FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
+		FOREIGN KEY (allowed_reaction_id) REFERENCES allowed_reactions(id) ON DELETE CASCADE,
+		CHECK ((page_id IS NOT NULL AND comment_id IS NULL) OR (page_id IS NULL AND comment_id IS NOT NULL)),
+		UNIQUE(page_id, comment_id, allowed_reaction_id, user_identifier)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_reactions_page ON reactions(page_id);
+	CREATE INDEX IF NOT EXISTS idx_reactions_comment ON reactions(comment_id);
+	CREATE INDEX IF NOT EXISTS idx_reactions_allowed ON reactions(allowed_reaction_id);
 	`
 
 	if _, err := db.Exec(schema); err != nil {

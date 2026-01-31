@@ -202,8 +202,15 @@ func (tb *tokenBucket) getRetryAfter() int {
 	tb.mu.Lock()
 	defer tb.mu.Unlock()
 	
-	// Calculate seconds needed for 1 token
-	retryAfter := int((1.0 - tb.tokens) / tb.refillRate)
+	// Calculate seconds needed to get from current tokens to 1.0
+	tokensNeeded := 1.0 - tb.tokens
+	if tokensNeeded <= 0 {
+		// Should not happen if allow() returned false, but handle it
+		return 1
+	}
+	
+	// Calculate time in seconds (round up to be safe)
+	retryAfter := int(tokensNeeded/tb.refillRate) + 1
 	if retryAfter < 1 {
 		retryAfter = 1
 	}

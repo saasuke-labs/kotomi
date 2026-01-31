@@ -16,7 +16,7 @@ import (
 func GetComments(t *testing.T, baseURL, siteID, pageID string) []comments.Comment {
 	t.Helper()
 
-	url := fmt.Sprintf("%s/api/site/%s/page/%s/comments", baseURL, siteID, pageID)
+	url := fmt.Sprintf("%s/api/v1/site/%s/page/%s/comments", baseURL, siteID, pageID)
 	resp, err := http.Get(url)
 	if err != nil {
 		t.Fatalf("failed to get comments: %v", err)
@@ -39,7 +39,7 @@ func GetComments(t *testing.T, baseURL, siteID, pageID string) []comments.Commen
 func PostComment(t *testing.T, baseURL, siteID, pageID string, comment comments.Comment) comments.Comment {
 	t.Helper()
 
-	url := fmt.Sprintf("%s/api/site/%s/page/%s/comments", baseURL, siteID, pageID)
+	url := fmt.Sprintf("%s/api/v1/site/%s/page/%s/comments", baseURL, siteID, pageID)
 	
 	jsonData, err := json.Marshal(comment)
 	if err != nil {

@@ -55,13 +55,18 @@ var auth0Config *auth.Auth0Config
 
 // /api/site/:site-id/page/:page-id/comments
 func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
-	vars, err := getUrlParams(r)
-
-	if err != nil {
-		http.Error(w, "Invalid URL", http.StatusBadRequest)
-		return
+	vars := mux.Vars(r)
+	
+	// Fallback to manual parsing if vars is empty (e.g., in unit tests)
+	if len(vars) == 0 {
+		parsedVars, err := getUrlParams(r)
+		if err != nil {
+			http.Error(w, "Invalid URL", http.StatusBadRequest)
+			return
+		}
+		vars = parsedVars
 	}
-
+	
 	siteId := vars["siteId"]
 	pageId := vars["pageId"]
 
@@ -84,38 +89,56 @@ func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	writeJsonResponse(w, comment)
 }
 
-// Expecting  /api/site/:site-id/page/:page-id/comments
+// getUrlParams extracts site and page IDs from the request URL
+// This function provides a wrapper around mux.Vars() with fallback to manual parsing
+// for unit tests that call handlers directly without using the router.
 func getUrlParams(r *http.Request) (map[string]string, error) {
-	// Parse the path manually
+	// Use mux.Vars if available (when using gorilla mux router)
+	vars := mux.Vars(r)
+	if len(vars) > 0 {
+		return vars, nil
+	}
+	
+	// Fallback to manual parsing for legacy/test code
 	path := strings.Trim(r.URL.Path, "/")
 	parts := strings.Split(path, "/")
 
 	// Expected: ["api", "site", "{siteId}", "page", "{pageId}", "comments"]
-	if len(parts) != 6 || parts[0] != "api" || parts[1] != "site" || parts[3] != "page" || parts[5] != "comments" {
-		return nil, fmt.Errorf("invalid path")
+	// Or: ["api", "v1", "site", "{siteId}", "page", "{pageId}", "comments"]
+	if len(parts) == 7 && parts[0] == "api" && parts[1] == "v1" && parts[2] == "site" && parts[4] == "page" && parts[6] == "comments" {
+		// Versioned path
+		return map[string]string{
+			"siteId": parts[3],
+			"pageId": parts[5],
+		}, nil
+	} else if len(parts) == 6 && parts[0] == "api" && parts[1] == "site" && parts[3] == "page" && parts[5] == "comments" {
+		// Legacy path
+		return map[string]string{
+			"siteId": parts[2],
+			"pageId": parts[4],
+		}, nil
 	}
 
-	siteId := parts[2]
-	pageId := parts[4]
-
-	return map[string]string{
-		"siteId": siteId,
-		"pageId": pageId,
-	}, nil
+	return nil, fmt.Errorf("invalid path")
 
 }
 
 func getCommentsHandler(w http.ResponseWriter, r *http.Request) {
-
-	vars, err := getUrlParams(r)
-
-	if err != nil {
-		http.Error(w, "Invalid URL", http.StatusBadRequest)
-		return
+	vars := mux.Vars(r)
+	
+	// Fallback to manual parsing if vars is empty (e.g., in unit tests)
+	if len(vars) == 0 {
+		parsedVars, err := getUrlParams(r)
+		if err != nil {
+			http.Error(w, "Invalid URL", http.StatusBadRequest)
+			return
+		}
+		vars = parsedVars
 	}
-
+	
 	siteId := vars["siteId"]
 	pageId := vars["pageId"]
+	
 	comments, err := commentStore.GetPageComments(siteId, pageId)
 
 	if err != nil {
@@ -325,6 +348,16 @@ func getUserIdentifier(r *http.Request) string {
 	}
 	
 	return userIdentifier
+}
+
+// deprecationMiddleware adds deprecation headers to legacy API routes
+func deprecationMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-API-Warn", "Deprecated API endpoint. Please use /api/v1/ prefix instead.")
+		w.Header().Set("Deprecation", "true")
+		w.Header().Set("Sunset", "Sun, 01 Jun 2026 00:00:00 GMT") // 5 months deprecation period
+		next.ServeHTTP(w, r)
+	})
 }
 
 func writeJsonResponse(w http.ResponseWriter, data interface{}) {
@@ -588,28 +621,44 @@ func main() {
 	// Create rate limiter middleware
 	rateLimiter := middleware.NewRateLimiter()
 
-	// Public API routes (with CORS and rate limiting enabled)
-	apiRouter := router.PathPrefix("/api").Subrouter()
-	apiRouter.Use(corsMiddleware.Handler)
-	apiRouter.Use(rateLimiter.Handler)
-	apiRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", getCommentsHandler).Methods("GET")
-	apiRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", postCommentsHandler).Methods("POST")
+	// API v1 routes (with CORS and rate limiting enabled)
+	apiV1Router := router.PathPrefix("/api/v1").Subrouter()
+	apiV1Router.Use(corsMiddleware.Handler)
+	apiV1Router.Use(rateLimiter.Handler)
+	apiV1Router.HandleFunc("/site/{siteId}/page/{pageId}/comments", getCommentsHandler).Methods("GET")
+	apiV1Router.HandleFunc("/site/{siteId}/page/{pageId}/comments", postCommentsHandler).Methods("POST")
 	
 	// Reaction routes
-	apiRouter.HandleFunc("/site/{siteId}/allowed-reactions", getAllowedReactionsHandler).Methods("GET")
+	apiV1Router.HandleFunc("/site/{siteId}/allowed-reactions", getAllowedReactionsHandler).Methods("GET")
 	
 	// Comment reactions
-	apiRouter.HandleFunc("/comments/{commentId}/reactions", addReactionHandler).Methods("POST")
-	apiRouter.HandleFunc("/comments/{commentId}/reactions", getReactionsByCommentHandler).Methods("GET")
-	apiRouter.HandleFunc("/comments/{commentId}/reactions/counts", getReactionCountsHandler).Methods("GET")
+	apiV1Router.HandleFunc("/comments/{commentId}/reactions", addReactionHandler).Methods("POST")
+	apiV1Router.HandleFunc("/comments/{commentId}/reactions", getReactionsByCommentHandler).Methods("GET")
+	apiV1Router.HandleFunc("/comments/{commentId}/reactions/counts", getReactionCountsHandler).Methods("GET")
 	
 	// Page reactions
-	apiRouter.HandleFunc("/pages/{pageId}/reactions", addPageReactionHandler).Methods("POST")
-	apiRouter.HandleFunc("/pages/{pageId}/reactions", getReactionsByPageHandler).Methods("GET")
-	apiRouter.HandleFunc("/pages/{pageId}/reactions/counts", getPageReactionCountsHandler).Methods("GET")
+	apiV1Router.HandleFunc("/pages/{pageId}/reactions", addPageReactionHandler).Methods("POST")
+	apiV1Router.HandleFunc("/pages/{pageId}/reactions", getReactionsByPageHandler).Methods("GET")
+	apiV1Router.HandleFunc("/pages/{pageId}/reactions/counts", getPageReactionCountsHandler).Methods("GET")
 	
 	// Remove any reaction
-	apiRouter.HandleFunc("/reactions/{reactionId}", removeReactionHandler).Methods("DELETE")
+	apiV1Router.HandleFunc("/reactions/{reactionId}", removeReactionHandler).Methods("DELETE")
+
+	// Legacy API routes (backward compatibility with deprecation warning)
+	legacyAPIRouter := router.PathPrefix("/api").Subrouter()
+	legacyAPIRouter.Use(corsMiddleware.Handler)
+	legacyAPIRouter.Use(rateLimiter.Handler)
+	legacyAPIRouter.Use(deprecationMiddleware)
+	legacyAPIRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", getCommentsHandler).Methods("GET")
+	legacyAPIRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", postCommentsHandler).Methods("POST")
+	legacyAPIRouter.HandleFunc("/site/{siteId}/allowed-reactions", getAllowedReactionsHandler).Methods("GET")
+	legacyAPIRouter.HandleFunc("/comments/{commentId}/reactions", addReactionHandler).Methods("POST")
+	legacyAPIRouter.HandleFunc("/comments/{commentId}/reactions", getReactionsByCommentHandler).Methods("GET")
+	legacyAPIRouter.HandleFunc("/comments/{commentId}/reactions/counts", getReactionCountsHandler).Methods("GET")
+	legacyAPIRouter.HandleFunc("/pages/{pageId}/reactions", addPageReactionHandler).Methods("POST")
+	legacyAPIRouter.HandleFunc("/pages/{pageId}/reactions", getReactionsByPageHandler).Methods("GET")
+	legacyAPIRouter.HandleFunc("/pages/{pageId}/reactions/counts", getPageReactionCountsHandler).Methods("GET")
+	legacyAPIRouter.HandleFunc("/reactions/{reactionId}", removeReactionHandler).Methods("DELETE")
 
 	// Health check endpoint (no CORS needed, but harmless if included)
 	router.HandleFunc("/healthz", getHealthz).Methods("GET")

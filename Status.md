@@ -257,6 +257,23 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Location:** `pkg/models/reaction.go`, `pkg/admin/reactions.go`, `cmd/main.go`
 - **Testing:** Unit tests in `pkg/models/reaction_test.go`, integration tests in `cmd/reactions_test.go`
 
+#### 9. **API Versioning** ✅
+- **Status:** Fully Implemented
+- **Details:**
+  - All API endpoints now use `/api/v1/` prefix for version 1
+  - Legacy unversioned `/api/` endpoints maintained for backward compatibility
+  - Deprecation headers added to legacy endpoints
+  - 5-month deprecation period (sunset: June 1, 2026)
+- **Key Features:**
+  - Versioned routes: `/api/v1/site/{siteId}/...`
+  - Legacy routes: `/api/site/{siteId}/...` (with deprecation warnings)
+  - Deprecation headers: `X-API-Warn`, `Deprecation`, `Sunset`
+  - Middleware for automatic deprecation header injection
+  - Backward-compatible implementation
+- **Location:** `cmd/main.go`
+- **Documentation:** Updated in `README.md` with versioning strategy
+- **Testing:** All unit tests and E2E tests pass with versioned endpoints
+
 ---
 
 ### ❌ Not Implemented Features
@@ -376,18 +393,6 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Priority:** Low (nice to have)
 - **Estimated Work:** Small (straightforward API endpoints)
 
-#### 9. **API Versioning** ❌
-- **Status:** Not Implemented
-- **Description:** API endpoints lack versioning
-- **Current State:**
-  - Endpoints like `/api/site/{siteId}/...` have no version prefix
-  - Breaking changes would affect all clients
-- **What's Missing:**
-  - Version prefix like `/api/v1/site/{siteId}/...`
-  - Deprecation strategy
-- **Priority:** Medium (important for API stability)
-- **Estimated Work:** Small (refactor route paths, add versioning convention)
-
 ---
 
 ## Deployment Readiness Assessment
@@ -401,7 +406,7 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 
 ### 🟡 Important Issues (Should Fix Before Production)
 
-1. **API Versioning** - Breaking changes could affect clients
+1. ✅ **API Versioning** - COMPLETED
 2. **Error Handling** - Some endpoints may not have comprehensive error handling
 3. **Logging & Monitoring** - Limited observability for production debugging
 4. **Documentation** - Limited API documentation for developers integrating Kotomi
@@ -468,8 +473,8 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 2. ✅ **Add Rate Limiting** - COMPLETED
 3. ✅ **Implement Reactions System** - COMPLETED
 4. ✅ **Security Audit** - COMPLETED
-5. **Create Frontend Widget** - Make it easy for site owners to integrate
-6. **Add API Versioning** - Prefix routes with `/api/v1/`
+5. ✅ **Add API Versioning** - COMPLETED
+6. **Create Frontend Widget** - Make it easy for site owners to integrate
 7. **Improve Error Handling** - Consistent error responses
 8. **Add Logging** - Structured logging for production debugging
 

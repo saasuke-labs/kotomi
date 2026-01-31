@@ -134,15 +134,21 @@ func (h *ReactionsHandler) CreateAllowedReaction(w http.ResponseWriter, r *http.
 	// Parse form
 	name := r.FormValue("name")
 	emoji := r.FormValue("emoji")
+	reactionType := r.FormValue("reaction_type")
 
 	if name == "" || emoji == "" {
 		http.Error(w, "Name and emoji are required", http.StatusBadRequest)
 		return
 	}
 
+	// Default to comment if not specified
+	if reactionType == "" {
+		reactionType = "comment"
+	}
+
 	// Create reaction
 	allowedReactionStore := models.NewAllowedReactionStore(h.db)
-	_, err = allowedReactionStore.Create(siteID, name, emoji)
+	_, err = allowedReactionStore.Create(siteID, name, emoji, reactionType)
 	if err != nil {
 		log.Printf("Error creating allowed reaction: %v", err)
 		http.Error(w, "Failed to create reaction", http.StatusInternalServerError)
@@ -184,14 +190,20 @@ func (h *ReactionsHandler) UpdateAllowedReaction(w http.ResponseWriter, r *http.
 	// Parse form
 	name := r.FormValue("name")
 	emoji := r.FormValue("emoji")
+	reactionType := r.FormValue("reaction_type")
 
 	if name == "" || emoji == "" {
 		http.Error(w, "Name and emoji are required", http.StatusBadRequest)
 		return
 	}
 
+	// Default to comment if not specified
+	if reactionType == "" {
+		reactionType = "comment"
+	}
+
 	// Update reaction
-	if err := allowedReactionStore.Update(reactionID, name, emoji); err != nil {
+	if err := allowedReactionStore.Update(reactionID, name, emoji, reactionType); err != nil {
 		log.Printf("Error updating allowed reaction: %v", err)
 		http.Error(w, "Failed to update reaction", http.StatusInternalServerError)
 		return

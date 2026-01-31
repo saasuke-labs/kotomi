@@ -21,6 +21,7 @@ import (
 	"github.com/saasuke-labs/kotomi/pkg/comments"
 	"github.com/saasuke-labs/kotomi/pkg/middleware"
 	"github.com/saasuke-labs/kotomi/pkg/models"
+	"github.com/saasuke-labs/kotomi/pkg/moderation"
 )
 
 // CommentStore interface for abstracting storage implementation
@@ -52,6 +53,8 @@ var commentStore CommentStore
 var db *sql.DB
 var templates *template.Template
 var auth0Config *auth.Auth0Config
+var moderator moderation.Moderator
+var moderationConfigStore *moderation.ConfigStore
 
 // /api/site/:site-id/page/:page-id/comments
 func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
@@ -90,6 +93,29 @@ func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	comment.ID = uuid.NewString()
 	comment.CreatedAt = time.Now()
 	comment.UpdatedAt = time.Now()
+
+	// Apply AI moderation if enabled
+	if moderator != nil && moderationConfigStore != nil {
+		config, err := moderationConfigStore.GetBySiteID(siteId)
+		if err == nil && config != nil && config.Enabled {
+			// Analyze comment with AI moderation
+			result, err := moderator.AnalyzeComment(comment.Text, *config)
+			if err != nil {
+				log.Printf("AI moderation failed: %v", err)
+				// Continue with default status on error
+			} else {
+				// Determine status based on moderation result
+				comment.Status = moderation.DetermineStatus(result, *config)
+				log.Printf("AI moderation result for comment %s: decision=%s, confidence=%.2f, reason=%s",
+					comment.ID, result.Decision, result.Confidence, result.Reason)
+			}
+		}
+	}
+
+	// Set default status if not set by moderation
+	if comment.Status == "" {
+		comment.Status = "pending"
+	}
 
 	if err := commentStore.AddPageComment(siteId, pageId, comment); err != nil {
 		log.Printf("Error adding comment: %v", err)
@@ -610,6 +636,7 @@ func main() {
 			"templates/admin/comments/row.html",
 			"templates/admin/reactions/list.html",
 			"templates/admin/reactions/form.html",
+			"templates/admin/moderation/form.html",
 		}
 		for _, file := range templateFiles {
 			_, err := templates.ParseFiles(file)
@@ -617,6 +644,17 @@ func main() {
 				log.Printf("Warning: Could not load template %s: %v", file, err)
 			}
 		}
+	}
+
+	// Initialize AI moderation
+	moderationConfigStore = moderation.NewConfigStore(db)
+	openaiAPIKey := os.Getenv("OPENAI_API_KEY")
+	if openaiAPIKey != "" {
+		moderator = moderation.NewOpenAIModerator(openaiAPIKey)
+		log.Println("AI moderation enabled with OpenAI")
+	} else {
+		moderator = moderation.NewMockModerator()
+		log.Println("Using mock moderation (set OPENAI_API_KEY for AI moderation)")
 	}
 
 	// Set up graceful shutdown
@@ -727,6 +765,11 @@ func main() {
 		adminRouter.HandleFunc("/sites/{siteId}/reactions/{reactionId}", reactionsHandler.UpdateAllowedReaction).Methods("PUT")
 		adminRouter.HandleFunc("/sites/{siteId}/reactions/{reactionId}", reactionsHandler.DeleteAllowedReaction).Methods("DELETE")
 		adminRouter.HandleFunc("/sites/{siteId}/reactions/stats", reactionsHandler.GetReactionStats).Methods("GET")
+
+		// Moderation handlers
+		moderationHandler := admin.NewModerationHandler(db, templates)
+		adminRouter.HandleFunc("/sites/{siteId}/moderation", moderationHandler.HandleModerationForm).Methods("GET")
+		adminRouter.HandleFunc("/sites/{siteId}/moderation", moderationHandler.HandleModerationUpdate).Methods("POST")
 
 		// Redirect /admin to dashboard
 		router.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {

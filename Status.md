@@ -274,6 +274,35 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Documentation:** Updated in `README.md` with versioning strategy
 - **Testing:** All unit tests and E2E tests pass with versioned endpoints
 
+#### 10. **AI Moderation** ✅
+- **Status:** Fully Implemented
+- **Date:** January 31, 2026
+- **Description:** Automatic content moderation using OpenAI GPT or rule-based analysis
+- **Details:**
+  - OpenAI GPT integration for AI-powered moderation
+  - Rule-based mock moderator when API key not provided
+  - Detects spam, offensive language, aggressive tone, and off-topic content
+  - Confidence scoring system (0.0 to 1.0)
+  - Three-tier decision system: auto-approve, flag for review, auto-reject
+  - Configurable per site via admin panel
+  - Database schema for moderation configuration
+- **Key Features:**
+  - **AI Analysis:** Uses OpenAI GPT-3.5-turbo for content analysis
+  - **Confidence Thresholds:** Configurable auto-reject (default: 0.85) and auto-approve (default: 0.30) thresholds
+  - **Category Detection:** Identifies spam, offensive language, aggressive tone, off-topic content
+  - **Mock Moderator:** Built-in rule-based moderator for when OpenAI is not available
+  - **Admin Configuration:** Web UI for configuring moderation settings per site
+  - **Automatic Integration:** Seamlessly integrated into comment submission flow
+- **Configuration Variables:**
+  - `OPENAI_API_KEY` - OpenAI API key (optional, uses mock moderator if not set)
+- **Database Schema:**
+  - `moderation_config` table stores per-site configuration
+  - Fields: enabled, auto_reject_threshold, auto_approve_threshold, check flags
+- **Location:** `pkg/moderation/`, `pkg/admin/moderation.go`, `cmd/main.go`
+- **Admin UI:** `/admin/sites/{siteId}/moderation`
+- **Testing:** Comprehensive unit tests for all moderation components
+- **Cost Estimate:** ~$0.75-$1.00 per 1000 comments with GPT-3.5-turbo
+
 ---
 
 ### ❌ Not Implemented Features
@@ -315,22 +344,7 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Testing:** Comprehensive unit tests with 63% coverage
 - **Applied To:** All API routes (`/api/*`)
 
-#### 3. **Automatic Moderation / AI Moderation** ❌
-- **Status:** Not Implemented
-- **Description:** Automatic moderation using AI to flag spam, offensive language, or off-topic comments
-- **Requirements from PRD:**
-  - AI-powered moderation option
-  - Flagging spam, offensive language, ads, aggressive messages
-  - Yellow flag for potentially off-topic messages
-  - Integration with OpenAI Chat GPT (mentioned in v0.1.md)
-- **What's Missing:**
-  - No integration with OpenAI or other AI services
-  - No automatic flagging system
-  - No confidence scoring for moderation
-- **Priority:** Medium (nice to have, but manual moderation works for now)
-- **Estimated Work:** Large (requires API integration, configuration, testing)
-
-#### 4. **Frontend Widget / JavaScript Embed** ❌
+#### 3. **Frontend Widget / JavaScript Embed** ❌
 - **Status:** Not Implemented
 - **Description:** JavaScript widget for easy integration into static sites
 - **What's Missing:**
@@ -341,7 +355,7 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Priority:** High (needed for end-users to integrate Kotomi)
 - **Estimated Work:** Large (requires JavaScript development, styling, documentation)
 
-#### 5. **User Authentication for Comments** ❌
+#### 4. **User Authentication for Comments** ❌
 - **Status:** Not Implemented (only admin authentication exists)
 - **Description:** End-users (commenters) cannot authenticate, all comments are anonymous
 - **Current State:**
@@ -356,7 +370,7 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Priority:** Medium (depends on use case, many comment systems allow anonymous)
 - **Estimated Work:** Large (requires auth flow for end-users, not just admins)
 
-#### 6. **Email Notifications** ❌
+#### 5. **Email Notifications** ❌
 - **Status:** Not Implemented
 - **Description:** Notifications for site owners and users
 - **What's Missing:**
@@ -366,7 +380,7 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Priority:** Low (nice to have)
 - **Estimated Work:** Medium (requires email service integration)
 
-#### 7. **Analytics & Reporting** ❌
+#### 6. **Analytics & Reporting** ❌
 - **Status:** Not Implemented
 - **Description:** Analytics for site owners to track engagement
 - **Requirements from PRD:**
@@ -380,7 +394,7 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Priority:** Low (can be added later)
 - **Estimated Work:** Medium
 
-#### 8. **Export/Import Functionality** ❌
+#### 7. **Export/Import Functionality** ❌
 - **Status:** Not Implemented
 - **Description:** Ability to export/import comments in JSON or CSV format
 - **Requirements from PRD:**
@@ -414,7 +428,7 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 
 ### 🟢 Nice-to-Have (Can Be Added Post-Launch)
 
-1. Automatic/AI moderation
+1. ✅ **Automatic/AI moderation** - COMPLETED
 2. Email notifications
 3. Analytics & reporting
 4. Export/import functionality
@@ -529,8 +543,8 @@ go tool cover -html=coverage.out -o coverage.html
 
 ## Known Limitations & Issues
 
-1. **No CORS Support** - API requests from different domains will be blocked
-2. **No Rate Limiting** - Vulnerable to spam and abuse
+1. ~~**No CORS Support** - API requests from different domains will be blocked~~ - ✅ **FIXED**
+2. ~~**No Rate Limiting** - Vulnerable to spam and abuse~~ - ✅ **FIXED**
 3. **SQLite Only** - Not suitable for high-concurrency scenarios (consider PostgreSQL for production)
 4. **No Automatic Backups** - Database backups must be managed manually
 5. **Session Store** - Uses cookie-based sessions (consider Redis for distributed deployments)
@@ -585,6 +599,7 @@ Kotomi has a **solid foundation** with authentication, admin panel, comments sto
 - ✅ CORS Configuration - **COMPLETE**
 - ✅ Rate Limiting - **COMPLETE**
 - ✅ Security Audit - **COMPLETE**
+- ✅ AI Moderation - **COMPLETE**
 
 ### Deployment Timeline Estimate
 - **Core features complete:** All blocking features are now implemented ✅
@@ -592,7 +607,7 @@ Kotomi has a **solid foundation** with authentication, admin panel, comments sto
 - **Minimal viable version:** Ready now (with proper production configuration)
 
 ### Recommendation
-**All blocking features are now complete!** The core platform including comments, reactions, CORS, rate limiting, and security audit are all implemented. Kotomi is ready for production deployment once the production security recommendations from the security audit are implemented (HTTPS, restricted CORS origins, strong secrets, etc.). 
+**All blocking features are now complete!** The core platform including comments, reactions, CORS, rate limiting, security audit, and AI moderation are all implemented. Kotomi is ready for production deployment once the production security recommendations from the security audit are implemented (HTTPS, restricted CORS origins, strong secrets, etc.). 
 
 The remaining items (Frontend Widget, API Versioning, Error Handling) are important enhancements but not blockers for deployment if you build a custom frontend integration.
 

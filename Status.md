@@ -12,8 +12,8 @@
 
 Kotomi is a dynamic content service designed to add comments, reactions, and moderation capabilities to static websites. The project has made significant progress on core infrastructure and admin capabilities, but several key features remain incomplete or not yet implemented.
 
-**Ready for Deployment:** ⚠️ Almost (CORS implemented, still need rate limiting and security audit)  
-**Recommended Next Steps:** Implement rate limiting and conduct security audit before production deployment
+**Ready for Deployment:** ⚠️ Almost (CORS and rate limiting implemented, still need security audit)  
+**Recommended Next Steps:** Conduct security audit before production deployment
 
 ---
 
@@ -214,21 +214,26 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Preflight Support:** OPTIONS requests are handled automatically with proper headers
 - **Testing:** Manual testing confirmed CORS headers are correctly applied to API routes
 
-#### 3. **Rate Limiting** 🚧
-- **Status:** Not Implemented
-- **Description:** Rate limiting is essential to prevent spam and abuse
-- **What's Missing:**
-  - No rate limiting on API endpoints
-  - Vulnerable to spam attacks and abuse
-  - No IP-based or user-based throttling
-- **Priority:** Critical for production (security concern)
-- **Estimated Work:** Medium (requires rate limiting middleware, configuration)
-- **Suggested Implementation:**
-  - Add rate limiting middleware
-  - Configure limits per endpoint:
-    - POST /comments: 5 requests per minute per IP
-    - GET /comments: 100 requests per minute per IP
-  - Store rate limit data in memory or Redis
+#### 3. **Rate Limiting** ✅
+- **Status:** Fully Implemented
+- **Description:** Rate limiting protects the API from spam and abuse
+- **Details:**
+  - Token bucket algorithm for smooth rate limiting
+  - IP-based throttling (supports X-Forwarded-For and X-Real-IP headers)
+  - Different limits for GET vs POST/PUT/DELETE requests
+  - HTTP 429 status code when rate limit exceeded
+  - Rate limit headers: X-RateLimit-Limit, X-RateLimit-Remaining, Retry-After
+  - In-memory tracking with automatic cleanup of old visitors
+  - Per-IP rate limiting prevents abuse from single sources
+- **Configuration Variables:**
+  - `RATE_LIMIT_GET` - Requests per minute for GET requests (default: 100)
+  - `RATE_LIMIT_POST` - Requests per minute for POST/PUT/DELETE requests (default: 5)
+- **Default Limits:**
+  - GET requests: 100 requests per minute per IP
+  - POST/PUT/DELETE requests: 5 requests per minute per IP
+- **Location:** `pkg/middleware/ratelimit.go`, `cmd/main.go`
+- **Testing:** Comprehensive unit tests with 63% coverage
+- **Applied To:** All API routes (`/api/*`)
 
 #### 4. **Automatic Moderation / AI Moderation** ❌
 - **Status:** Not Implemented

@@ -173,23 +173,7 @@ func addReactionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user identifier (IP address for now, could be user ID if authenticated)
-	// Extract IP address without port
-	userIdentifier := r.RemoteAddr
-	if idx := strings.LastIndex(userIdentifier, ":"); idx != -1 {
-		userIdentifier = userIdentifier[:idx]
-	}
-	
-	// Prefer X-Real-IP or X-Forwarded-For if behind a reverse proxy
-	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
-		userIdentifier = realIP
-	} else if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-		// X-Forwarded-For can contain multiple IPs, take the first one
-		if idx := strings.Index(forwarded, ","); idx != -1 {
-			userIdentifier = strings.TrimSpace(forwarded[:idx])
-		} else {
-			userIdentifier = strings.TrimSpace(forwarded)
-		}
-	}
+	userIdentifier := getUserIdentifier(r)
 
 	reactionStore := models.NewReactionStore(db)
 	reaction, err := reactionStore.AddReaction(commentID, req.AllowedReactionID, userIdentifier)
@@ -258,23 +242,7 @@ func addPageReactionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user identifier (IP address for now, could be user ID if authenticated)
-	// Extract IP address without port
-	userIdentifier := r.RemoteAddr
-	if idx := strings.LastIndex(userIdentifier, ":"); idx != -1 {
-		userIdentifier = userIdentifier[:idx]
-	}
-	
-	// Prefer X-Real-IP or X-Forwarded-For if behind a reverse proxy
-	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
-		userIdentifier = realIP
-	} else if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-		// X-Forwarded-For can contain multiple IPs, take the first one
-		if idx := strings.Index(forwarded, ","); idx != -1 {
-			userIdentifier = strings.TrimSpace(forwarded[:idx])
-		} else {
-			userIdentifier = strings.TrimSpace(forwarded)
-		}
-	}
+	userIdentifier := getUserIdentifier(r)
 
 	reactionStore := models.NewReactionStore(db)
 	reaction, err := reactionStore.AddPageReaction(pageID, req.AllowedReactionID, userIdentifier)
@@ -335,6 +303,28 @@ func removeReactionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func getUserIdentifier(r *http.Request) string {
+	// Extract IP address without port
+	userIdentifier := r.RemoteAddr
+	if idx := strings.LastIndex(userIdentifier, ":"); idx != -1 {
+		userIdentifier = userIdentifier[:idx]
+	}
+	
+	// Prefer X-Real-IP or X-Forwarded-For if behind a reverse proxy
+	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		userIdentifier = realIP
+	} else if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		// X-Forwarded-For can contain multiple IPs, take the first one
+		if idx := strings.Index(forwarded, ","); idx != -1 {
+			userIdentifier = strings.TrimSpace(forwarded[:idx])
+		} else {
+			userIdentifier = strings.TrimSpace(forwarded)
+		}
+	}
+	
+	return userIdentifier
 }
 
 func writeJsonResponse(w http.ResponseWriter, data interface{}) {

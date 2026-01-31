@@ -76,6 +76,17 @@ func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
+	
+	// Validate required fields
+	if comment.Author == "" {
+		http.Error(w, "Author is required", http.StatusBadRequest)
+		return
+	}
+	if comment.Text == "" {
+		http.Error(w, "Text is required", http.StatusBadRequest)
+		return
+	}
+	
 	comment.ID = uuid.NewString()
 	comment.CreatedAt = time.Now()
 	comment.UpdatedAt = time.Now()

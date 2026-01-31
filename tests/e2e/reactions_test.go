@@ -23,7 +23,7 @@ func TestE2E_ReactionsWorkflow(t *testing.T) {
 	posted := PostComment(t, testBaseURL, siteID, pageID, comment)
 
 	// Get allowed reactions for the site
-	reactionsURL := fmt.Sprintf("%s/api/v1/site/%s/reactions/allowed", testBaseURL, siteID)
+	reactionsURL := fmt.Sprintf("%s/api/v1/site/%s/allowed-reactions", testBaseURL, siteID)
 	resp, err := http.Get(reactionsURL)
 	if err != nil {
 		t.Fatalf("failed to get allowed reactions: %v", err)
@@ -49,8 +49,8 @@ func TestE2E_ReactionsWorkflow(t *testing.T) {
 	reactionType := firstReaction["emoji"].(string)
 
 	// Add a reaction to the comment
-	addReactionURL := fmt.Sprintf("%s/api/v1/site/%s/page/%s/comments/%s/reactions",
-		testBaseURL, siteID, pageID, posted.ID)
+	addReactionURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions",
+		testBaseURL, posted.ID)
 	
 	reactionData := map[string]string{
 		"reaction_type": reactionType,
@@ -69,8 +69,8 @@ func TestE2E_ReactionsWorkflow(t *testing.T) {
 	}
 
 	// Get reactions for the comment
-	getReactionsURL := fmt.Sprintf("%s/api/v1/site/%s/page/%s/comments/%s/reactions",
-		testBaseURL, siteID, pageID, posted.ID)
+	getReactionsURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions",
+		testBaseURL, posted.ID)
 	
 	resp, err = http.Get(getReactionsURL)
 	if err != nil {
@@ -93,8 +93,8 @@ func TestE2E_ReactionsWorkflow(t *testing.T) {
 	}
 
 	// Get reaction counts
-	getCountsURL := fmt.Sprintf("%s/api/v1/site/%s/page/%s/comments/%s/reactions/counts",
-		testBaseURL, siteID, pageID, posted.ID)
+	getCountsURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions/counts",
+		testBaseURL, posted.ID)
 	
 	resp, err = http.Get(getCountsURL)
 	if err != nil {
@@ -123,7 +123,7 @@ func TestE2E_PageReactions(t *testing.T) {
 	pageID := "page-reactions-page"
 
 	// Get allowed reactions
-	reactionsURL := fmt.Sprintf("%s/api/v1/site/%s/reactions/allowed", testBaseURL, siteID)
+	reactionsURL := fmt.Sprintf("%s/api/v1/site/%s/allowed-reactions", testBaseURL, siteID)
 	resp, err := http.Get(reactionsURL)
 	if err != nil {
 		t.Fatalf("failed to get allowed reactions: %v", err)
@@ -147,8 +147,8 @@ func TestE2E_PageReactions(t *testing.T) {
 	reactionType := allowedReactions[0]["emoji"].(string)
 
 	// Add a reaction to the page
-	addReactionURL := fmt.Sprintf("%s/api/v1/site/%s/page/%s/reactions",
-		testBaseURL, siteID, pageID)
+	addReactionURL := fmt.Sprintf("%s/api/v1/pages/%s/reactions",
+		testBaseURL, pageID)
 	
 	reactionData := map[string]string{
 		"reaction_type": reactionType,
@@ -167,8 +167,8 @@ func TestE2E_PageReactions(t *testing.T) {
 	}
 
 	// Get reactions for the page
-	getReactionsURL := fmt.Sprintf("%s/api/v1/site/%s/page/%s/reactions",
-		testBaseURL, siteID, pageID)
+	getReactionsURL := fmt.Sprintf("%s/api/v1/pages/%s/reactions",
+		testBaseURL, pageID)
 	
 	resp, err = http.Get(getReactionsURL)
 	if err != nil {
@@ -181,8 +181,8 @@ func TestE2E_PageReactions(t *testing.T) {
 	}
 
 	// Get reaction counts for page
-	getCountsURL := fmt.Sprintf("%s/api/v1/site/%s/page/%s/reactions/counts",
-		testBaseURL, siteID, pageID)
+	getCountsURL := fmt.Sprintf("%s/api/v1/pages/%s/reactions/counts",
+		testBaseURL, pageID)
 	
 	resp, err = http.Get(getCountsURL)
 	if err != nil {
@@ -211,7 +211,7 @@ func TestE2E_ReactionIsolation(t *testing.T) {
 	posted2 := PostComment(t, testBaseURL, "reaction-isolation-2", "page-1", comment2)
 
 	// Get allowed reactions for site 1
-	reactionsURL1 := fmt.Sprintf("%s/api/v1/site/%s/reactions/allowed", testBaseURL, "reaction-isolation-1")
+	reactionsURL1 := fmt.Sprintf("%s/api/v1/site/%s/allowed-reactions", testBaseURL, "reaction-isolation-1")
 	resp1, err := http.Get(reactionsURL1)
 	if err != nil {
 		t.Fatalf("failed to get allowed reactions for site 1: %v", err)
@@ -219,7 +219,7 @@ func TestE2E_ReactionIsolation(t *testing.T) {
 	defer resp1.Body.Close()
 
 	// Get allowed reactions for site 2
-	reactionsURL2 := fmt.Sprintf("%s/api/v1/site/%s/reactions/allowed", testBaseURL, "reaction-isolation-2")
+	reactionsURL2 := fmt.Sprintf("%s/api/v1/site/%s/allowed-reactions", testBaseURL, "reaction-isolation-2")
 	resp2, err := http.Get(reactionsURL2)
 	if err != nil {
 		t.Fatalf("failed to get allowed reactions for site 2: %v", err)
@@ -253,7 +253,7 @@ func TestE2E_MultipleReactions(t *testing.T) {
 	posted := PostComment(t, testBaseURL, siteID, pageID, comment)
 
 	// Get allowed reactions
-	reactionsURL := fmt.Sprintf("%s/api/v1/site/%s/reactions/allowed", testBaseURL, siteID)
+	reactionsURL := fmt.Sprintf("%s/api/v1/site/%s/allowed-reactions", testBaseURL, siteID)
 	resp, err := http.Get(reactionsURL)
 	if err != nil {
 		t.Fatalf("failed to get allowed reactions: %v", err)
@@ -274,8 +274,8 @@ func TestE2E_MultipleReactions(t *testing.T) {
 	// Add reactions from multiple users
 	users := []string{"user-1", "user-2", "user-3"}
 	for _, userID := range users {
-		addReactionURL := fmt.Sprintf("%s/api/v1/site/%s/page/%s/comments/%s/reactions",
-			testBaseURL, siteID, pageID, posted.ID)
+		addReactionURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions",
+			testBaseURL, posted.ID)
 		
 		reactionData := map[string]string{
 			"reaction_type": reactionType,
@@ -295,8 +295,8 @@ func TestE2E_MultipleReactions(t *testing.T) {
 	}
 
 	// Get reaction counts
-	getCountsURL := fmt.Sprintf("%s/api/v1/site/%s/page/%s/comments/%s/reactions/counts",
-		testBaseURL, siteID, pageID, posted.ID)
+	getCountsURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions/counts",
+		testBaseURL, posted.ID)
 	
 	resp, err = http.Get(getCountsURL)
 	if err != nil {
@@ -334,7 +334,7 @@ func TestE2E_RemoveReaction(t *testing.T) {
 	posted := PostComment(t, testBaseURL, siteID, pageID, comment)
 
 	// Get allowed reactions
-	reactionsURL := fmt.Sprintf("%s/api/v1/site/%s/reactions/allowed", testBaseURL, siteID)
+	reactionsURL := fmt.Sprintf("%s/api/v1/site/%s/allowed-reactions", testBaseURL, siteID)
 	resp, err := http.Get(reactionsURL)
 	if err != nil {
 		t.Fatalf("failed to get allowed reactions: %v", err)
@@ -354,8 +354,8 @@ func TestE2E_RemoveReaction(t *testing.T) {
 	userID := "test-user-remove"
 
 	// Add a reaction
-	addReactionURL := fmt.Sprintf("%s/api/v1/site/%s/page/%s/comments/%s/reactions",
-		testBaseURL, siteID, pageID, posted.ID)
+	addReactionURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions",
+		testBaseURL, posted.ID)
 	
 	reactionData := map[string]string{
 		"reaction_type": reactionType,
@@ -370,8 +370,8 @@ func TestE2E_RemoveReaction(t *testing.T) {
 	resp.Body.Close()
 
 	// Remove the reaction
-	removeReactionURL := fmt.Sprintf("%s/api/v1/site/%s/page/%s/comments/%s/reactions",
-		testBaseURL, siteID, pageID, posted.ID)
+	removeReactionURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions",
+		testBaseURL, posted.ID)
 	
 	removeData := map[string]string{
 		"reaction_type": reactionType,

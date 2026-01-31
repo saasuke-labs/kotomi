@@ -89,9 +89,9 @@ func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	writeJsonResponse(w, comment)
 }
 
-// Expecting  /api/site/:site-id/page/:page-id/comments
-// Deprecated: This function is kept for backward compatibility with tests
-// New code should use mux.Vars(r) directly
+// getUrlParams extracts site and page IDs from the request URL
+// This function provides a wrapper around mux.Vars() with fallback to manual parsing
+// for unit tests that call handlers directly without using the router.
 func getUrlParams(r *http.Request) (map[string]string, error) {
 	// Use mux.Vars if available (when using gorilla mux router)
 	vars := mux.Vars(r)

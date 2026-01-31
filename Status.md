@@ -232,7 +232,7 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
   - GET requests: 100 requests per minute per IP
   - POST/PUT/DELETE requests: 5 requests per minute per IP
 - **Location:** `pkg/middleware/ratelimit.go`, `cmd/main.go`
-- **Testing:** Comprehensive unit tests with >95% coverage
+- **Testing:** Comprehensive unit tests with 63% coverage
 - **Applied To:** All API routes (`/api/*`)
 
 #### 4. **Automatic Moderation / AI Moderation** ❌

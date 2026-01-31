@@ -106,7 +106,7 @@ This document contains a summary of all GitHub issues that should be created for
 - ✅ Admin panel not rate limited
 - ✅ IP-based tracking with X-Forwarded-For support
 - ✅ Token bucket algorithm for smooth rate limiting
-- ✅ Comprehensive unit tests with >95% coverage
+- ✅ Comprehensive unit tests with 63% coverage
 
 **Implementation**:
 - Created `pkg/middleware/ratelimit.go` with token bucket rate limiter

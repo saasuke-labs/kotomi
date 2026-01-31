@@ -234,6 +234,47 @@ func TestRateLimiter_XForwardedFor(t *testing.T) {
 	}
 }
 
+func TestRateLimiter_XForwardedFor_MultipleIPs(t *testing.T) {
+	// Create a rate limiter with low limits
+	t.Setenv("RATE_LIMIT_GET", "1")
+	rl := NewRateLimiter()
+
+	// Create a test handler
+	handler := rl.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// First request with X-Forwarded-For containing multiple IPs
+	req := httptest.NewRequest("GET", "/api/test", nil)
+	req.Header.Set("X-Forwarded-For", "10.0.0.2, 192.168.1.1, 172.16.0.1")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("First request: expected status 200, got %d", w.Code)
+	}
+
+	// Second request with same client IP (first in list) should be rate limited
+	req = httptest.NewRequest("GET", "/api/test", nil)
+	req.Header.Set("X-Forwarded-For", "10.0.0.2, 192.168.99.99")
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusTooManyRequests {
+		t.Errorf("Second request: expected status 429, got %d", w.Code)
+	}
+
+	// Request with different client IP should be allowed
+	req = httptest.NewRequest("GET", "/api/test", nil)
+	req.Header.Set("X-Forwarded-For", "10.0.0.3, 192.168.1.1")
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Third request: expected status 200, got %d", w.Code)
+	}
+}
+
 func TestRateLimiter_DefaultLimits(t *testing.T) {
 	// Create a rate limiter without setting env vars
 	rl := NewRateLimiter()

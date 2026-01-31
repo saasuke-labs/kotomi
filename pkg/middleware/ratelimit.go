@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -57,6 +58,13 @@ func (rl *RateLimiter) Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Get client IP (check X-Forwarded-For for proxies, fallback to RemoteAddr)
 		ip := r.Header.Get("X-Forwarded-For")
+		if ip != "" {
+			// X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
+			// Use only the first (client) IP
+			if commaIdx := strings.Index(ip, ","); commaIdx != -1 {
+				ip = strings.TrimSpace(ip[:commaIdx])
+			}
+		}
 		if ip == "" {
 			ip = r.Header.Get("X-Real-IP")
 		}
@@ -82,13 +90,13 @@ func (rl *RateLimiter) Handler(next http.Handler) http.Handler {
 		// Set rate limit headers
 		w.Header().Set("X-RateLimit-Limit", strconv.Itoa(limit))
 		if r.Method == "POST" || r.Method == "PUT" || r.Method == "DELETE" {
-			remaining := int(v.limiterPOST.tokens)
+			remaining := int(v.limiterPOST.getTokens())
 			if remaining < 0 {
 				remaining = 0
 			}
 			w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(remaining))
 		} else {
-			remaining := int(v.limiterGET.tokens)
+			remaining := int(v.limiterGET.getTokens())
 			if remaining < 0 {
 				remaining = 0
 			}
@@ -183,6 +191,13 @@ func (tb *tokenBucket) allow() bool {
 	}
 
 	return false
+}
+
+// getTokens returns the current number of tokens (thread-safe)
+func (tb *tokenBucket) getTokens() float64 {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+	return tb.tokens
 }
 
 // getEnvInt retrieves an integer from environment variable or returns default

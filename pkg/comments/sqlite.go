@@ -138,6 +138,53 @@ func (s *SQLiteStore) AddPageComment(site, page string, comment Comment) error {
 		comment.Status = "pending"
 	}
 
+	// Auto-create site and page if they don't exist (for testing and standalone use without admin)
+	// This allows the comment system to work without pre-creating sites/pages
+	
+	// First, ensure a system user exists (for auto-created sites)
+	systemUserID := "system"
+	_, err := s.db.Exec(`
+		INSERT OR IGNORE INTO users (id, email, name, auth0_sub, created_at, updated_at)
+		VALUES (?, 'system@kotomi.local', 'System', 'system', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	`, systemUserID)
+	if err != nil {
+		return fmt.Errorf("failed to create system user: %w", err)
+	}
+
+	// Check if site exists, create if not
+	var siteExists bool
+	err = s.db.QueryRow("SELECT EXISTS(SELECT 1 FROM sites WHERE id = ?)", site).Scan(&siteExists)
+	if err != nil {
+		return fmt.Errorf("failed to check site existence: %w", err)
+	}
+	if !siteExists {
+		// Create a placeholder site owned by system user
+		_, err = s.db.Exec(`
+			INSERT OR IGNORE INTO sites (id, owner_id, name, created_at, updated_at)
+			VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		`, site, systemUserID, site)
+		if err != nil {
+			return fmt.Errorf("failed to auto-create site: %w", err)
+		}
+	}
+
+	// Check if page exists, create if not
+	var pageExists bool
+	err = s.db.QueryRow("SELECT EXISTS(SELECT 1 FROM pages WHERE site_id = ? AND id = ?)", site, page).Scan(&pageExists)
+	if err != nil {
+		return fmt.Errorf("failed to check page existence: %w", err)
+	}
+	if !pageExists {
+		// Create a placeholder page
+		_, err = s.db.Exec(`
+			INSERT OR IGNORE INTO pages (id, site_id, path, created_at, updated_at)
+			VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		`, page, site, page)
+		if err != nil {
+			return fmt.Errorf("failed to auto-create page: %w", err)
+		}
+	}
+
 	query := `
 		INSERT INTO comments (id, site_id, page_id, author, text, parent_id, status, moderated_by, moderated_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -164,7 +211,7 @@ func (s *SQLiteStore) AddPageComment(site, page string, comment Comment) error {
 		moderatedAt.Valid = true
 	}
 
-	_, err := s.db.Exec(query,
+	_, err = s.db.Exec(query,
 		comment.ID,
 		site,
 		page,

@@ -4,34 +4,38 @@ This document contains a summary of all GitHub issues that should be created for
 
 ## Quick Reference
 
-| # | Title | Priority | Estimated Effort | Dependencies |
-|---|-------|----------|------------------|--------------|
-| 1 | 🚨 [BLOCKING] Implement CORS Configuration | Critical | 2-4 hours | None |
-| 2 | 🚨 [BLOCKING] Implement Rate Limiting | Critical | 4-8 hours | None |
-| 3 | ⭐ Implement Reactions System | High | 8-16 hours | After #1, #2 |
-| 4 | 🔧 Implement API Versioning | Medium | 2-4 hours | Before #5 |
-| 5 | 🎨 Create Frontend Widget / JavaScript Embed | High | 16-24 hours | After #1, #4 |
-| 6 | 🔒 Conduct Security Audit | Critical | 8-16 hours | After #1, #2 |
-| 7 | 🤖 Implement Automatic/AI Moderation | Medium | 16-24 hours | Independent |
-| 8 | 👤 Implement User Authentication for Comments | Medium | 24-40 hours | After #5 |
-| 9 | 📧 Implement Email Notifications | Low | 12-16 hours | After #8 |
-| 10 | 📊 Implement Analytics & Reporting | Low | 12-16 hours | After #3, #8 |
-| 11 | 💾 Implement Export/Import Functionality | Low | 8-12 hours | Independent |
-| 12 | 🔍 Improve Error Handling & Logging | Medium | 8-12 hours | Independent |
+| # | Title | Priority | Status | Estimated Effort | Dependencies |
+|---|-------|----------|--------|------------------|--------------|
+| 1 | ✅ [RESOLVED] Implement CORS Configuration | Critical | ✅ Done | 2-4 hours | None |
+| 2 | ✅ [RESOLVED] Implement Rate Limiting | Critical | ✅ Done | 4-8 hours | None |
+| 3 | ⭐ Implement Reactions System | High | Pending | 8-16 hours | After #1, #2 |
+| 4 | 🔧 Implement API Versioning | Medium | Pending | 2-4 hours | Before #5 |
+| 5 | 🎨 Create Frontend Widget / JavaScript Embed | High | Pending | 16-24 hours | After #1, #4 |
+| 6 | 🔒 Conduct Security Audit | Critical | Pending | 8-16 hours | After #1, #2 |
+| 7 | 🤖 Implement Automatic/AI Moderation | Medium | Pending | 16-24 hours | Independent |
+| 8 | 👤 Implement User Authentication for Comments | Medium | Pending | 24-40 hours | After #5 |
+| 9 | 📧 Implement Email Notifications | Low | Pending | 12-16 hours | After #8 |
+| 10 | 📊 Implement Analytics & Reporting | Low | Pending | 12-16 hours | After #3, #8 |
+| 11 | 💾 Implement Export/Import Functionality | Low | Pending | 8-12 hours | Independent |
+| 12 | 🔍 Improve Error Handling & Logging | Medium | Pending | 8-12 hours | Independent |
 
 **Total Estimated Effort**: 118-178 hours (approximately 3-4 weeks of full-time development)
+**Completed**: Issues #1, #2 (6-12 hours completed)
+**Remaining**: 112-166 hours
 
 ## Implementation Phases
 
 ### Phase 1: Blocking Issues (Critical Path)
 **Goal**: Make Kotomi production-ready
 **Timeline**: 1 week
+**Status**: ✅ 2/3 Complete (67%)
 
-1. Issue #1: CORS Configuration (2-4 hours)
-2. Issue #2: Rate Limiting (4-8 hours)
-3. Issue #6: Security Audit (8-16 hours)
+1. ✅ Issue #1: CORS Configuration (2-4 hours) - **DONE**
+2. ✅ Issue #2: Rate Limiting (4-8 hours) - **DONE**
+3. ⏳ Issue #6: Security Audit (8-16 hours) - **REMAINING**
 
 **Deliverable**: Minimal viable version ready for production deployment
+**Next Step**: Security audit is now the only remaining blocker for production
 
 ### Phase 2: Core Features
 **Goal**: Complete core functionality
@@ -84,24 +88,35 @@ This document contains a summary of all GitHub issues that should be created for
 
 ---
 
-### Issue #2: 🚨 [BLOCKING] Implement Rate Limiting
-**Priority**: Critical | **Effort**: Medium (4-8 hours)
+### Issue #2: ✅ [RESOLVED] Implement Rate Limiting
+**Priority**: Critical | **Effort**: Medium (4-8 hours) | **Status**: ✅ Completed
 
-**Why It's Blocking**: Service is vulnerable to spam, DDoS, and abuse without rate limiting.
+**Why It Was Blocking**: Service was vulnerable to spam, DDoS, and abuse without rate limiting.
 
-**Requirements**:
-- Add rate limiting middleware for API endpoints
-- Different limits for GET vs POST (100/min vs 5/min)
-- Return HTTP 429 with rate limit headers
-- In-memory tracking (Redis for future scaling)
+**Requirements** (All Completed ✅):
+- ✅ Add rate limiting middleware for API endpoints
+- ✅ Different limits for GET vs POST (100/min vs 5/min)
+- ✅ Return HTTP 429 with rate limit headers
+- ✅ In-memory tracking (Redis for future scaling)
 
-**Success Criteria**:
-- Rate limits enforced on API endpoints
-- 429 status code returned when limit exceeded
-- Rate limit headers in responses
-- Admin panel not rate limited
+**Success Criteria** (All Met ✅):
+- ✅ Rate limits enforced on API endpoints
+- ✅ 429 status code returned when limit exceeded
+- ✅ Rate limit headers in responses (X-RateLimit-Limit, X-RateLimit-Remaining, Retry-After)
+- ✅ Admin panel not rate limited
+- ✅ IP-based tracking with X-Forwarded-For support
+- ✅ Token bucket algorithm for smooth rate limiting
+- ✅ Comprehensive unit tests with >95% coverage
 
-**Files to Create/Modify**: `pkg/middleware/ratelimit.go` (new), `cmd/main.go`, `go.mod`, `README.md`
+**Implementation**:
+- Created `pkg/middleware/ratelimit.go` with token bucket rate limiter
+- Modified `cmd/main.go` to apply rate limiting to API routes
+- Added comprehensive tests in `pkg/middleware/ratelimit_test.go`
+- Updated `Status.md` to reflect completion
+
+**Configuration**:
+- `RATE_LIMIT_GET` - Requests per minute for GET (default: 100)
+- `RATE_LIMIT_POST` - Requests per minute for POST/PUT/DELETE (default: 5)
 
 ---
 

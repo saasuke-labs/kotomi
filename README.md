@@ -307,6 +307,38 @@ export CORS_ALLOW_CREDENTIALS=true
 export CORS_ALLOWED_ORIGINS=*  # Allow all origins (default)
 ```
 
+### Rate Limiting Configuration (Optional)
+
+Rate limiting is enabled by default on all API endpoints to prevent spam and abuse:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RATE_LIMIT_GET` | Maximum GET requests per minute per IP address | `100` |
+| `RATE_LIMIT_POST` | Maximum POST/PUT/DELETE requests per minute per IP address | `5` |
+
+**Features:**
+- IP-based rate limiting (supports X-Forwarded-For and X-Real-IP headers)
+- Token bucket algorithm for smooth rate limiting
+- Returns HTTP 429 (Too Many Requests) when limit exceeded
+- Rate limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After`
+- Automatic cleanup of old visitor data
+
+**Note:** Rate limiting is only applied to `/api/*` routes. Admin panel routes (`/admin/*`) are not rate limited.
+
+**Production Example:**
+```bash
+export RATE_LIMIT_GET=200      # Allow 200 GET requests per minute
+export RATE_LIMIT_POST=10      # Allow 10 POST/PUT/DELETE requests per minute
+```
+
+**Development Example:**
+```bash
+# Use defaults (100 GET/min, 5 POST/min)
+# Or customize as needed
+export RATE_LIMIT_GET=1000     # Higher limits for development
+export RATE_LIMIT_POST=50
+```
+
 ### Admin Panel Configuration (Optional)
 
 To enable the admin panel with Auth0 authentication, set these environment variables:
@@ -401,8 +433,8 @@ kotomi/
 - ✅ Multi-site and page management
 - ✅ Comment moderation (approve, reject, delete)
 - ✅ HTMX-based UI
-- 🚧 CORS configuration
-- 🚧 Rate limiting
+- ✅ CORS configuration
+- ✅ Rate limiting
 
 ### Future Versions
 

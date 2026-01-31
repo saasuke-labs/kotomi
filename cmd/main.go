@@ -383,9 +383,13 @@ func main() {
 	// Create CORS middleware
 	corsMiddleware := middleware.NewCORSMiddleware()
 
-	// Public API routes (with CORS enabled)
+	// Create rate limiter middleware
+	rateLimiter := middleware.NewRateLimiter()
+
+	// Public API routes (with CORS and rate limiting enabled)
 	apiRouter := router.PathPrefix("/api").Subrouter()
 	apiRouter.Use(corsMiddleware.Handler)
+	apiRouter.Use(rateLimiter.Handler)
 	apiRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", getCommentsHandler).Methods("GET")
 	apiRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", postCommentsHandler).Methods("POST")
 

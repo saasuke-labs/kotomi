@@ -10,7 +10,7 @@ Give your pages a voice
 ## Features
 
 - 💬 **Comments System** - Enable discussions on your static pages
-- 👍 **Reactions System** - Allow users to react to comments with emoji
+- 👍 **Reactions System** - Allow users to react to pages and comments with configurable emoji
 - 🔐 **Admin Panel** - Web-based dashboard with Auth0 authentication
 - 🏢 **Multi-Site Management** - Manage multiple sites from a single instance
 - 📄 **Page Tracking** - Organize comments by pages within sites
@@ -193,6 +193,7 @@ Kotomi includes a web-based admin panel for managing sites, pages, and moderatin
 
 **Reaction Management:**
 - Configure allowed reactions per site
+- Set reactions for pages, comments, or both
 - Add custom emoji reactions (👍, ❤️, 🎉, etc.)
 - View reaction statistics and usage
 - Delete reaction types (cascade deletes user reactions)
@@ -282,14 +283,17 @@ Create a new comment on a page.
 
 ### Reactions API
 
+Reactions can be applied to both pages and comments. Site admins can configure which reactions are available for pages vs comments vs both.
+
 **Get Allowed Reactions**
 
-**Endpoint:** `GET /api/site/{siteId}/allowed-reactions`
+**Endpoint:** `GET /api/site/{siteId}/allowed-reactions[?type=page|comment]`
 
-Retrieve all allowed reaction types for a site.
+Retrieve all allowed reaction types for a site. Optionally filter by type.
 
 **Parameters:**
 - `siteId` - Unique identifier for your site
+- `type` (optional) - Filter by reaction type: `page`, `comment`, or omit for all
 
 **Response:**
 ```json
@@ -299,6 +303,7 @@ Retrieve all allowed reaction types for a site.
     "site_id": "site-uuid",
     "name": "thumbs_up",
     "emoji": "👍",
+    "reaction_type": "page",
     "created_at": "2024-01-01T12:00:00Z",
     "updated_at": "2024-01-01T12:00:00Z"
   },
@@ -307,13 +312,14 @@ Retrieve all allowed reaction types for a site.
     "site_id": "site-uuid",
     "name": "heart",
     "emoji": "❤️",
+    "reaction_type": "both",
     "created_at": "2024-01-01T12:00:00Z",
     "updated_at": "2024-01-01T12:00:00Z"
   }
 ]
 ```
 
-**Add Reaction (Toggle)**
+**Add Comment Reaction (Toggle)**
 
 **Endpoint:** `POST /api/comments/{commentId}/reactions`
 
@@ -400,6 +406,83 @@ Remove a specific reaction instance.
 - `reactionId` - Unique identifier for the reaction instance
 
 **Response:** HTTP 204 No Content
+
+**Add Page Reaction (Toggle)**
+
+**Endpoint:** `POST /api/pages/{pageId}/reactions`
+
+Add a reaction to a page. If the user has already reacted with this type, it will be removed (toggle behavior).
+
+**Parameters:**
+- `pageId` - Unique identifier for the page
+
+**Request Body:**
+```json
+{
+  "allowed_reaction_id": "reaction-uuid"
+}
+```
+
+**Response (Added):**
+```json
+{
+  "id": "user-reaction-uuid",
+  "page_id": "page-uuid",
+  "allowed_reaction_id": "reaction-uuid",
+  "user_identifier": "192.168.1.1",
+  "created_at": "2024-01-01T12:00:00Z"
+}
+```
+
+**Response (Removed):** HTTP 204 No Content
+
+**Get Page Reaction Counts**
+
+**Endpoint:** `GET /api/pages/{pageId}/reactions/counts`
+
+Get aggregated reaction counts for a page.
+
+**Parameters:**
+- `pageId` - Unique identifier for the page
+
+**Response:**
+```json
+[
+  {
+    "name": "thumbs_up",
+    "emoji": "👍",
+    "count": 5
+  },
+  {
+    "name": "heart",
+    "emoji": "❤️",
+    "count": 3
+  }
+]
+```
+
+**Get All Page Reactions**
+
+**Endpoint:** `GET /api/pages/{pageId}/reactions`
+
+Get all individual reactions for a page (includes user identifiers).
+
+**Parameters:**
+- `pageId` - Unique identifier for the page
+
+**Response:**
+```json
+[
+  {
+    "id": "reaction-instance-uuid",
+    "page_id": "page-uuid",
+    "name": "thumbs_up",
+    "emoji": "👍",
+    "user_identifier": "192.168.1.1",
+    "created_at": "2024-01-01T12:00:00Z"
+  }
+]
+```
 
 ## Configuration
 

@@ -162,9 +162,22 @@ func addReactionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user identifier (IP address for now, could be user ID if authenticated)
+	// Extract IP address without port
 	userIdentifier := r.RemoteAddr
-	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-		userIdentifier = strings.Split(forwarded, ",")[0]
+	if idx := strings.LastIndex(userIdentifier, ":"); idx != -1 {
+		userIdentifier = userIdentifier[:idx]
+	}
+	
+	// Prefer X-Real-IP or X-Forwarded-For if behind a reverse proxy
+	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		userIdentifier = realIP
+	} else if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		// X-Forwarded-For can contain multiple IPs, take the first one
+		if idx := strings.Index(forwarded, ","); idx != -1 {
+			userIdentifier = strings.TrimSpace(forwarded[:idx])
+		} else {
+			userIdentifier = strings.TrimSpace(forwarded)
+		}
 	}
 
 	reactionStore := models.NewReactionStore(db)

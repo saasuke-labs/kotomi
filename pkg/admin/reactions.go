@@ -264,7 +264,6 @@ func (h *ReactionsHandler) GetReactionStats(w http.ResponseWriter, r *http.Reque
 		SELECT ar.name, ar.emoji, COUNT(r.id) as count
 		FROM allowed_reactions ar
 		LEFT JOIN reactions r ON ar.id = r.allowed_reaction_id
-		LEFT JOIN comments c ON r.comment_id = c.id
 		WHERE ar.site_id = ?
 		GROUP BY ar.id, ar.name, ar.emoji
 		ORDER BY count DESC, ar.name ASC

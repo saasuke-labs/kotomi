@@ -138,9 +138,9 @@ func TestE2E_MalformedRequests(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name:           "Malformed JSON",
+			name:           "Incomplete JSON",
 			contentType:    "application/json",
-			body:           "{not valid json",
+			body:           `{"author": "Test", "text": `,
 			expectedStatus: http.StatusBadRequest,
 		},
 	}
@@ -185,8 +185,16 @@ func TestE2E_LargePayload(t *testing.T) {
 	defer resp.Body.Close()
 
 	// Should either accept it or reject with appropriate status
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusBadRequest && resp.StatusCode != http.StatusRequestEntityTooLarge {
-		t.Errorf("unexpected status for large payload: %d", resp.StatusCode)
+	acceptableStatuses := []int{http.StatusOK, http.StatusBadRequest, http.StatusRequestEntityTooLarge}
+	statusOK := false
+	for _, status := range acceptableStatuses {
+		if resp.StatusCode == status {
+			statusOK = true
+			break
+		}
+	}
+	if !statusOK {
+		t.Errorf("unexpected status for large payload: %d, expected one of %v", resp.StatusCode, acceptableStatuses)
 	}
 }
 

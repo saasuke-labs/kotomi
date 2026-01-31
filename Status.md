@@ -12,8 +12,8 @@
 
 Kotomi is a dynamic content service designed to add comments, reactions, and moderation capabilities to static websites. The project has made significant progress on core infrastructure and admin capabilities, but several key features remain incomplete or not yet implemented.
 
-**Ready for Deployment:** ❌ Not yet  
-**Recommended Next Steps:** Complete reaction system, implement CORS, add rate limiting, and conduct security audit
+**Ready for Deployment:** ⚠️ Almost (CORS implemented, still need rate limiting and security audit)  
+**Recommended Next Steps:** Implement rate limiting and conduct security audit before production deployment
 
 ---
 
@@ -198,21 +198,21 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Priority:** High (mentioned in v0.2.0 roadmap)
 - **Estimated Work:** Medium (requires database schema design, API endpoints, admin UI)
 
-#### 2. **CORS Configuration** 🚧
-- **Status:** Not Implemented
-- **Description:** Cross-Origin Resource Sharing (CORS) headers are needed for the API to work with static sites hosted on different domains
-- **What's Missing:**
-  - No CORS middleware in the request pipeline
-  - Cannot configure allowed origins, methods, headers
-  - Will block API requests from static sites on different domains
-- **Priority:** Critical for production (blocking issue for deployment)
-- **Estimated Work:** Small (add CORS middleware, configuration options)
-- **Suggested Implementation:**
-  - Add CORS middleware using `github.com/rs/cors` or similar
-  - Configure via environment variables:
-    - `CORS_ALLOWED_ORIGINS` (comma-separated list or `*`)
-    - `CORS_ALLOWED_METHODS`
-    - `CORS_ALLOWED_HEADERS`
+#### 2. **CORS Configuration** ✅
+- **Status:** Fully Implemented
+- **Details:**
+  - CORS middleware integrated using `github.com/rs/cors`
+  - Applied to all API routes (`/api/*`)
+  - Admin panel routes (`/admin/*`) are not affected by CORS
+  - Configurable via environment variables with sensible defaults
+- **Configuration Variables:**
+  - `CORS_ALLOWED_ORIGINS` - Comma-separated list of allowed origins or `*` for all (default: `*`)
+  - `CORS_ALLOWED_METHODS` - Allowed HTTP methods (default: `GET,POST,PUT,DELETE,OPTIONS`)
+  - `CORS_ALLOWED_HEADERS` - Allowed headers (default: `Content-Type,Authorization`)
+  - `CORS_ALLOW_CREDENTIALS` - Allow credentials (default: `false`)
+- **Location:** `pkg/middleware/cors.go`, `cmd/main.go`
+- **Preflight Support:** OPTIONS requests are handled automatically with proper headers
+- **Testing:** Manual testing confirmed CORS headers are correctly applied to API routes
 
 #### 3. **Rate Limiting** 🚧
 - **Status:** Not Implemented

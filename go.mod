@@ -7,6 +7,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/sessions v1.2.2
 	github.com/mattn/go-sqlite3 v1.14.33
+	github.com/rs/cors v1.11.1
 	golang.org/x/oauth2 v0.15.0
 )
 

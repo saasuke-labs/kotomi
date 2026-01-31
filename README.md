@@ -283,6 +283,30 @@ Kotomi can be configured using environment variables:
 | `PORT` | Server port | `8080` |
 | `DB_PATH` | Path to SQLite database file | `./kotomi.db` |
 
+### CORS Configuration (Optional)
+
+Configure Cross-Origin Resource Sharing (CORS) for API endpoints:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed origins (e.g., `https://example.com,https://blog.example.com`) or `*` for all origins | `*` |
+| `CORS_ALLOWED_METHODS` | Comma-separated list of allowed HTTP methods | `GET,POST,PUT,DELETE,OPTIONS` |
+| `CORS_ALLOWED_HEADERS` | Comma-separated list of allowed headers | `Content-Type,Authorization` |
+| `CORS_ALLOW_CREDENTIALS` | Allow credentials in CORS requests | `false` |
+
+**Note:** CORS is only applied to `/api/*` routes. Admin panel routes (`/admin/*`) are not affected by CORS configuration.
+
+**Production Example:**
+```bash
+export CORS_ALLOWED_ORIGINS=https://example.com,https://blog.example.com
+export CORS_ALLOW_CREDENTIALS=true
+```
+
+**Development Example:**
+```bash
+export CORS_ALLOWED_ORIGINS=*  # Allow all origins (default)
+```
+
 ### Admin Panel Configuration (Optional)
 
 To enable the admin panel with Auth0 authentication, set these environment variables:

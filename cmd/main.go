@@ -19,6 +19,7 @@ import (
 	"github.com/saasuke-labs/kotomi/pkg/admin"
 	"github.com/saasuke-labs/kotomi/pkg/auth"
 	"github.com/saasuke-labs/kotomi/pkg/comments"
+	"github.com/saasuke-labs/kotomi/pkg/middleware"
 	"github.com/saasuke-labs/kotomi/pkg/models"
 )
 
@@ -379,10 +380,17 @@ func main() {
 	// Create router
 	router := mux.NewRouter()
 
-	// Public API routes (existing functionality)
+	// Create CORS middleware
+	corsMiddleware := middleware.NewCORSMiddleware()
+
+	// Public API routes (with CORS enabled)
+	apiRouter := router.PathPrefix("/api").Subrouter()
+	apiRouter.Use(corsMiddleware.Handler)
+	apiRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", getCommentsHandler).Methods("GET")
+	apiRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", postCommentsHandler).Methods("POST")
+
+	// Health check endpoint (no CORS needed, but harmless if included)
 	router.HandleFunc("/healthz", getHealthz).Methods("GET")
-	router.HandleFunc("/api/site/{siteId}/page/{pageId}/comments", getCommentsHandler).Methods("GET")
-	router.HandleFunc("/api/site/{siteId}/page/{pageId}/comments", postCommentsHandler).Methods("POST")
 
 	// Static files
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))

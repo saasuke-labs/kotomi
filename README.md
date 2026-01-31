@@ -211,6 +211,21 @@ Kotomi includes a web-based admin panel for managing sites, pages, and moderatin
 
 ## API Documentation
 
+### API Versioning
+
+Kotomi uses versioned API endpoints to ensure stability and backward compatibility.
+
+**Current Version:** `v1`
+
+**Versioned Endpoints:** All API endpoints should use the `/api/v1/` prefix for the current version.
+
+**Legacy Support:** For backward compatibility, the unversioned `/api/` endpoints are still supported but deprecated. These endpoints return a deprecation warning in the response headers:
+- `X-API-Warn: Deprecated API endpoint. Please use /api/v1/ prefix instead.`
+- `Deprecation: true`
+- `Sunset: Sun, 01 Jun 2026 00:00:00 GMT` (5 months deprecation period)
+
+**Recommendation:** Use versioned endpoints in all new integrations to future-proof your application.
+
 ### Health Check
 
 **Endpoint:** `GET /healthz`
@@ -228,7 +243,7 @@ Returns the health status of the service.
 
 **Get Comments**
 
-**Endpoint:** `GET /api/site/{siteId}/page/{pageId}/comments`
+**Endpoint:** `GET /api/v1/site/{siteId}/page/{pageId}/comments`
 
 Retrieve all comments for a specific page.
 
@@ -252,7 +267,7 @@ Retrieve all comments for a specific page.
 
 **Post Comment**
 
-**Endpoint:** `POST /api/site/{siteId}/page/{pageId}/comments`
+**Endpoint:** `POST /api/v1/site/{siteId}/page/{pageId}/comments`
 
 Create a new comment on a page.
 
@@ -287,7 +302,7 @@ Reactions can be applied to both pages and comments. Site admins can configure w
 
 **Get Allowed Reactions**
 
-**Endpoint:** `GET /api/site/{siteId}/allowed-reactions[?type=page|comment]`
+**Endpoint:** `GET /api/v1/site/{siteId}/allowed-reactions[?type=page|comment]`
 
 Retrieve all allowed reaction types for a site. Optionally filter by type.
 
@@ -321,7 +336,7 @@ Retrieve all allowed reaction types for a site. Optionally filter by type.
 
 **Add Comment Reaction (Toggle)**
 
-**Endpoint:** `POST /api/comments/{commentId}/reactions`
+**Endpoint:** `POST /api/v1/comments/{commentId}/reactions`
 
 Add a reaction to a comment. If the user has already reacted with this type, it will be removed (toggle behavior).
 
@@ -350,7 +365,7 @@ Add a reaction to a comment. If the user has already reacted with this type, it 
 
 **Get Reaction Counts**
 
-**Endpoint:** `GET /api/comments/{commentId}/reactions/counts`
+**Endpoint:** `GET /api/v1/comments/{commentId}/reactions/counts`
 
 Get aggregated reaction counts for a comment.
 
@@ -375,7 +390,7 @@ Get aggregated reaction counts for a comment.
 
 **Get All Reactions**
 
-**Endpoint:** `GET /api/comments/{commentId}/reactions`
+**Endpoint:** `GET /api/v1/comments/{commentId}/reactions`
 
 Get all individual reactions for a comment (includes user identifiers).
 
@@ -398,7 +413,7 @@ Get all individual reactions for a comment (includes user identifiers).
 
 **Remove Reaction**
 
-**Endpoint:** `DELETE /api/reactions/{reactionId}`
+**Endpoint:** `DELETE /api/v1/reactions/{reactionId}`
 
 Remove a specific reaction instance.
 
@@ -409,7 +424,7 @@ Remove a specific reaction instance.
 
 **Add Page Reaction (Toggle)**
 
-**Endpoint:** `POST /api/pages/{pageId}/reactions`
+**Endpoint:** `POST /api/v1/pages/{pageId}/reactions`
 
 Add a reaction to a page. If the user has already reacted with this type, it will be removed (toggle behavior).
 
@@ -438,7 +453,7 @@ Add a reaction to a page. If the user has already reacted with this type, it wil
 
 **Get Page Reaction Counts**
 
-**Endpoint:** `GET /api/pages/{pageId}/reactions/counts`
+**Endpoint:** `GET /api/v1/pages/{pageId}/reactions/counts`
 
 Get aggregated reaction counts for a page.
 
@@ -463,7 +478,7 @@ Get aggregated reaction counts for a page.
 
 **Get All Page Reactions**
 
-**Endpoint:** `GET /api/pages/{pageId}/reactions`
+**Endpoint:** `GET /api/v1/pages/{pageId}/reactions`
 
 Get all individual reactions for a page (includes user identifiers).
 

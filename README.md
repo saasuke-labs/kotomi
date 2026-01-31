@@ -10,6 +10,7 @@ Give your pages a voice
 ## Features
 
 - 💬 **Comments System** - Enable discussions on your static pages
+- 👍 **Reactions System** - Allow users to react to comments with emoji
 - 🔐 **Admin Panel** - Web-based dashboard with Auth0 authentication
 - 🏢 **Multi-Site Management** - Manage multiple sites from a single instance
 - 📄 **Page Tracking** - Organize comments by pages within sites
@@ -190,12 +191,19 @@ Kotomi includes a web-based admin panel for managing sites, pages, and moderatin
 - Delete spam or inappropriate comments
 - Real-time updates without page refreshes
 
+**Reaction Management:**
+- Configure allowed reactions per site
+- Add custom emoji reactions (👍, ❤️, 🎉, etc.)
+- View reaction statistics and usage
+- Delete reaction types (cascade deletes user reactions)
+
 ### Admin Panel Routes
 
 - `/admin` - Redirects to dashboard
 - `/admin/dashboard` - Overview of sites and pending comments
 - `/admin/sites` - List all sites
 - `/admin/sites/{siteId}` - View site details and pages
+- `/admin/sites/{siteId}/reactions` - Manage allowed reactions for a site
 - `/admin/sites/{siteId}/comments` - Moderate comments for a site
 - `/login` - Auth0 login
 - `/logout` - Logout and clear session
@@ -271,6 +279,127 @@ Create a new comment on a page.
   "updated_at": "2024-01-01T12:00:00Z"
 }
 ```
+
+### Reactions API
+
+**Get Allowed Reactions**
+
+**Endpoint:** `GET /api/site/{siteId}/allowed-reactions`
+
+Retrieve all allowed reaction types for a site.
+
+**Parameters:**
+- `siteId` - Unique identifier for your site
+
+**Response:**
+```json
+[
+  {
+    "id": "reaction-uuid",
+    "site_id": "site-uuid",
+    "name": "thumbs_up",
+    "emoji": "👍",
+    "created_at": "2024-01-01T12:00:00Z",
+    "updated_at": "2024-01-01T12:00:00Z"
+  },
+  {
+    "id": "reaction-uuid-2",
+    "site_id": "site-uuid",
+    "name": "heart",
+    "emoji": "❤️",
+    "created_at": "2024-01-01T12:00:00Z",
+    "updated_at": "2024-01-01T12:00:00Z"
+  }
+]
+```
+
+**Add Reaction (Toggle)**
+
+**Endpoint:** `POST /api/comments/{commentId}/reactions`
+
+Add a reaction to a comment. If the user has already reacted with this type, it will be removed (toggle behavior).
+
+**Parameters:**
+- `commentId` - Unique identifier for the comment
+
+**Request Body:**
+```json
+{
+  "allowed_reaction_id": "reaction-uuid"
+}
+```
+
+**Response (Added):**
+```json
+{
+  "id": "user-reaction-uuid",
+  "comment_id": "comment-uuid",
+  "allowed_reaction_id": "reaction-uuid",
+  "user_identifier": "192.168.1.1",
+  "created_at": "2024-01-01T12:00:00Z"
+}
+```
+
+**Response (Removed):** HTTP 204 No Content
+
+**Get Reaction Counts**
+
+**Endpoint:** `GET /api/comments/{commentId}/reactions/counts`
+
+Get aggregated reaction counts for a comment.
+
+**Parameters:**
+- `commentId` - Unique identifier for the comment
+
+**Response:**
+```json
+[
+  {
+    "name": "thumbs_up",
+    "emoji": "👍",
+    "count": 5
+  },
+  {
+    "name": "heart",
+    "emoji": "❤️",
+    "count": 3
+  }
+]
+```
+
+**Get All Reactions**
+
+**Endpoint:** `GET /api/comments/{commentId}/reactions`
+
+Get all individual reactions for a comment (includes user identifiers).
+
+**Parameters:**
+- `commentId` - Unique identifier for the comment
+
+**Response:**
+```json
+[
+  {
+    "id": "reaction-instance-uuid",
+    "comment_id": "comment-uuid",
+    "name": "thumbs_up",
+    "emoji": "👍",
+    "user_identifier": "192.168.1.1",
+    "created_at": "2024-01-01T12:00:00Z"
+  }
+]
+```
+
+**Remove Reaction**
+
+**Endpoint:** `DELETE /api/reactions/{reactionId}`
+
+Remove a specific reaction instance.
+
+**Parameters:**
+- `reactionId` - Unique identifier for the reaction instance
+
+**Response:** HTTP 204 No Content
 
 ## Configuration
 
@@ -435,10 +564,11 @@ kotomi/
 - ✅ HTMX-based UI
 - ✅ CORS configuration
 - ✅ Rate limiting
+- ✅ Reactions system (emoji reactions to comments)
 
 ### Future Versions
 
-- **v0.2.0** - Reactions and voting system
+- **v0.2.0** - Frontend widget and JavaScript SDK
 - **v0.3.0** - Additional storage backends
 - **v0.4.0** - Authentication and user management
 - **v0.5.0** - Advanced moderation tools

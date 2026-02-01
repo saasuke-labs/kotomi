@@ -680,6 +680,7 @@ kotomi/
 │   └── base.html
 ├── static/             # Static assets (CSS)
 ├── docs/               # Documentation
+│   └── adr/            # Architecture Decision Records
 ├── internal_docs/      # Internal documentation
 ├── .github/            # GitHub workflows and configurations
 ├── Dockerfile          # Docker configuration
@@ -752,6 +753,12 @@ We welcome contributions! Here's how you can help:
 5. **Open** a Pull Request
 
 Please follow Go best practices and include tests for new features.
+
+## Architecture
+
+For information about architectural decisions, see the [Architecture Decision Records (ADR)](docs/adr/) directory. Key decisions include:
+
+- [ADR 001: User Authentication for Comments and Reactions](docs/adr/001-user-authentication-for-comments-and-reactions.md) - Proposal for implementing "bring your own authentication" using JWT tokens
 
 ## License
 

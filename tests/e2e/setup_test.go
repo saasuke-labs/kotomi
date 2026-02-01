@@ -172,22 +172,59 @@ func seedAuthConfigurations(dbPath string) {
 	
 	db := store.GetDB()
 	
-	// Create auth configurations for all potential test sites
+	// First, create a test user (required by sites table FK)
+	// We'll insert it directly with a known ID
+	testUserID := "e2e-test-user-id"
+	_, err = db.Exec(`
+		INSERT OR IGNORE INTO users (id, email, name, auth0_sub, created_at, updated_at)
+		VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+	`, testUserID, "e2e-test@example.com", "E2E Test User", "e2e-test-auth0-sub")
+	
+	if err != nil {
+		log.Printf("Warning: Could not create test user: %v", err)
+		return
+	}
+	
+	// List of all site IDs that might be used in E2E tests
+	testSites := []struct {
+		id   string
+		name string
+	}{
+		{"e2e-site-1", "E2E Test Site 1"},
+		{"e2e-site-2", "E2E Test Site 2"},
+		{"test-site-1", "Test Site 1"},
+		{"reactions-site-1", "Reactions Test Site 1"},
+		{"reaction-isolation-1", "Reaction Isolation Site 1"},
+		{"reaction-isolation-2", "Reaction Isolation Site 2"},
+		{"multiple-reactions-site", "Multiple Reactions Test Site"},
+		{"remove-reaction-site", "Remove Reaction Test Site"},
+		{"site-1", "Generic Site 1"},
+		{"site-2", "Generic Site 2"},
+		{"isolation-site-1", "Isolation Site 1"},
+		{"isolation-site-2", "Isolation Site 2"},
+	}
+	
+	// Create sites with specific IDs
+	for _, site := range testSites {
+		_, err := db.Exec(`
+			INSERT OR IGNORE INTO sites (id, owner_id, name, domain, description, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+		`, site.id, testUserID, site.name, "", "E2E test site")
+		
+		if err != nil {
+			log.Printf("Warning: Could not create site %s: %v", site.id, err)
+		} else {
+			log.Printf("Debug: Created site %s", site.id)
+		}
+	}
+	
+	// Now create auth configurations for all sites
 	// These match the JWT secret used in helpers.go
 	authConfigStore := models.NewSiteAuthConfigStore(db)
 	
-	// List of all site IDs that might be used in E2E tests
-	testSites := []string{
-		"e2e-site-1", "e2e-site-2", "test-site-1",
-		"reactions-site-1", "reaction-isolation-1", "reaction-isolation-2",
-		"multiple-reactions-site", "remove-reaction-site",
-		// Add more generic patterns for dynamically created sites
-		"site-1", "site-2", "isolation-site-1", "isolation-site-2",
-	}
-	
-	for _, siteID := range testSites {
+	for _, site := range testSites {
 		authConfig := &models.SiteAuthConfig{
-			SiteID:                siteID,
+			SiteID:                site.id,
 			AuthMode:              "external",
 			JWTValidationType:     "hmac",
 			JWTSecret:             "test-secret-for-e2e-testing-min-32-chars",
@@ -198,8 +235,10 @@ func seedAuthConfigurations(dbPath string) {
 		
 		// Try to create, ignore errors if already exists
 		if err := authConfigStore.Create(authConfig); err != nil {
-			// Silently ignore - config might already exist or site might not exist yet
-			log.Printf("Debug: Could not create auth config for %s (this is normal): %v", siteID, err)
+			// Config might already exist, that's OK
+			log.Printf("Debug: Could not create auth config for %s (might already exist): %v", site.id, err)
+		} else {
+			log.Printf("Debug: Created auth config for site %s", site.id)
 		}
 	}
 	

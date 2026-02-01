@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/saasuke-labs/kotomi/pkg/auth"
@@ -141,20 +140,4 @@ func writeJSONError(w http.ResponseWriter, message string, statusCode int) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"error": message,
 	})
-}
-
-// ExtractSiteIDFromPath extracts site ID from various possible path patterns
-func ExtractSiteIDFromPath(path string) string {
-	// Common patterns:
-	// /api/v1/site/{siteId}/...
-	// /api/v1/sites/{siteId}/...
-	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
-	
-	for i, part := range parts {
-		if (part == "site" || part == "sites") && i+1 < len(parts) {
-			return parts[i+1]
-		}
-	}
-	
-	return ""
 }

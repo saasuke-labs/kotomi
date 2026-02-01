@@ -3,6 +3,7 @@ package admin
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -232,7 +233,7 @@ func (h *AuthConfigHandler) validateAuthConfig(config *models.SiteAuthConfig) er
 	if config.AuthMode != "external" {
 		// Phase 1 only supports external JWT auth
 		// Future phases will support "kotomi" mode
-		return http.ErrNotSupported
+		return fmt.Errorf("only 'external' auth mode is supported in Phase 1")
 	}
 
 	// Validate JWT validation type
@@ -243,7 +244,7 @@ func (h *AuthConfigHandler) validateAuthConfig(config *models.SiteAuthConfig) er
 		"jwks":  true,
 	}
 	if !validTypes[config.JWTValidationType] {
-		return http.ErrNotSupported
+		return fmt.Errorf("invalid jwt_validation_type: must be one of hmac, rsa, ecdsa, or jwks")
 	}
 
 	// Validate required fields based on validation type

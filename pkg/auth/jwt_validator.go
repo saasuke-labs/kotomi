@@ -133,6 +133,8 @@ func (v *JWTValidator) validateECDSA(tokenString string) (*jwt.Token, error) {
 }
 
 // validateJWKS validates token using JWKS endpoint
+// Note: This is a placeholder implementation for Phase 1.
+// Full JWKS support with proper key caching and rotation will be added in future phases.
 func (v *JWTValidator) validateJWKS(tokenString string) (*jwt.Token, error) {
 	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// Get key ID from token header
@@ -171,9 +173,9 @@ func (v *JWTValidator) validateJWKS(tokenString string) (*jwt.Token, error) {
 				// For simplicity, we'll handle RSA keys for now
 				// In production, you'd want to use a proper JWKS library
 				if kty, ok := key["kty"].(string); ok && kty == "RSA" {
-					// Convert JWK to RSA public key
 					// This is a simplified version - production should use a proper JWKS library
-					return nil, fmt.Errorf("JWKS validation requires additional implementation")
+					// like github.com/MicahParks/keyfunc for full JWKS support with caching
+					return nil, fmt.Errorf("JWKS validation requires a proper JWKS library - not fully implemented in Phase 1")
 				}
 			}
 		}

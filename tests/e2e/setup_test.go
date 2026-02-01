@@ -172,11 +172,11 @@ func seedAuthConfigurations(dbPath string) {
 	
 	db := store.GetDB()
 	
-	// First, create a test user (required by sites table FK)
+	// First, create a test admin user (required by sites table FK)
 	// We'll insert it directly with a known ID
 	testUserID := "e2e-test-user-id"
 	_, err = db.Exec(`
-		INSERT OR IGNORE INTO users (id, email, name, auth0_sub, created_at, updated_at)
+		INSERT OR IGNORE INTO admin_users (id, email, name, auth0_sub, created_at, updated_at)
 		VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
 	`, testUserID, "e2e-test@example.com", "E2E Test User", "e2e-test-auth0-sub")
 	

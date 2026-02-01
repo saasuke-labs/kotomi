@@ -562,9 +562,9 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get or create user
-	userStore := models.NewUserStore(db)
-	user, err := userStore.GetByAuth0Sub(userInfo.Sub)
+	// Get or create admin user
+	adminUserStore := models.NewAdminUserStore(db)
+	user, err := adminUserStore.GetByAuth0Sub(userInfo.Sub)
 	if err != nil {
 		log.Printf("Error checking user: %v", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
@@ -573,7 +573,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	if user == nil {
 		// Create new user
-		user, err = userStore.Create(userInfo.Email, userInfo.Name, userInfo.Sub)
+		user, err = adminUserStore.Create(userInfo.Email, userInfo.Name, userInfo.Sub)
 		if err != nil {
 			log.Printf("Failed to create user: %v", err)
 			http.Error(w, "Failed to create user", http.StatusInternalServerError)
@@ -620,9 +620,9 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user
-	userStore := models.NewUserStore(db)
-	user, err := userStore.GetByID(userID)
+	// Get admin user
+	adminUserStore := models.NewAdminUserStore(db)
+	user, err := adminUserStore.GetByID(userID)
 	if err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return

@@ -55,14 +55,33 @@ func JWTAuthMiddleware(db *sql.DB) mux.MiddlewareFunc {
 
 			// Validate JWT token
 			validator := auth.NewJWTValidator(authConfig)
-			user, err := validator.ValidateToken(token)
+			kotomiUser, err := validator.ValidateToken(token)
 			if err != nil {
 				writeJSONError(w, fmt.Sprintf("Invalid token: %v", err), http.StatusUnauthorized)
 				return
 			}
 
-			// Add user to request context
-			ctx := context.WithValue(r.Context(), ContextKeyUser, user)
+			// Persist/update user in database (Phase 2)
+			userStore := models.NewUserStore(db)
+			user := &models.User{
+				ID:         kotomiUser.ID,
+				SiteID:     siteID,
+				Name:       kotomiUser.Name,
+				Email:      kotomiUser.Email,
+				AvatarURL:  kotomiUser.AvatarURL,
+				ProfileURL: kotomiUser.ProfileURL,
+				IsVerified: kotomiUser.Verified,
+				Roles:      kotomiUser.Roles,
+			}
+			
+			if err := userStore.CreateOrUpdate(user); err != nil {
+				// Log error but don't fail the request
+				// User data will still be available from JWT
+				fmt.Printf("Warning: failed to persist user: %v\n", err)
+			}
+
+			// Add kotomi user to request context
+			ctx := context.WithValue(r.Context(), ContextKeyUser, kotomiUser)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -120,10 +139,28 @@ func OptionalAuth(db *sql.DB) mux.MiddlewareFunc {
 			token := auth.ExtractTokenFromHeader(authHeader)
 			if token != "" {
 				validator := auth.NewJWTValidator(authConfig)
-				user, err := validator.ValidateToken(token)
-				if err == nil && user != nil {
+				kotomiUser, err := validator.ValidateToken(token)
+				if err == nil && kotomiUser != nil {
+					// Persist/update user in database (Phase 2)
+					userStore := models.NewUserStore(db)
+					user := &models.User{
+						ID:         kotomiUser.ID,
+						SiteID:     siteID,
+						Name:       kotomiUser.Name,
+						Email:      kotomiUser.Email,
+						AvatarURL:  kotomiUser.AvatarURL,
+						ProfileURL: kotomiUser.ProfileURL,
+						IsVerified: kotomiUser.Verified,
+						Roles:      kotomiUser.Roles,
+					}
+					
+					if err := userStore.CreateOrUpdate(user); err != nil {
+						// Log error but don't fail the request
+						fmt.Printf("Warning: failed to persist user: %v\n", err)
+					}
+
 					// Add user to context if validation succeeded
-					ctx := context.WithValue(r.Context(), ContextKeyUser, user)
+					ctx := context.WithValue(r.Context(), ContextKeyUser, kotomiUser)
 					r = r.WithContext(ctx)
 				}
 			}

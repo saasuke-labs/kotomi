@@ -21,15 +21,15 @@ func createTestDB(t *testing.T) *comments.SQLiteStore {
 	return store
 }
 
-func TestUserStore_CreateAndGet(t *testing.T) {
+func TestAdminUserStore_CreateAndGet(t *testing.T) {
 	sqliteStore := createTestDB(t)
 	defer sqliteStore.Close()
 
 	db := sqliteStore.GetDB()
-	userStore := NewUserStore(db)
+	adminUserStore := NewAdminUserStore(db)
 
-	// Create user
-	user, err := userStore.Create("test@example.com", "Test User", "auth0|12345")
+	// Create admin user
+	user, err := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestUserStore_CreateAndGet(t *testing.T) {
 	}
 
 	// Get by Auth0 sub
-	retrieved, err := userStore.GetByAuth0Sub("auth0|12345")
+	retrieved, err := adminUserStore.GetByAuth0Sub("auth0|12345")
 	if err != nil {
 		t.Fatalf("GetByAuth0Sub failed: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestUserStore_CreateAndGet(t *testing.T) {
 	}
 
 	// Get by ID
-	retrieved2, err := userStore.GetByID(user.ID)
+	retrieved2, err := adminUserStore.GetByID(user.ID)
 	if err != nil {
 		t.Fatalf("GetByID failed: %v", err)
 	}
@@ -68,22 +68,22 @@ func TestUserStore_Update(t *testing.T) {
 	defer sqliteStore.Close()
 
 	db := sqliteStore.GetDB()
-	userStore := NewUserStore(db)
+	adminUserStore := NewAdminUserStore(db)
 
 	// Create user
-	user, err := userStore.Create("test@example.com", "Test User", "auth0|12345")
+	user, err := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
 
 	// Update user
-	err = userStore.Update(user.ID, "updated@example.com", "Updated Name")
+	err = adminUserStore.Update(user.ID, "updated@example.com", "Updated Name")
 	if err != nil {
 		t.Fatalf("Update failed: %v", err)
 	}
 
 	// Verify update
-	retrieved, err := userStore.GetByID(user.ID)
+	retrieved, err := adminUserStore.GetByID(user.ID)
 	if err != nil {
 		t.Fatalf("GetByID failed: %v", err)
 	}
@@ -100,11 +100,11 @@ func TestSiteStore_CreateAndGet(t *testing.T) {
 	defer sqliteStore.Close()
 
 	db := sqliteStore.GetDB()
-	userStore := NewUserStore(db)
+	adminUserStore := NewAdminUserStore(db)
 	siteStore := NewSiteStore(db)
 
 	// Create user first
-	user, err := userStore.Create("test@example.com", "Test User", "auth0|12345")
+	user, err := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
 	if err != nil {
 		t.Fatalf("Create user failed: %v", err)
 	}
@@ -146,10 +146,10 @@ func TestSiteStore_Update(t *testing.T) {
 	defer sqliteStore.Close()
 
 	db := sqliteStore.GetDB()
-	userStore := NewUserStore(db)
+	adminUserStore := NewAdminUserStore(db)
 	siteStore := NewSiteStore(db)
 
-	user, _ := userStore.Create("test@example.com", "Test User", "auth0|12345")
+	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
 	site, _ := siteStore.Create(user.ID, "Test Site", "example.com", "A test site")
 
 	// Update site
@@ -173,10 +173,10 @@ func TestSiteStore_Delete(t *testing.T) {
 	defer sqliteStore.Close()
 
 	db := sqliteStore.GetDB()
-	userStore := NewUserStore(db)
+	adminUserStore := NewAdminUserStore(db)
 	siteStore := NewSiteStore(db)
 
-	user, _ := userStore.Create("test@example.com", "Test User", "auth0|12345")
+	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
 	site, _ := siteStore.Create(user.ID, "Test Site", "example.com", "A test site")
 
 	// Delete site
@@ -197,11 +197,11 @@ func TestPageStore_CreateAndGet(t *testing.T) {
 	defer sqliteStore.Close()
 
 	db := sqliteStore.GetDB()
-	userStore := NewUserStore(db)
+	adminUserStore := NewAdminUserStore(db)
 	siteStore := NewSiteStore(db)
 	pageStore := NewPageStore(db)
 
-	user, _ := userStore.Create("test@example.com", "Test User", "auth0|12345")
+	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
 	site, _ := siteStore.Create(user.ID, "Test Site", "example.com", "A test site")
 
 	// Create page
@@ -241,11 +241,11 @@ func TestPageStore_GetBySitePath(t *testing.T) {
 	defer sqliteStore.Close()
 
 	db := sqliteStore.GetDB()
-	userStore := NewUserStore(db)
+	adminUserStore := NewAdminUserStore(db)
 	siteStore := NewSiteStore(db)
 	pageStore := NewPageStore(db)
 
-	user, _ := userStore.Create("test@example.com", "Test User", "auth0|12345")
+	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
 	site, _ := siteStore.Create(user.ID, "Test Site", "example.com", "A test site")
 	page, _ := pageStore.Create(site.ID, "/blog/post-1", "Post 1")
 
@@ -276,11 +276,11 @@ func TestPageStore_Update(t *testing.T) {
 	defer sqliteStore.Close()
 
 	db := sqliteStore.GetDB()
-	userStore := NewUserStore(db)
+	adminUserStore := NewAdminUserStore(db)
 	siteStore := NewSiteStore(db)
 	pageStore := NewPageStore(db)
 
-	user, _ := userStore.Create("test@example.com", "Test User", "auth0|12345")
+	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
 	site, _ := siteStore.Create(user.ID, "Test Site", "example.com", "A test site")
 	page, _ := pageStore.Create(site.ID, "/blog/post-1", "Post 1")
 
@@ -308,11 +308,11 @@ func TestPageStore_Delete(t *testing.T) {
 	defer sqliteStore.Close()
 
 	db := sqliteStore.GetDB()
-	userStore := NewUserStore(db)
+	adminUserStore := NewAdminUserStore(db)
 	siteStore := NewSiteStore(db)
 	pageStore := NewPageStore(db)
 
-	user, _ := userStore.Create("test@example.com", "Test User", "auth0|12345")
+	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
 	site, _ := siteStore.Create(user.ID, "Test Site", "example.com", "A test site")
 	page, _ := pageStore.Create(site.ID, "/blog/post-1", "Post 1")
 

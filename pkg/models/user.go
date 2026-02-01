@@ -2,23 +2,28 @@ package models
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
-
-	"github.com/google/uuid"
 )
 
-// User represents a user in the system
+// User represents a JWT-authenticated commenter/reactor user (Phase 2)
 type User struct {
-	ID        string    `json:"id"`
-	Email     string    `json:"email"`
-	Name      string    `json:"name,omitempty"`
-	Auth0Sub  string    `json:"auth0_sub"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID         string    `json:"id"`          // User ID from JWT
+	SiteID     string    `json:"site_id"`     // Site this user belongs to
+	Name       string    `json:"name"`        // Display name
+	Email      string    `json:"email,omitempty"`
+	AvatarURL  string    `json:"avatar_url,omitempty"`
+	ProfileURL string    `json:"profile_url,omitempty"`
+	IsVerified bool      `json:"is_verified"`
+	Roles      []string  `json:"roles,omitempty"` // JSON array of roles
+	FirstSeen  time.Time `json:"first_seen"`
+	LastSeen   time.Time `json:"last_seen"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
-// UserStore handles user database operations
+// UserStore handles JWT user database operations
 type UserStore struct {
 	db *sql.DB
 }
@@ -28,19 +33,22 @@ func NewUserStore(db *sql.DB) *UserStore {
 	return &UserStore{db: db}
 }
 
-// GetByAuth0Sub retrieves a user by their Auth0 subject identifier
-func (s *UserStore) GetByAuth0Sub(auth0Sub string) (*User, error) {
+// GetBySiteAndID retrieves a user by site and user ID
+func (s *UserStore) GetBySiteAndID(siteID, userID string) (*User, error) {
 	query := `
-		SELECT id, email, name, auth0_sub, created_at, updated_at
+		SELECT id, site_id, name, email, avatar_url, profile_url, is_verified, roles, 
+		       first_seen, last_seen, created_at, updated_at
 		FROM users
-		WHERE auth0_sub = ?
+		WHERE site_id = ? AND id = ?
 	`
 
 	var u User
-	var name sql.NullString
+	var email, avatarURL, profileURL sql.NullString
+	var rolesJSON sql.NullString
 
-	err := s.db.QueryRow(query, auth0Sub).Scan(
-		&u.ID, &u.Email, &name, &u.Auth0Sub, &u.CreatedAt, &u.UpdatedAt,
+	err := s.db.QueryRow(query, siteID, userID).Scan(
+		&u.ID, &u.SiteID, &u.Name, &email, &avatarURL, &profileURL,
+		&u.IsVerified, &rolesJSON, &u.FirstSeen, &u.LastSeen, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -49,89 +57,196 @@ func (s *UserStore) GetByAuth0Sub(auth0Sub string) (*User, error) {
 		return nil, fmt.Errorf("failed to query user: %w", err)
 	}
 
-	if name.Valid {
-		u.Name = name.String
+	if email.Valid {
+		u.Email = email.String
 	}
-
-	return &u, nil
-}
-
-// GetByID retrieves a user by their ID
-func (s *UserStore) GetByID(id string) (*User, error) {
-	query := `
-		SELECT id, email, name, auth0_sub, created_at, updated_at
-		FROM users
-		WHERE id = ?
-	`
-
-	var u User
-	var name sql.NullString
-
-	err := s.db.QueryRow(query, id).Scan(
-		&u.ID, &u.Email, &name, &u.Auth0Sub, &u.CreatedAt, &u.UpdatedAt,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
+	if avatarURL.Valid {
+		u.AvatarURL = avatarURL.String
+	}
+	if profileURL.Valid {
+		u.ProfileURL = profileURL.String
+	}
+	if rolesJSON.Valid && rolesJSON.String != "" {
+		if err := json.Unmarshal([]byte(rolesJSON.String), &u.Roles); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal roles: %w", err)
 		}
-		return nil, fmt.Errorf("failed to query user: %w", err)
-	}
-
-	if name.Valid {
-		u.Name = name.String
 	}
 
 	return &u, nil
 }
 
-// Create creates a new user
-func (s *UserStore) Create(email, name, auth0Sub string) (*User, error) {
-	now := time.Now()
-	user := &User{
-		ID:        uuid.NewString(),
-		Email:     email,
-		Name:      name,
-		Auth0Sub:  auth0Sub,
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-
+// ListBySite retrieves all users for a specific site
+func (s *UserStore) ListBySite(siteID string) ([]*User, error) {
 	query := `
-		INSERT INTO users (id, email, name, auth0_sub, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)
+		SELECT id, site_id, name, email, avatar_url, profile_url, is_verified, roles,
+		       first_seen, last_seen, created_at, updated_at
+		FROM users
+		WHERE site_id = ?
+		ORDER BY last_seen DESC
 	`
 
-	var nameVal sql.NullString
-	if name != "" {
-		nameVal.String = name
-		nameVal.Valid = true
-	}
-
-	_, err := s.db.Exec(query, user.ID, user.Email, nameVal, user.Auth0Sub, user.CreatedAt, user.UpdatedAt)
+	rows, err := s.db.Query(query, siteID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create user: %w", err)
+		return nil, fmt.Errorf("failed to query users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []*User
+	for rows.Next() {
+		var u User
+		var email, avatarURL, profileURL sql.NullString
+		var rolesJSON sql.NullString
+
+		err := rows.Scan(
+			&u.ID, &u.SiteID, &u.Name, &email, &avatarURL, &profileURL,
+			&u.IsVerified, &rolesJSON, &u.FirstSeen, &u.LastSeen, &u.CreatedAt, &u.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+
+		if email.Valid {
+			u.Email = email.String
+		}
+		if avatarURL.Valid {
+			u.AvatarURL = avatarURL.String
+		}
+		if profileURL.Valid {
+			u.ProfileURL = profileURL.String
+		}
+		if rolesJSON.Valid && rolesJSON.String != "" {
+			if err := json.Unmarshal([]byte(rolesJSON.String), &u.Roles); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal roles: %w", err)
+			}
+		}
+
+		users = append(users, &u)
 	}
 
-	return user, nil
+	return users, nil
 }
 
-// Update updates a user's information
-func (s *UserStore) Update(id, email, name string) error {
+// CreateOrUpdate creates a new user or updates if exists
+func (s *UserStore) CreateOrUpdate(user *User) error {
+	now := time.Now()
+	
+	// Serialize roles to JSON
+	var rolesJSON sql.NullString
+	if len(user.Roles) > 0 {
+		rolesBytes, err := json.Marshal(user.Roles)
+		if err != nil {
+			return fmt.Errorf("failed to marshal roles: %w", err)
+		}
+		rolesJSON.String = string(rolesBytes)
+		rolesJSON.Valid = true
+	}
+
+	// Check if user exists
+	// Note: GetBySiteAndID returns (nil, nil) when user not found, so err != nil means actual DB error
+	existing, err := s.GetBySiteAndID(user.SiteID, user.ID)
+	if err != nil {
+		return err
+	}
+
+	if existing != nil {
+		// Update existing user
+		query := `
+			UPDATE users
+			SET name = ?, email = ?, avatar_url = ?, profile_url = ?, 
+			    is_verified = ?, roles = ?, last_seen = ?, updated_at = ?
+			WHERE site_id = ? AND id = ?
+		`
+
+		var email, avatarURL, profileURL sql.NullString
+		if user.Email != "" {
+			email.String = user.Email
+			email.Valid = true
+		}
+		if user.AvatarURL != "" {
+			avatarURL.String = user.AvatarURL
+			avatarURL.Valid = true
+		}
+		if user.ProfileURL != "" {
+			profileURL.String = user.ProfileURL
+			profileURL.Valid = true
+		}
+
+		_, err = s.db.Exec(query, user.Name, email, avatarURL, profileURL,
+			user.IsVerified, rolesJSON, user.LastSeen, now, user.SiteID, user.ID)
+		if err != nil {
+			return fmt.Errorf("failed to update user: %w", err)
+		}
+	} else {
+		// Create new user
+		if user.FirstSeen.IsZero() {
+			user.FirstSeen = now
+		}
+		if user.LastSeen.IsZero() {
+			user.LastSeen = now
+		}
+		if user.CreatedAt.IsZero() {
+			user.CreatedAt = now
+		}
+		user.UpdatedAt = now
+
+		query := `
+			INSERT INTO users (id, site_id, name, email, avatar_url, profile_url, 
+			                   is_verified, roles, first_seen, last_seen, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`
+
+		var email, avatarURL, profileURL sql.NullString
+		if user.Email != "" {
+			email.String = user.Email
+			email.Valid = true
+		}
+		if user.AvatarURL != "" {
+			avatarURL.String = user.AvatarURL
+			avatarURL.Valid = true
+		}
+		if user.ProfileURL != "" {
+			profileURL.String = user.ProfileURL
+			profileURL.Valid = true
+		}
+
+		_, err = s.db.Exec(query, user.ID, user.SiteID, user.Name, email, avatarURL, profileURL,
+			user.IsVerified, rolesJSON, user.FirstSeen, user.LastSeen, user.CreatedAt, user.UpdatedAt)
+		if err != nil {
+			return fmt.Errorf("failed to create user: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// UpdateLastSeen updates the last_seen timestamp for a user
+func (s *UserStore) UpdateLastSeen(siteID, userID string) error {
 	query := `
 		UPDATE users
-		SET email = ?, name = ?, updated_at = ?
-		WHERE id = ?
+		SET last_seen = ?, updated_at = ?
+		WHERE site_id = ? AND id = ?
 	`
 
-	var nameVal sql.NullString
-	if name != "" {
-		nameVal.String = name
-		nameVal.Valid = true
+	now := time.Now()
+	_, err := s.db.Exec(query, now, now, siteID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update last_seen: %w", err)
 	}
 
-	_, err := s.db.Exec(query, email, nameVal, time.Now(), id)
+	return nil
+}
+
+// Delete removes a user and all their comments/reactions
+func (s *UserStore) Delete(siteID, userID string) error {
+	// Note: Foreign key constraints will cascade delete comments and reactions
+	query := `
+		DELETE FROM users
+		WHERE site_id = ? AND id = ?
+	`
+
+	_, err := s.db.Exec(query, siteID, userID)
 	if err != nil {
-		return fmt.Errorf("failed to update user: %w", err)
+		return fmt.Errorf("failed to delete user: %w", err)
 	}
 
 	return nil

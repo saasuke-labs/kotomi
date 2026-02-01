@@ -29,7 +29,7 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 
 	// Create table and indexes if they don't exist
 	schema := `
-	CREATE TABLE IF NOT EXISTS users (
+	CREATE TABLE IF NOT EXISTS admin_users (
 		id TEXT PRIMARY KEY,
 		email TEXT UNIQUE NOT NULL,
 		name TEXT,
@@ -46,10 +46,30 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 		description TEXT,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+		FOREIGN KEY (owner_id) REFERENCES admin_users(id) ON DELETE CASCADE
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_sites_owner ON sites(owner_id);
+
+	CREATE TABLE IF NOT EXISTS users (
+		id TEXT NOT NULL,
+		site_id TEXT NOT NULL,
+		name TEXT NOT NULL,
+		email TEXT,
+		avatar_url TEXT,
+		profile_url TEXT,
+		is_verified INTEGER DEFAULT 0,
+		roles TEXT,
+		first_seen TIMESTAMP NOT NULL,
+		last_seen TIMESTAMP NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+		PRIMARY KEY (site_id, id)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_users_site_id ON users(site_id);
+	CREATE INDEX IF NOT EXISTS idx_users_email ON users(site_id, email);
 
 	CREATE TABLE IF NOT EXISTS pages (
 		id TEXT PRIMARY KEY,
@@ -180,14 +200,14 @@ func (s *SQLiteStore) AddPageComment(site, page string, comment Comment) error {
 	// Auto-create site and page if they don't exist (for testing and standalone use without admin)
 	// This allows the comment system to work without pre-creating sites/pages
 	
-	// First, ensure a system user exists (for auto-created sites)
+	// First, ensure a system admin user exists (for auto-created sites)
 	systemUserID := "system"
 	_, err := s.db.Exec(`
-		INSERT OR IGNORE INTO users (id, email, name, auth0_sub, created_at, updated_at)
+		INSERT OR IGNORE INTO admin_users (id, email, name, auth0_sub, created_at, updated_at)
 		VALUES (?, 'system@kotomi.local', 'System', 'system', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 	`, systemUserID)
 	if err != nil {
-		return fmt.Errorf("failed to create system user: %w", err)
+		return fmt.Errorf("failed to create system admin user: %w", err)
 	}
 
 	// Check if site exists, create if not

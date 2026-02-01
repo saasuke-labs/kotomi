@@ -127,6 +127,13 @@ func TestE2E_PageReactions(t *testing.T) {
 	siteID := "page-reactions-site"
 	pageID := "page-reactions-page"
 
+	// First, ensure the page exists by posting a comment
+	// (this auto-creates the page if it doesn't exist)
+	comment := comments.Comment{
+		Text: "Test comment to create page",
+	}
+	PostComment(t, testBaseURL, siteID, pageID, comment)
+
 	// Get allowed reactions
 	reactionsURL := fmt.Sprintf("%s/api/v1/site/%s/allowed-reactions", testBaseURL, siteID)
 	resp, err := http.Get(reactionsURL)

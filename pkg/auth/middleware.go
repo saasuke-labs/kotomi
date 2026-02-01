@@ -93,6 +93,11 @@ func GetUserIDFromContext(ctx context.Context) string {
 	return userID
 }
 
+// SetUserIDInContext adds a user ID to the context (for testing)
+func SetUserIDInContext(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, SessionKeyUserID, userID)
+}
+
 // ClearSession clears all session data
 func ClearSession(w http.ResponseWriter, r *http.Request) error {
 	session, err := GetSession(r)

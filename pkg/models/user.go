@@ -142,6 +142,7 @@ func (s *UserStore) CreateOrUpdate(user *User) error {
 	}
 
 	// Check if user exists
+	// Note: GetBySiteAndID returns (nil, nil) when user not found, so err != nil means actual DB error
 	existing, err := s.GetBySiteAndID(user.SiteID, user.ID)
 	if err != nil {
 		return err

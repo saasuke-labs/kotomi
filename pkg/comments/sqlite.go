@@ -69,6 +69,8 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 		site_id TEXT NOT NULL,
 		page_id TEXT NOT NULL,
 		author TEXT NOT NULL,
+		author_id TEXT NOT NULL,
+		author_email TEXT,
 		text TEXT NOT NULL,
 		parent_id TEXT,
 		status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
@@ -81,6 +83,7 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 	CREATE INDEX IF NOT EXISTS idx_site_page ON comments(site_id, page_id);
 	CREATE INDEX IF NOT EXISTS idx_parent ON comments(parent_id);
 	CREATE INDEX IF NOT EXISTS idx_comments_status ON comments(status);
+	CREATE INDEX IF NOT EXISTS idx_comments_author ON comments(author_id);
 
 	CREATE TABLE IF NOT EXISTS allowed_reactions (
 		id TEXT PRIMARY KEY,
@@ -102,18 +105,19 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 		page_id TEXT,
 		comment_id TEXT,
 		allowed_reaction_id TEXT NOT NULL,
-		user_identifier TEXT NOT NULL,
+		user_id TEXT NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE,
 		FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
 		FOREIGN KEY (allowed_reaction_id) REFERENCES allowed_reactions(id) ON DELETE CASCADE,
 		CHECK ((page_id IS NOT NULL AND comment_id IS NULL) OR (page_id IS NULL AND comment_id IS NOT NULL)),
-		UNIQUE(page_id, comment_id, allowed_reaction_id, user_identifier)
+		UNIQUE(page_id, comment_id, allowed_reaction_id, user_id)
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_reactions_page ON reactions(page_id);
 	CREATE INDEX IF NOT EXISTS idx_reactions_comment ON reactions(comment_id);
 	CREATE INDEX IF NOT EXISTS idx_reactions_allowed ON reactions(allowed_reaction_id);
+	CREATE INDEX IF NOT EXISTS idx_reactions_user ON reactions(user_id);
 
 	CREATE TABLE IF NOT EXISTS moderation_config (
 		id TEXT PRIMARY KEY,
@@ -131,6 +135,24 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_moderation_config_site ON moderation_config(site_id);
+
+	CREATE TABLE IF NOT EXISTS site_auth_configs (
+		id TEXT PRIMARY KEY,
+		site_id TEXT NOT NULL UNIQUE,
+		auth_mode TEXT NOT NULL DEFAULT 'external',
+		jwt_validation_type TEXT,
+		jwt_secret TEXT,
+		jwt_public_key TEXT,
+		jwks_endpoint TEXT,
+		jwt_issuer TEXT,
+		jwt_audience TEXT,
+		token_expiration_buffer INTEGER DEFAULT 60,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_site_auth_configs_site ON site_auth_configs(site_id);
 	`
 
 	if _, err := db.Exec(schema); err != nil {
@@ -203,8 +225,8 @@ func (s *SQLiteStore) AddPageComment(site, page string, comment Comment) error {
 	}
 
 	query := `
-		INSERT INTO comments (id, site_id, page_id, author, text, parent_id, status, moderated_by, moderated_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO comments (id, site_id, page_id, author, author_id, author_email, text, parent_id, status, moderated_by, moderated_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	// Convert empty ParentID to NULL
@@ -228,11 +250,20 @@ func (s *SQLiteStore) AddPageComment(site, page string, comment Comment) error {
 		moderatedAt.Valid = true
 	}
 
+	// Convert empty AuthorEmail to NULL
+	var authorEmail sql.NullString
+	if comment.AuthorEmail != "" {
+		authorEmail.String = comment.AuthorEmail
+		authorEmail.Valid = true
+	}
+
 	_, err = s.db.Exec(query,
 		comment.ID,
 		site,
 		page,
 		comment.Author,
+		comment.AuthorID,
+		authorEmail,
 		comment.Text,
 		parentID,
 		comment.Status,
@@ -252,7 +283,7 @@ func (s *SQLiteStore) AddPageComment(site, page string, comment Comment) error {
 // GetPageComments retrieves all comments for a specific page on a site
 func (s *SQLiteStore) GetPageComments(site, page string) ([]Comment, error) {
 	query := `
-		SELECT id, author, text, parent_id, status, moderated_by, moderated_at, created_at, updated_at
+		SELECT id, author, author_id, author_email, text, parent_id, status, moderated_by, moderated_at, created_at, updated_at
 		FROM comments
 		WHERE site_id = ? AND page_id = ?
 		ORDER BY created_at ASC
@@ -270,8 +301,9 @@ func (s *SQLiteStore) GetPageComments(site, page string) ([]Comment, error) {
 		var parentID sql.NullString
 		var moderatedBy sql.NullString
 		var moderatedAt sql.NullTime
+		var authorEmail sql.NullString
 
-		err := rows.Scan(&c.ID, &c.Author, &c.Text, &parentID, &c.Status, &moderatedBy, &moderatedAt, &c.CreatedAt, &c.UpdatedAt)
+		err := rows.Scan(&c.ID, &c.Author, &c.AuthorID, &authorEmail, &c.Text, &parentID, &c.Status, &moderatedBy, &moderatedAt, &c.CreatedAt, &c.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan comment: %w", err)
 		}
@@ -284,6 +316,9 @@ func (s *SQLiteStore) GetPageComments(site, page string) ([]Comment, error) {
 		}
 		if moderatedAt.Valid {
 			c.ModeratedAt = moderatedAt.Time
+		}
+		if authorEmail.Valid {
+			c.AuthorEmail = authorEmail.String
 		}
 
 		comments = append(comments, c)

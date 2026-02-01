@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/saasuke-labs/kotomi/pkg/comments"
 	"github.com/saasuke-labs/kotomi/pkg/middleware"
 	"github.com/saasuke-labs/kotomi/pkg/models"
+	"github.com/saasuke-labs/kotomi/pkg/moderation"
 )
 
 func TestGetHealthz(t *testing.T) {
@@ -599,4 +601,106 @@ func TestAddPageReactionHandler_MissingAllowedReactionID(t *testing.T) {
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("expected status 400, got %d", resp.StatusCode)
 	}
+}
+
+func TestPostCommentsHandler_WithModeration(t *testing.T) {
+// Create a test database with moderation config
+dbPath := ":memory:"
+store, err := comments.NewSQLiteStore(dbPath)
+if err != nil {
+t.Fatalf("Failed to create SQLite store: %v", err)
+}
+defer store.Close()
+
+commentStore = store
+db = store.GetDB()
+
+// Create test user
+userStore := models.NewUserStore(db)
+user, _ := userStore.Create("test@example.com", "Test User", "test-auth0-sub")
+
+// Create test site
+siteStore := models.NewSiteStore(db)
+site, _ := siteStore.Create(user.ID, "Test Site", "test.com", "Test site")
+
+// Create test page
+pageStore := models.NewPageStore(db)
+page, _ := pageStore.Create(site.ID, "/test", "Test Page")
+
+// Create mock moderator and config
+moderator = &mockModerator{
+result: &moderation.ModerationResult{
+Decision:   "approve",
+Confidence: 0.2,
+Reason:     "Looks good",
+},
+}
+moderationConfigStore = moderation.NewConfigStore(db)
+
+// Enable moderation for the site
+config := moderation.DefaultModerationConfig()
+config.Enabled = true
+moderationConfigStore.Create(site.ID, config)
+
+// Create test comment
+comment := comments.Comment{
+Text: "This is a test comment",
+}
+
+body, _ := json.Marshal(comment)
+req := httptest.NewRequest("POST", "/api/site/"+site.ID+"/page/"+page.ID+"/comments", bytes.NewReader(body))
+req = req.WithContext(createTestUserContext(req.Context()))
+w := httptest.NewRecorder()
+
+postCommentsHandler(w, req)
+
+resp := w.Result()
+defer resp.Body.Close()
+
+if resp.StatusCode != http.StatusOK {
+t.Errorf("expected status 200, got %d", resp.StatusCode)
+}
+
+var returnedComment comments.Comment
+if err := json.NewDecoder(resp.Body).Decode(&returnedComment); err != nil {
+t.Fatalf("failed to decode response: %v", err)
+}
+
+// Comment should be approved based on mock moderation result
+if returnedComment.Status != "approved" {
+t.Errorf("expected status 'approved', got '%s'", returnedComment.Status)
+}
+
+// Cleanup
+moderator = nil
+moderationConfigStore = nil
+}
+
+// mockModerator is a simple mock for testing
+type mockModerator struct {
+result *moderation.ModerationResult
+err    error
+}
+
+func (m *mockModerator) AnalyzeComment(text string, config moderation.ModerationConfig) (*moderation.ModerationResult, error) {
+return m.result, m.err
+}
+
+
+func TestShowLoginPage(t *testing.T) {
+// Initialize templates (required for showLoginPage)
+templates = template.New("test")
+templates.New("login.html").Parse("<html>Login Page</html>")
+
+req := httptest.NewRequest("GET", "/login", nil)
+w := httptest.NewRecorder()
+
+showLoginPage(w, req)
+
+resp := w.Result()
+defer resp.Body.Close()
+
+if resp.StatusCode != http.StatusOK {
+t.Errorf("expected status 200, got %d", resp.StatusCode)
+}
 }

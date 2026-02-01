@@ -2,7 +2,6 @@
 
 **Status:** Proposed  
 **Date:** 2026-01-31  
-**Updated:** 2026-02-01 (Removed anonymous support - no backward compatibility needed)  
 **Authors:** Kotomi Development Team  
 **Deciders:** Product Team, Engineering Team  
 
@@ -26,14 +25,14 @@ Kotomi currently supports comments and reactions on static websites, but user id
 Many Kotomi deployments are embedded into existing websites that already have their own authentication systems (Auth0, Firebase, custom OAuth, SAML, etc.). Sites need a way to "bring their own authentication" while Kotomi handles the comment and reaction functionality.
 
 **Key Requirements:**
-1. Require authenticated users for all comments and reactions
+1. Support authenticated users for comments and reactions
 2. Allow sites to integrate their existing authentication systems
-3. Support user profile management (edit/delete own comments, view own reactions)
-4. Enable moderation based on user reputation/history
-5. Respect privacy regulations (GDPR, CCPA)
-6. Provide flexibility for various authentication providers
-
-**Important Note:** Since Kotomi has not been released yet, we do not need to maintain backward compatibility with anonymous commenting. All users must authenticate to comment or react.
+3. Maintain backward compatibility with anonymous/guest commenting (if enabled)
+4. Support user profile management (edit/delete own comments, view own reactions)
+5. Enable moderation based on user reputation/history
+6. Respect privacy regulations (GDPR, CCPA)
+7. Minimize complexity for sites without authentication needs
+8. Provide flexibility for various authentication providers
 
 ## Decision Drivers
 
@@ -42,7 +41,7 @@ Many Kotomi deployments are embedded into existing websites that already have th
 * **Privacy**: User data must be handled according to privacy regulations
 * **User Experience**: Authentication should be seamless and not disruptive
 * **Developer Experience**: Integration should be straightforward for site developers
-* **Authentication Required**: All commenting and reactions require authenticated users
+* **Backward Compatibility**: Existing anonymous commenting must continue to work
 * **Performance**: Authentication checks should not significantly impact API performance
 * **Scalability**: Solution must scale to thousands of sites with different auth providers
 
@@ -161,6 +160,9 @@ Each site in Kotomi will have authentication configuration:
 type SiteAuthConfig struct {
     ID                    string    `json:"id"`
     SiteID                string    `json:"site_id"`
+    AuthEnabled           bool      `json:"auth_enabled"`           // Enable/disable authentication
+    AllowAnonymous        bool      `json:"allow_anonymous"`        // Allow unauthenticated comments/reactions
+    RequireAuth           bool      `json:"require_auth"`           // Require authentication (cannot be anonymous)
     JWTValidationType     string    `json:"jwt_validation_type"`    // "hmac", "rsa", "ecdsa", "jwks"
     JWTSecret             string    `json:"jwt_secret,omitempty"`   // For HMAC (symmetric) - stored encrypted
     JWTPublicKey          string    `json:"jwt_public_key,omitempty"` // For RSA/ECDSA (asymmetric)
@@ -172,8 +174,6 @@ type SiteAuthConfig struct {
     UpdatedAt             time.Time `json:"updated_at"`
 }
 ```
-
-**Note:** Authentication is always required. There are no options to enable/disable or allow anonymous access.
 
 #### 2. JWT Token Format
 
@@ -246,20 +246,19 @@ type Comment struct {
     ID          string    `json:"id"`
     SiteID      string    `json:"site_id"`
     PageID      string    `json:"page_id"`
-    Author      string    `json:"author"`         // Display name from JWT
-    AuthorID    string    `json:"author_id"`      // User ID from JWT (required)
-    Email       string    `json:"email,omitempty"` // User email (for moderation)
+    Author      string    `json:"author"`         // Display name (kept for backward compatibility)
+    AuthorID    string    `json:"author_id,omitempty"` // NEW: User ID if authenticated
+    Email       string    `json:"email,omitempty"`     // NEW: User email (for moderation)
     Text        string    `json:"text"`
     ParentID    string    `json:"parent_id,omitempty"`
     Status      string    `json:"status"`
+    IsAnonymous bool      `json:"is_anonymous"`   // NEW: True if posted anonymously
     ModeratedBy string    `json:"moderated_by,omitempty"`
     ModeratedAt time.Time `json:"moderated_at,omitempty"`
     CreatedAt   time.Time `json:"created_at"`
     UpdatedAt   time.Time `json:"updated_at"`
 }
 ```
-
-**Note:** `author_id` is always required since all comments must be from authenticated users.
 
 **d) Reaction Model Updates:**
 
@@ -269,12 +268,12 @@ type Reaction struct {
     PageID            string    `json:"page_id,omitempty"`
     CommentID         string    `json:"comment_id,omitempty"`
     AllowedReactionID string    `json:"allowed_reaction_id"`
-    UserID            string    `json:"user_id"`           // User ID from JWT (required)
+    UserIdentifier    string    `json:"user_identifier"` // CHANGED: Now stores user_id instead of IP
+    UserID            string    `json:"user_id,omitempty"` // NEW: Explicit user ID field
+    IsAnonymous       bool      `json:"is_anonymous"`     // NEW: True if reacted anonymously
     CreatedAt         time.Time `json:"created_at"`
 }
 ```
-
-**Note:** `user_id` is always required since all reactions must be from authenticated users. The legacy `user_identifier` field for IP addresses is removed.
 
 #### 4. Authentication Middleware
 
@@ -286,14 +285,20 @@ func JWTAuthMiddleware(siteAuthConfig *SiteAuthConfig) gin.HandlerFunc {
         // 1. Extract token from Authorization header
         authHeader := c.GetHeader("Authorization")
         
-        // 2. If no token, reject with 401
-        if authHeader == "" {
+        // 2. If no token and anonymous allowed, continue
+        if authHeader == "" && siteAuthConfig.AllowAnonymous {
+            c.Next()
+            return
+        }
+        
+        // 3. If no token and auth required, reject
+        if authHeader == "" && siteAuthConfig.RequireAuth {
             c.JSON(401, gin.H{"error": "Authentication required"})
             c.Abort()
             return
         }
         
-        // 3. Parse and validate JWT
+        // 4. Parse and validate JWT
         token, err := validateJWT(authHeader, siteAuthConfig)
         if err != nil {
             c.JSON(401, gin.H{"error": "Invalid token"})
@@ -301,16 +306,15 @@ func JWTAuthMiddleware(siteAuthConfig *SiteAuthConfig) gin.HandlerFunc {
             return
         }
         
-        // 4. Extract user info and store in context
+        // 5. Extract user info and store in context
         user := extractUserFromToken(token)
         c.Set("authenticated_user", user)
+        c.Set("is_authenticated", true)
         
         c.Next()
     }
 }
 ```
-
-**Note:** All requests must include a valid JWT token. Anonymous access is not supported.
 
 #### 5. API Endpoints
 
@@ -327,10 +331,10 @@ func JWTAuthMiddleware(siteAuthConfig *SiteAuthConfig) gin.HandlerFunc {
 **Modified Endpoints:**
 
 Existing comment and reaction endpoints will:
-1. Require JWT token in Authorization header (mandatory)
-2. Extract and validate user info from token
-3. Store user_id for all comments and reactions
-4. Return 401 Unauthorized if token is missing or invalid
+1. Accept optional JWT token in Authorization header
+2. Extract user info if token is valid
+3. Fall back to anonymous mode if no token and allowed
+4. Store user_id instead of IP for authenticated users
 
 #### 6. Database Schema Changes
 
@@ -340,6 +344,9 @@ Existing comment and reaction endpoints will:
 CREATE TABLE site_auth_configs (
     id TEXT PRIMARY KEY,
     site_id TEXT NOT NULL UNIQUE,
+    auth_enabled BOOLEAN DEFAULT FALSE,
+    allow_anonymous BOOLEAN DEFAULT TRUE,
+    require_auth BOOLEAN DEFAULT FALSE,
     jwt_validation_type TEXT NOT NULL, -- 'hmac', 'rsa', 'ecdsa', 'jwks'
     jwt_secret TEXT,                   -- Encrypted at rest
     jwt_public_key TEXT,
@@ -380,41 +387,32 @@ CREATE INDEX idx_users_email ON users(site_id, email);
 **Modified Table: comments**
 
 ```sql
--- Add new columns:
-ALTER TABLE comments ADD COLUMN author_id TEXT NOT NULL;
+-- Add new columns (backward compatible):
+ALTER TABLE comments ADD COLUMN author_id TEXT;
 ALTER TABLE comments ADD COLUMN email TEXT;
+ALTER TABLE comments ADD COLUMN is_anonymous BOOLEAN DEFAULT FALSE;
 
 -- Add index for author_id
 CREATE INDEX idx_comments_author_id ON comments(site_id, author_id);
 
--- Add foreign key
-ALTER TABLE comments ADD FOREIGN KEY (site_id, author_id) REFERENCES users(site_id, id) ON DELETE CASCADE;
+-- Add foreign key (optional, depends on implementation)
+-- FOREIGN KEY (site_id, author_id) REFERENCES users(site_id, id) ON DELETE SET NULL
 ```
 
 **Modified Table: reactions**
 
 ```sql
--- Replace user_identifier with user_id:
-ALTER TABLE reactions DROP COLUMN user_identifier;
-ALTER TABLE reactions ADD COLUMN user_id TEXT NOT NULL;
+-- Add new columns (backward compatible):
+ALTER TABLE reactions ADD COLUMN user_id TEXT;
+ALTER TABLE reactions ADD COLUMN is_anonymous BOOLEAN DEFAULT FALSE;
 
 -- Add index for user_id
 CREATE INDEX idx_reactions_user_id ON reactions(user_id);
 
--- Add foreign key
-ALTER TABLE reactions ADD FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-
--- Ensure unique constraint: one reaction per user per comment/page
-CREATE UNIQUE INDEX idx_reactions_unique_comment 
-    ON reactions(comment_id, allowed_reaction_id, user_id) 
-    WHERE comment_id IS NOT NULL;
-
-CREATE UNIQUE INDEX idx_reactions_unique_page 
-    ON reactions(page_id, allowed_reaction_id, user_id) 
-    WHERE page_id IS NOT NULL;
+-- Migration note: user_identifier will continue to exist for backward compatibility
+-- For authenticated users: user_identifier = user_id
+-- For anonymous users: user_identifier = IP address (if allowed)
 ```
-
-**Note:** Since Kotomi hasn't been released, we don't need migration scripts. The schema is designed from scratch to require authentication.
 
 #### 7. Security Considerations
 
@@ -432,9 +430,10 @@ CREATE UNIQUE INDEX idx_reactions_unique_page
 - Implement token caching with short TTL to reduce validation overhead
 
 **c) Rate Limiting:**
-- Apply rate limits per authenticated user_id
-- Track user activity for abuse detection
-- Implement stricter limits for new or unverified users
+- Apply stricter rate limits to anonymous users
+- More generous limits for authenticated users
+- Track rate limits per user_id for authenticated users
+- Track rate limits per IP for anonymous users
 
 **d) User Privacy:**
 - Email addresses are optional and used only for moderation
@@ -447,27 +446,29 @@ CREATE UNIQUE INDEX idx_reactions_unique_page
 - Tokens should be refreshed by the site's auth system
 - Kotomi will reject expired tokens (with configurable grace period)
 
-#### 8. Implementation Strategy
+#### 8. Migration Path
 
-**Since Kotomi has not been released yet, we implement authentication from the start:**
+**Phase 1: Backward Compatibility (Required)**
+- All existing API endpoints continue to work without authentication
+- IP-based user identification continues for anonymous users
+- Comments with just "author" string continue to work
 
-**Phase 1: Core Implementation**
-- Create authentication configuration per site
-- Implement JWT validation for all supported methods (HMAC, RSA, ECDSA, JWKS)
-- Enforce authentication on all comment and reaction endpoints
-- Store user information from JWT claims
+**Phase 2: Opt-in Authentication (Per Site)**
+- Sites can enable authentication via admin panel
+- Sites configure JWT validation method
+- Sites can choose to allow/disallow anonymous comments
 
-**Phase 2: User Management**
-- Track user first seen / last seen timestamps
-- Store user profiles with name, email, avatar, etc.
-- Enable user-based moderation features
-- Implement user activity history
+**Phase 3: Gradual Migration**
+- Existing comments remain unchanged (no author_id)
+- New comments from authenticated users include author_id
+- Admin panel shows mixed authenticated/anonymous comments
 
-**Phase 3: Enhanced Features**
-- Allow users to edit their own comments
-- Allow users to delete their own comments
-- Show user badges/verification status
-- Implement user reputation system foundations
+**Phase 4: Enhanced Features (Authenticated Users Only)**
+- Edit own comments (requires author_id)
+- Delete own comments (requires author_id)
+- View comment history (requires author_id)
+- User reputation/karma (requires author_id)
+- Block/mute users (requires author_id)
 
 #### 9. Developer Experience
 
@@ -477,14 +478,14 @@ CREATE UNIQUE INDEX idx_reactions_unique_page
 ```
 1. Log in to Kotomi admin panel
 2. Navigate to Site Settings → Authentication
-3. Choose validation method: HMAC or RSA
-4. For HMAC: Generate a shared secret (or provide your own)
-5. For RSA: Upload your public key
-6. Set issuer (your domain) and audience (kotomi)
-7. Save configuration
+3. Enable "User Authentication"
+4. Choose validation method: HMAC or RSA
+5. For HMAC: Generate a shared secret (or provide your own)
+6. For RSA: Upload your public key
+7. Set issuer (your domain) and audience (kotomi)
+8. Choose whether to allow anonymous comments
+9. Save configuration
 ```
-
-**Note:** Authentication is always required. All users must provide valid JWT tokens to comment or react.
 
 **Step 2: Generate JWT Tokens in Your Application**
 
@@ -560,29 +561,43 @@ fetch('https://kotomi.example.com/api/v1/site/{siteId}/page/{pageId}/comments', 
 
 **Example 1: Blog with Auth0**
 ```yaml
+auth_enabled: true
+allow_anonymous: false  # Require authentication
+require_auth: true
 jwt_validation_type: "jwks"
 jwks_endpoint: "https://example.auth0.com/.well-known/jwks.json"
 jwt_issuer: "https://example.auth0.com/"
 jwt_audience: "kotomi"
 ```
 
-**Example 2: GitHub OAuth Integration**
+**Example 2: Open Source Project (Allow Both)**
 ```yaml
+auth_enabled: true
+allow_anonymous: true   # Allow both authenticated and anonymous
+require_auth: false
 jwt_validation_type: "rsa"
 jwt_public_key: "-----BEGIN PUBLIC KEY-----\n..."
 jwt_issuer: "https://github.com"
 jwt_audience: "kotomi"
 ```
 
-**Example 3: Custom Auth (Symmetric Key)**
+**Example 3: Private Community (Symmetric Key)**
 ```yaml
+auth_enabled: true
+allow_anonymous: false
+require_auth: true
 jwt_validation_type: "hmac"
 jwt_secret: "your-secret-key-min-32-chars"  # Stored encrypted
 jwt_issuer: "https://community.example.com"
 jwt_audience: "kotomi"
 ```
 
-**Note:** All sites require authentication. There is no option to disable authentication or allow anonymous access.
+**Example 4: Public Site (No Auth)**
+```yaml
+auth_enabled: false
+allow_anonymous: true
+# No JWT configuration needed
+```
 
 ## Consequences
 
@@ -595,22 +610,21 @@ jwt_audience: "kotomi"
 5. **Scalability**: No additional infrastructure for authentication
 6. **Developer-Friendly**: Standard JWT format, well-documented
 7. **User Experience**: Seamless authentication (no extra login)
-8. **User Features**: Enables edit/delete own comments, user profiles, reputation
-9. **Quality Control**: All interactions are from authenticated, trackable users
-10. **Simpler Architecture**: No need to support both anonymous and authenticated modes
+8. **Features**: Enables user-specific features (edit, delete, history)
 
 ### Negative
 
-1. **Authentication Required**: Sites must implement JWT token generation
+1. **Complexity**: Sites must implement JWT token generation
 2. **Technical Barrier**: Requires understanding of JWT and key management
 3. **Key Management**: Sites must secure their JWT secrets/keys
 4. **Clock Sync**: Token expiration requires synchronized clocks
-5. **No Anonymous Access**: All users must authenticate to participate
+5. **Migration**: Existing anonymous comments cannot be attributed to users retroactively
 
 ### Neutral
 
-1. **Pre-Release Decision**: Made before v1.0 release, no migration needed
-2. **Single Mode**: Simpler implementation without optional authentication
+1. **Backward Compatibility**: Anonymous commenting continues to work
+2. **Gradual Adoption**: Sites can adopt authentication at their own pace
+3. **Optional Feature**: Sites without authentication needs can ignore it
 
 ## Compliance and Privacy
 
@@ -630,22 +644,27 @@ jwt_audience: "kotomi"
 3. **Audit Logging**: Authentication configuration changes logged
 4. **Rate Limiting**: Prevent abuse of authentication endpoints
 
-## Alternatives for Sites Without Authentication
+## Alternatives for Low-Technical Sites
 
-For sites that cannot implement JWT token generation:
+For sites that cannot or don't want to implement JWT:
 
-1. **Option A: Use Third-Party Auth Widget (Future)**
-   - Kotomi can provide a JavaScript widget in the future
-   - Widget handles OAuth with popular providers (Google, GitHub, etc.)
+1. **Option A: Anonymous Only**
+   - Disable authentication
+   - Use IP-based rate limiting
+   - Rely on moderation
+
+2. **Option B: Third-Party Auth Widget**
+   - Future: Kotomi provides a JavaScript widget
+   - Widget handles OAuth with popular providers
    - Widget generates JWT tokens automatically
    - Site owners just configure providers in admin panel
 
-2. **Option B: Pre-built Integrations (Future)**
-   - Provide official integrations for popular platforms
-   - WordPress plugin, Ghost integration, Hugo module, etc.
-   - Handle JWT generation behind the scenes
-
-**Note:** Anonymous commenting is not supported. Sites must implement authentication to use Kotomi.
+3. **Option C: Simple Email Verification**
+   - Future: Kotomi provides optional email verification
+   - User enters email to comment
+   - Kotomi sends verification link
+   - User clicks link to verify comment
+   - Not true authentication, but better than anonymous
 
 ## References
 
@@ -703,6 +722,9 @@ For sites that cannot implement JWT token generation:
 **Q: Can sites rotate JWT keys?**  
 A: Yes, sites can update their keys in the admin panel at any time. Existing tokens will fail validation after key rotation.
 
+**Q: What happens to existing anonymous comments?**  
+A: They remain anonymous. There's no way to retroactively attribute them to users.
+
 **Q: Can a user edit comments across devices?**  
 A: Yes, as long as they authenticate with the same user ID on all devices.
 
@@ -718,14 +740,9 @@ A: Sites should immediately rotate their JWT keys in Kotomi admin panel to inval
 **Q: Does this work with mobile apps?**  
 A: Yes, mobile apps can generate JWT tokens the same way web apps do.
 
-**Q: Is anonymous commenting supported?**  
-A: No. Since Kotomi has not been released yet, we made the decision to require authentication for all interactions. This simplifies the implementation and ensures better quality control.
-
-**Q: What if users don't want to log in?**  
-A: Sites using Kotomi must implement authentication. For low-friction authentication, sites can use social login providers or implement "magic link" email authentication.
+**Q: Can anonymous and authenticated users co-exist on the same site?**  
+A: Yes, if the site enables "allow_anonymous" in the configuration.
 
 ## Conclusion
 
-JWT-based delegated authentication provides the best balance of flexibility, security, and developer experience for Kotomi. It allows sites to "bring their own authentication" while maintaining a simple, standards-based integration.
-
-**Key Decision:** Since Kotomi has not been released yet, we require authentication for all comments and reactions. This simplifies the architecture, improves security, and enables richer user features from day one. Sites must implement JWT token generation to use Kotomi's commenting and reaction features.
+JWT-based delegated authentication provides the best balance of flexibility, security, and developer experience for Kotomi. It allows sites to "bring their own authentication" while maintaining a simple, standards-based integration. The implementation will be gradual, ensuring backward compatibility and allowing sites to adopt authentication at their own pace.

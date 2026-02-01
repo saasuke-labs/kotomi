@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/saasuke-labs/kotomi/pkg/comments"
 	"github.com/saasuke-labs/kotomi/pkg/middleware"
 	"github.com/saasuke-labs/kotomi/pkg/models"
+	"github.com/saasuke-labs/kotomi/pkg/moderation"
 )
 
 func TestGetHealthz(t *testing.T) {
@@ -68,6 +70,14 @@ func TestGetUrlParams_ValidPath(t *testing.T) {
 			expected: map[string]string{
 				"siteId": "my-site",
 				"pageId": "my-page",
+			},
+		},
+		{
+			name: "v1 API path",
+			path: "/api/v1/site/mysite/page/mypage/comments",
+			expected: map[string]string{
+				"siteId": "mysite",
+				"pageId": "mypage",
 			},
 		},
 	}
@@ -348,4 +358,349 @@ func TestWriteJsonResponse(t *testing.T) {
 	if decoded.Count != data.Count {
 		t.Errorf("expected count %d, got %d", data.Count, decoded.Count)
 	}
+}
+
+func TestGetUserIdentifier(t *testing.T) {
+	tests := []struct {
+		name           string
+		remoteAddr     string
+		headers        map[string]string
+		expectedResult string
+	}{
+		{
+			name:           "basic remote address with port",
+			remoteAddr:     "192.168.1.100:12345",
+			headers:        map[string]string{},
+			expectedResult: "192.168.1.100",
+		},
+		{
+			name:           "X-Real-IP header",
+			remoteAddr:     "192.168.1.100:12345",
+			headers:        map[string]string{"X-Real-IP": "203.0.113.42"},
+			expectedResult: "203.0.113.42",
+		},
+		{
+			name:           "X-Forwarded-For single IP",
+			remoteAddr:     "192.168.1.100:12345",
+			headers:        map[string]string{"X-Forwarded-For": "203.0.113.42"},
+			expectedResult: "203.0.113.42",
+		},
+		{
+			name:           "X-Forwarded-For multiple IPs",
+			remoteAddr:     "192.168.1.100:12345",
+			headers:        map[string]string{"X-Forwarded-For": "203.0.113.42, 198.51.100.1, 192.168.1.1"},
+			expectedResult: "203.0.113.42",
+		},
+		{
+			name:           "X-Real-IP takes precedence over X-Forwarded-For",
+			remoteAddr:     "192.168.1.100:12345",
+			headers:        map[string]string{"X-Real-IP": "203.0.113.42", "X-Forwarded-For": "198.51.100.1"},
+			expectedResult: "203.0.113.42",
+		},
+		{
+			name:           "IPv6 address",
+			remoteAddr:     "[2001:db8::1]:12345",
+			headers:        map[string]string{},
+			expectedResult: "[2001:db8::1]",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/test", nil)
+			req.RemoteAddr = tt.remoteAddr
+			for key, value := range tt.headers {
+				req.Header.Set(key, value)
+			}
+
+			result := getUserIdentifier(req)
+			if result != tt.expectedResult {
+				t.Errorf("expected '%s', got '%s'", tt.expectedResult, result)
+			}
+		})
+	}
+}
+
+func TestDeprecationMiddleware(t *testing.T) {
+	// Create a simple handler that just returns OK
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	// Wrap it with the deprecation middleware
+	wrappedHandler := deprecationMiddleware(handler)
+
+	req := httptest.NewRequest("GET", "/api/site/test/page/test/comments", nil)
+	w := httptest.NewRecorder()
+
+	wrappedHandler.ServeHTTP(w, req)
+
+	resp := w.Result()
+	defer resp.Body.Close()
+
+	// Check that deprecation headers are present
+	if resp.Header.Get("X-API-Warn") == "" {
+		t.Error("expected X-API-Warn header to be set")
+	}
+
+	if resp.Header.Get("Deprecation") != "true" {
+		t.Errorf("expected Deprecation header to be 'true', got '%s'", resp.Header.Get("Deprecation"))
+	}
+
+	if resp.Header.Get("Sunset") == "" {
+		t.Error("expected Sunset header to be set")
+	}
+
+	// Verify the handler still executes
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200, got %d", resp.StatusCode)
+	}
+}
+
+func TestPostCommentsHandler_Unauthenticated(t *testing.T) {
+	// Reset comment store with in-memory adapter
+	commentStore = &InMemoryStoreAdapter{SitePagesIndex: comments.NewSitePagesIndex()}
+
+	comment := comments.Comment{
+		Text: "This is a test comment",
+	}
+
+	body, _ := json.Marshal(comment)
+	req := httptest.NewRequest("POST", "/api/site/testsite/page/testpage/comments", bytes.NewReader(body))
+	// Don't add authenticated user to context
+	w := httptest.NewRecorder()
+
+	postCommentsHandler(w, req)
+
+	resp := w.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected status 401, got %d", resp.StatusCode)
+	}
+}
+
+func TestPostCommentsHandler_EmptyText(t *testing.T) {
+	commentStore = &InMemoryStoreAdapter{SitePagesIndex: comments.NewSitePagesIndex()}
+
+	comment := comments.Comment{
+		Text: "", // Empty text
+	}
+
+	body, _ := json.Marshal(comment)
+	req := httptest.NewRequest("POST", "/api/site/testsite/page/testpage/comments", bytes.NewReader(body))
+	req = req.WithContext(createTestUserContext(req.Context()))
+	w := httptest.NewRecorder()
+
+	postCommentsHandler(w, req)
+
+	resp := w.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", resp.StatusCode)
+	}
+}
+
+func TestAddReactionHandler_Unauthenticated(t *testing.T) {
+	req := httptest.NewRequest("POST", "/api/comments/test-comment-1/reactions", bytes.NewReader([]byte("{}")))
+	// Don't add authenticated user to context
+	w := httptest.NewRecorder()
+
+	addReactionHandler(w, req)
+
+	resp := w.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected status 401, got %d", resp.StatusCode)
+	}
+}
+
+func TestAddReactionHandler_InvalidJSON(t *testing.T) {
+	req := httptest.NewRequest("POST", "/api/comments/test-comment-1/reactions", bytes.NewReader([]byte("invalid json")))
+	req = req.WithContext(createTestUserContext(req.Context()))
+	w := httptest.NewRecorder()
+
+	addReactionHandler(w, req)
+
+	resp := w.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", resp.StatusCode)
+	}
+}
+
+func TestAddReactionHandler_MissingAllowedReactionID(t *testing.T) {
+	reqBody := map[string]string{
+		"allowed_reaction_id": "", // Empty
+	}
+	body, _ := json.Marshal(reqBody)
+
+	req := httptest.NewRequest("POST", "/api/comments/test-comment-1/reactions", bytes.NewReader(body))
+	req = req.WithContext(createTestUserContext(req.Context()))
+	w := httptest.NewRecorder()
+
+	addReactionHandler(w, req)
+
+	resp := w.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", resp.StatusCode)
+	}
+}
+
+func TestAddPageReactionHandler_Unauthenticated(t *testing.T) {
+	req := httptest.NewRequest("POST", "/api/pages/test-page-1/reactions", bytes.NewReader([]byte("{}")))
+	// Don't add authenticated user to context
+	w := httptest.NewRecorder()
+
+	addPageReactionHandler(w, req)
+
+	resp := w.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected status 401, got %d", resp.StatusCode)
+	}
+}
+
+func TestAddPageReactionHandler_InvalidJSON(t *testing.T) {
+	req := httptest.NewRequest("POST", "/api/pages/test-page-1/reactions", bytes.NewReader([]byte("invalid json")))
+	req = req.WithContext(createTestUserContext(req.Context()))
+	w := httptest.NewRecorder()
+
+	addPageReactionHandler(w, req)
+
+	resp := w.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", resp.StatusCode)
+	}
+}
+
+func TestAddPageReactionHandler_MissingAllowedReactionID(t *testing.T) {
+	reqBody := map[string]string{
+		"allowed_reaction_id": "", // Empty
+	}
+	body, _ := json.Marshal(reqBody)
+
+	req := httptest.NewRequest("POST", "/api/pages/test-page-1/reactions", bytes.NewReader(body))
+	req = req.WithContext(createTestUserContext(req.Context()))
+	w := httptest.NewRecorder()
+
+	addPageReactionHandler(w, req)
+
+	resp := w.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", resp.StatusCode)
+	}
+}
+
+func TestPostCommentsHandler_WithModeration(t *testing.T) {
+// Create a test database with moderation config
+dbPath := ":memory:"
+store, err := comments.NewSQLiteStore(dbPath)
+if err != nil {
+t.Fatalf("Failed to create SQLite store: %v", err)
+}
+defer store.Close()
+
+commentStore = store
+db = store.GetDB()
+
+// Create test user
+userStore := models.NewUserStore(db)
+user, _ := userStore.Create("test@example.com", "Test User", "test-auth0-sub")
+
+// Create test site
+siteStore := models.NewSiteStore(db)
+site, _ := siteStore.Create(user.ID, "Test Site", "test.com", "Test site")
+
+// Create test page
+pageStore := models.NewPageStore(db)
+page, _ := pageStore.Create(site.ID, "/test", "Test Page")
+
+// Create mock moderator and config
+moderator = &mockModerator{
+result: &moderation.ModerationResult{
+Decision:   "approve",
+Confidence: 0.2,
+Reason:     "Looks good",
+},
+}
+moderationConfigStore = moderation.NewConfigStore(db)
+
+// Enable moderation for the site
+config := moderation.DefaultModerationConfig()
+config.Enabled = true
+moderationConfigStore.Create(site.ID, config)
+
+// Create test comment
+comment := comments.Comment{
+Text: "This is a test comment",
+}
+
+body, _ := json.Marshal(comment)
+req := httptest.NewRequest("POST", "/api/site/"+site.ID+"/page/"+page.ID+"/comments", bytes.NewReader(body))
+req = req.WithContext(createTestUserContext(req.Context()))
+w := httptest.NewRecorder()
+
+postCommentsHandler(w, req)
+
+resp := w.Result()
+defer resp.Body.Close()
+
+if resp.StatusCode != http.StatusOK {
+t.Errorf("expected status 200, got %d", resp.StatusCode)
+}
+
+var returnedComment comments.Comment
+if err := json.NewDecoder(resp.Body).Decode(&returnedComment); err != nil {
+t.Fatalf("failed to decode response: %v", err)
+}
+
+// Comment should be approved based on mock moderation result
+if returnedComment.Status != "approved" {
+t.Errorf("expected status 'approved', got '%s'", returnedComment.Status)
+}
+
+// Cleanup
+moderator = nil
+moderationConfigStore = nil
+}
+
+// mockModerator is a simple mock for testing
+type mockModerator struct {
+result *moderation.ModerationResult
+err    error
+}
+
+func (m *mockModerator) AnalyzeComment(text string, config moderation.ModerationConfig) (*moderation.ModerationResult, error) {
+return m.result, m.err
+}
+
+
+func TestShowLoginPage(t *testing.T) {
+// Initialize templates (required for showLoginPage)
+templates = template.New("test")
+templates.New("login.html").Parse("<html>Login Page</html>")
+
+req := httptest.NewRequest("GET", "/login", nil)
+w := httptest.NewRecorder()
+
+showLoginPage(w, req)
+
+resp := w.Result()
+defer resp.Body.Close()
+
+if resp.StatusCode != http.StatusOK {
+t.Errorf("expected status 200, got %d", resp.StatusCode)
+}
 }

@@ -72,13 +72,13 @@ func setupTestDB(t *testing.T) *sql.DB {
 		page_id TEXT,
 		comment_id TEXT,
 		allowed_reaction_id TEXT NOT NULL,
-		user_identifier TEXT NOT NULL,
+		user_id TEXT NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE,
 		FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
 		FOREIGN KEY (allowed_reaction_id) REFERENCES allowed_reactions(id) ON DELETE CASCADE,
 		CHECK ((page_id IS NOT NULL AND comment_id IS NULL) OR (page_id IS NULL AND comment_id IS NOT NULL)),
-		UNIQUE(page_id, comment_id, allowed_reaction_id, user_identifier)
+		UNIQUE(page_id, comment_id, allowed_reaction_id, user_id)
 	);
 	`
 
@@ -245,8 +245,8 @@ func TestReactionStore_AddReaction(t *testing.T) {
 	if reaction.CommentID != "comment-1" {
 		t.Errorf("Expected comment_id to be 'comment-1', got '%s'", reaction.CommentID)
 	}
-	if reaction.UserIdentifier != "user-123" {
-		t.Errorf("Expected user_identifier to be 'user-123', got '%s'", reaction.UserIdentifier)
+	if reaction.UserID != "user-123" {
+		t.Errorf("Expected user_id to be 'user-123', got '%s'", reaction.UserID)
 	}
 }
 

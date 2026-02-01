@@ -106,6 +106,10 @@ func setupTestEnvironment() error {
 			if httpErr == nil && resp.StatusCode == http.StatusOK {
 				resp.Body.Close()
 				log.Println("Test server is ready")
+				
+				// Seed the database with auth configurations
+				seedAuthConfigurations(testDBPath)
+				
 				return nil
 			}
 			if resp != nil {
@@ -154,6 +158,52 @@ func teardownTestEnvironment() {
 		os.Remove(testDBPath)
 		os.RemoveAll(filepath.Dir(testDBPath))
 	}
+}
+
+// seedAuthConfigurations seeds auth configurations for E2E test sites
+// This is called during setup and should not fail the setup if errors occur
+func seedAuthConfigurations(dbPath string) {
+	store, err := comments.NewSQLiteStore(dbPath)
+	if err != nil {
+		log.Printf("Warning: failed to open store for seeding auth configs: %v", err)
+		return
+	}
+	defer store.Close()
+	
+	db := store.GetDB()
+	
+	// Create auth configurations for all potential test sites
+	// These match the JWT secret used in helpers.go
+	authConfigStore := models.NewSiteAuthConfigStore(db)
+	
+	// List of all site IDs that might be used in E2E tests
+	testSites := []string{
+		"e2e-site-1", "e2e-site-2", "test-site-1",
+		"reactions-site-1", "reaction-isolation-1", "reaction-isolation-2",
+		"multiple-reactions-site", "remove-reaction-site",
+		// Add more generic patterns for dynamically created sites
+		"site-1", "site-2", "isolation-site-1", "isolation-site-2",
+	}
+	
+	for _, siteID := range testSites {
+		authConfig := &models.SiteAuthConfig{
+			SiteID:                siteID,
+			AuthMode:              "external",
+			JWTValidationType:     "hmac",
+			JWTSecret:             "test-secret-for-e2e-testing-min-32-chars",
+			JWTIssuer:             "https://e2e-test.example.com",
+			JWTAudience:           "kotomi",
+			TokenExpirationBuffer: 60,
+		}
+		
+		// Try to create, ignore errors if already exists
+		if err := authConfigStore.Create(authConfig); err != nil {
+			// Silently ignore - config might already exist or site might not exist yet
+			log.Printf("Debug: Could not create auth config for %s (this is normal): %v", siteID, err)
+		}
+	}
+	
+	log.Println("Auth configurations seeded for E2E tests")
 }
 
 // SeedTestData seeds the database with test data

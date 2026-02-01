@@ -1,8 +1,10 @@
 package models
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/saasuke-labs/kotomi/pkg/comments"
 )
@@ -328,3 +330,133 @@ func TestPageStore_Delete(t *testing.T) {
 		t.Error("Expected error for deleted page, got nil")
 	}
 }
+
+// TestUserStore_ReputationScore tests reputation score functionality
+func TestUserStore_ReputationScore(t *testing.T) {
+	sqliteStore := createTestDB(t)
+	defer sqliteStore.Close()
+
+	db := sqliteStore.GetDB()
+	adminUserStore := NewAdminUserStore(db)
+	siteStore := NewSiteStore(db)
+	userStore := NewUserStore(db)
+
+	// Create test data
+	adminUser, _ := adminUserStore.Create("admin@example.com", "Admin", "auth0|admin")
+	site, _ := siteStore.Create(adminUser.ID, "Test Site", "example.com", "A test site")
+
+	// Create a user
+	user := &User{
+		ID:              "user123",
+		SiteID:          site.ID,
+		Name:            "John Doe",
+		Email:           "john@example.com",
+		IsVerified:      true,
+		ReputationScore: 0,
+		FirstSeen:       time.Now(),
+		LastSeen:        time.Now(),
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+
+	err := userStore.CreateOrUpdate(user)
+	if err != nil {
+		t.Fatalf("CreateOrUpdate failed: %v", err)
+	}
+
+	// Update reputation score
+	newScore := 42
+	err = userStore.UpdateReputationScore(site.ID, user.ID, newScore)
+	if err != nil {
+		t.Fatalf("UpdateReputationScore failed: %v", err)
+	}
+
+	// Verify the score was updated
+	retrieved, err := userStore.GetBySiteAndID(site.ID, user.ID)
+	if err != nil {
+		t.Fatalf("GetBySiteAndID failed: %v", err)
+	}
+
+	if retrieved.ReputationScore != newScore {
+		t.Errorf("Expected reputation score %d, got %d", newScore, retrieved.ReputationScore)
+	}
+}
+
+// TestUserStore_CalculateReputationScore tests basic reputation calculation
+func TestUserStore_CalculateReputationScore(t *testing.T) {
+	sqliteStore := createTestDB(t)
+	defer sqliteStore.Close()
+
+	db := sqliteStore.GetDB()
+	adminUserStore := NewAdminUserStore(db)
+	siteStore := NewSiteStore(db)
+	pageStore := NewPageStore(db)
+	userStore := NewUserStore(db)
+
+	// Create test data
+	adminUser, _ := adminUserStore.Create("admin@example.com", "Admin", "auth0|admin")
+	site, _ := siteStore.Create(adminUser.ID, "Test Site", "example.com", "A test site")
+	page, _ := pageStore.Create(site.ID, "/test-page", "Test Page")
+
+	// Create a user
+	user := &User{
+		ID:              "user456",
+		SiteID:          site.ID,
+		Name:            "Jane Doe",
+		Email:           "jane@example.com",
+		IsVerified:      true,
+		ReputationScore: 0,
+		FirstSeen:       time.Now(),
+		LastSeen:        time.Now(),
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+
+	err := userStore.CreateOrUpdate(user)
+	if err != nil {
+		t.Fatalf("CreateOrUpdate failed: %v", err)
+	}
+
+	// Add approved comments for the user
+	for i := 0; i < 3; i++ {
+		commentID := fmt.Sprintf("comment-%d", i)
+		_, err := db.Exec(`
+			INSERT INTO comments (id, site_id, page_id, author, author_id, text, status, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, 'approved', datetime('now'), datetime('now'))
+		`, commentID, site.ID, page.ID, user.Name, user.ID, fmt.Sprintf("Comment %d", i))
+		if err != nil {
+			t.Fatalf("Failed to insert comment: %v", err)
+		}
+	}
+
+	// Calculate reputation score
+	score, err := userStore.CalculateReputationScore(site.ID, user.ID)
+	if err != nil {
+		t.Fatalf("CalculateReputationScore failed: %v", err)
+	}
+
+	// Should be 3 points (1 per approved comment)
+	if score != 3 {
+		t.Errorf("Expected reputation score 3, got %d", score)
+	}
+
+	// Add a pending comment (should not count)
+	_, err = db.Exec(`
+		INSERT INTO comments (id, site_id, page_id, author, author_id, text, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+	`, "comment-pending", site.ID, page.ID, user.Name, user.ID, "Pending comment")
+	if err != nil {
+		t.Fatalf("Failed to insert pending comment: %v", err)
+	}
+
+	// Recalculate - should still be 3
+	score, err = userStore.CalculateReputationScore(site.ID, user.ID)
+	if err != nil {
+		t.Fatalf("CalculateReputationScore failed: %v", err)
+	}
+
+	if score != 3 {
+		t.Errorf("Expected reputation score 3 (pending comment should not count), got %d", score)
+	}
+}
+

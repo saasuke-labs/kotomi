@@ -264,7 +264,7 @@ func updateCommentHandler(w http.ResponseWriter, r *http.Request) {
 	siteID := vars["siteId"]
 
 	// Get authenticated user from context
-	user, ok := r.Context().Value(middleware.UserContextKey).(*models.KotomiUser)
+	user, ok := r.Context().Value(middleware.ContextKeyUser).(*models.KotomiUser)
 	if !ok || user == nil {
 		http.Error(w, "Authentication required", http.StatusUnauthorized)
 		return
@@ -345,7 +345,7 @@ func deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
 	siteID := vars["siteId"]
 
 	// Get authenticated user from context
-	user, ok := r.Context().Value(middleware.UserContextKey).(*models.KotomiUser)
+	user, ok := r.Context().Value(middleware.ContextKeyUser).(*models.KotomiUser)
 	if !ok || user == nil {
 		http.Error(w, "Authentication required", http.StatusUnauthorized)
 		return

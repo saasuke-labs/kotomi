@@ -14,6 +14,7 @@ func NewSitePagesIndex() *SitePagesIndex {
 // Comment represents a comment or a reply.
 type Comment struct {
 	ID          string    `json:"id"`
+	SiteID      string    `json:"site_id,omitempty"`
 	Author      string    `json:"author"`
 	AuthorID    string    `json:"author_id"`
 	AuthorEmail string    `json:"author_email,omitempty"`

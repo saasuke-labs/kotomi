@@ -241,6 +241,151 @@ func getCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	writeJsonResponse(w, comments)
 }
 
+// updateCommentHandler updates a comment's text (owner only)
+// @Summary Update a comment
+// @Description Update the text of an existing comment (requires JWT authentication and ownership)
+// @Tags comments
+// @Accept json
+// @Produce json
+// @Param siteId path string true "Site ID"
+// @Param commentId path string true "Comment ID"
+// @Param update body object{text=string} true "Updated comment text"
+// @Success 200 {object} comments.Comment
+// @Failure 400 {string} string "Invalid JSON or missing required fields"
+// @Failure 401 {string} string "Authentication required"
+// @Failure 403 {string} string "Forbidden - not the comment owner"
+// @Failure 404 {string} string "Comment not found"
+// @Failure 500 {string} string "Failed to update comment"
+// @Security BearerAuth
+// @Router /site/{siteId}/comments/{commentId} [put]
+func updateCommentHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	commentID := vars["commentId"]
+	siteID := vars["siteId"]
+
+	// Get authenticated user from context
+	user, ok := r.Context().Value(middleware.UserContextKey).(*models.KotomiUser)
+	if !ok || user == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	// Parse request body
+	var updateReq struct {
+		Text string `json:"text"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&updateReq); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if updateReq.Text == "" {
+		http.Error(w, "Text is required", http.StatusBadRequest)
+		return
+	}
+
+	// Get the comment to verify ownership
+	sqliteStore, ok := commentStore.(*comments.SQLiteStore)
+	if !ok {
+		http.Error(w, "Storage backend not supported", http.StatusInternalServerError)
+		return
+	}
+
+	comment, err := sqliteStore.GetCommentByID(commentID)
+	if err != nil {
+		http.Error(w, "Comment not found", http.StatusNotFound)
+		return
+	}
+
+	// Verify the comment belongs to this site
+	if comment.SiteID != siteID {
+		http.Error(w, "Comment not found", http.StatusNotFound)
+		return
+	}
+
+	// Verify ownership - user can only edit their own comments
+	if comment.AuthorID != user.ID {
+		http.Error(w, "Forbidden - you can only edit your own comments", http.StatusForbidden)
+		return
+	}
+
+	// Update the comment text
+	if err := sqliteStore.UpdateCommentText(commentID, updateReq.Text); err != nil {
+		log.Printf("Error updating comment: %v", err)
+		http.Error(w, "Failed to update comment", http.StatusInternalServerError)
+		return
+	}
+
+	// Retrieve and return the updated comment
+	updatedComment, err := sqliteStore.GetCommentByID(commentID)
+	if err != nil {
+		http.Error(w, "Failed to retrieve updated comment", http.StatusInternalServerError)
+		return
+	}
+
+	writeJsonResponse(w, updatedComment)
+}
+
+// deleteCommentHandler deletes a comment (owner only)
+// @Summary Delete a comment
+// @Description Delete an existing comment (requires JWT authentication and ownership)
+// @Tags comments
+// @Param siteId path string true "Site ID"
+// @Param commentId path string true "Comment ID"
+// @Success 204 "Comment deleted successfully"
+// @Failure 401 {string} string "Authentication required"
+// @Failure 403 {string} string "Forbidden - not the comment owner"
+// @Failure 404 {string} string "Comment not found"
+// @Failure 500 {string} string "Failed to delete comment"
+// @Security BearerAuth
+// @Router /site/{siteId}/comments/{commentId} [delete]
+func deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	commentID := vars["commentId"]
+	siteID := vars["siteId"]
+
+	// Get authenticated user from context
+	user, ok := r.Context().Value(middleware.UserContextKey).(*models.KotomiUser)
+	if !ok || user == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	// Get the comment to verify ownership
+	sqliteStore, ok := commentStore.(*comments.SQLiteStore)
+	if !ok {
+		http.Error(w, "Storage backend not supported", http.StatusInternalServerError)
+		return
+	}
+
+	comment, err := sqliteStore.GetCommentByID(commentID)
+	if err != nil {
+		http.Error(w, "Comment not found", http.StatusNotFound)
+		return
+	}
+
+	// Verify the comment belongs to this site
+	if comment.SiteID != siteID {
+		http.Error(w, "Comment not found", http.StatusNotFound)
+		return
+	}
+
+	// Verify ownership - user can only delete their own comments
+	if comment.AuthorID != user.ID {
+		http.Error(w, "Forbidden - you can only delete your own comments", http.StatusForbidden)
+		return
+	}
+
+	// Delete the comment
+	if err := sqliteStore.DeleteComment(commentID); err != nil {
+		log.Printf("Error deleting comment: %v", err)
+		http.Error(w, "Failed to delete comment", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // getAllowedReactionsHandler retrieves allowed reactions for a site
 // @Summary Get allowed reactions
 // @Description Retrieve all allowed reactions for a site, optionally filtered by type
@@ -765,6 +910,8 @@ func main() {
 	apiV1AuthRouter := apiV1Router.PathPrefix("").Subrouter()
 	apiV1AuthRouter.Use(middleware.JWTAuthMiddleware(db))
 	apiV1AuthRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", postCommentsHandler).Methods("POST")
+	apiV1AuthRouter.HandleFunc("/site/{siteId}/comments/{commentId}", updateCommentHandler).Methods("PUT")
+	apiV1AuthRouter.HandleFunc("/site/{siteId}/comments/{commentId}", deleteCommentHandler).Methods("DELETE")
 	apiV1AuthRouter.HandleFunc("/site/{siteId}/comments/{commentId}/reactions", addReactionHandler).Methods("POST")
 	apiV1AuthRouter.HandleFunc("/site/{siteId}/pages/{pageId}/reactions", addPageReactionHandler).Methods("POST")
 	apiV1AuthRouter.HandleFunc("/site/{siteId}/reactions/{reactionId}", removeReactionHandler).Methods("DELETE")
@@ -787,6 +934,8 @@ func main() {
 	legacyAuthRouter := legacyAPIRouter.PathPrefix("").Subrouter()
 	legacyAuthRouter.Use(middleware.JWTAuthMiddleware(db))
 	legacyAuthRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", postCommentsHandler).Methods("POST")
+	legacyAuthRouter.HandleFunc("/site/{siteId}/comments/{commentId}", updateCommentHandler).Methods("PUT")
+	legacyAuthRouter.HandleFunc("/site/{siteId}/comments/{commentId}", deleteCommentHandler).Methods("DELETE")
 	legacyAuthRouter.HandleFunc("/site/{siteId}/comments/{commentId}/reactions", addReactionHandler).Methods("POST")
 	legacyAuthRouter.HandleFunc("/site/{siteId}/pages/{pageId}/reactions", addPageReactionHandler).Methods("POST")
 	legacyAuthRouter.HandleFunc("/site/{siteId}/reactions/{reactionId}", removeReactionHandler).Methods("DELETE")

@@ -9,18 +9,19 @@ import (
 
 // User represents a JWT-authenticated commenter/reactor user (Phase 2)
 type User struct {
-	ID         string    `json:"id"`          // User ID from JWT
-	SiteID     string    `json:"site_id"`     // Site this user belongs to
-	Name       string    `json:"name"`        // Display name
-	Email      string    `json:"email,omitempty"`
-	AvatarURL  string    `json:"avatar_url,omitempty"`
-	ProfileURL string    `json:"profile_url,omitempty"`
-	IsVerified bool      `json:"is_verified"`
-	Roles      []string  `json:"roles,omitempty"` // JSON array of roles
-	FirstSeen  time.Time `json:"first_seen"`
-	LastSeen   time.Time `json:"last_seen"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID              string    `json:"id"`          // User ID from JWT
+	SiteID          string    `json:"site_id"`     // Site this user belongs to
+	Name            string    `json:"name"`        // Display name
+	Email           string    `json:"email,omitempty"`
+	AvatarURL       string    `json:"avatar_url,omitempty"`
+	ProfileURL      string    `json:"profile_url,omitempty"`
+	IsVerified      bool      `json:"is_verified"`
+	Roles           []string  `json:"roles,omitempty"` // JSON array of roles
+	ReputationScore int       `json:"reputation_score"` // Phase 3: User reputation
+	FirstSeen       time.Time `json:"first_seen"`
+	LastSeen        time.Time `json:"last_seen"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // UserStore handles JWT user database operations
@@ -37,7 +38,7 @@ func NewUserStore(db *sql.DB) *UserStore {
 func (s *UserStore) GetBySiteAndID(siteID, userID string) (*User, error) {
 	query := `
 		SELECT id, site_id, name, email, avatar_url, profile_url, is_verified, roles, 
-		       first_seen, last_seen, created_at, updated_at
+		       reputation_score, first_seen, last_seen, created_at, updated_at
 		FROM users
 		WHERE site_id = ? AND id = ?
 	`
@@ -48,7 +49,7 @@ func (s *UserStore) GetBySiteAndID(siteID, userID string) (*User, error) {
 
 	err := s.db.QueryRow(query, siteID, userID).Scan(
 		&u.ID, &u.SiteID, &u.Name, &email, &avatarURL, &profileURL,
-		&u.IsVerified, &rolesJSON, &u.FirstSeen, &u.LastSeen, &u.CreatedAt, &u.UpdatedAt,
+		&u.IsVerified, &rolesJSON, &u.ReputationScore, &u.FirstSeen, &u.LastSeen, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -79,7 +80,7 @@ func (s *UserStore) GetBySiteAndID(siteID, userID string) (*User, error) {
 func (s *UserStore) ListBySite(siteID string) ([]*User, error) {
 	query := `
 		SELECT id, site_id, name, email, avatar_url, profile_url, is_verified, roles,
-		       first_seen, last_seen, created_at, updated_at
+		       reputation_score, first_seen, last_seen, created_at, updated_at
 		FROM users
 		WHERE site_id = ?
 		ORDER BY last_seen DESC
@@ -99,7 +100,7 @@ func (s *UserStore) ListBySite(siteID string) ([]*User, error) {
 
 		err := rows.Scan(
 			&u.ID, &u.SiteID, &u.Name, &email, &avatarURL, &profileURL,
-			&u.IsVerified, &rolesJSON, &u.FirstSeen, &u.LastSeen, &u.CreatedAt, &u.UpdatedAt,
+			&u.IsVerified, &rolesJSON, &u.ReputationScore, &u.FirstSeen, &u.LastSeen, &u.CreatedAt, &u.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan user: %w", err)
@@ -153,7 +154,7 @@ func (s *UserStore) CreateOrUpdate(user *User) error {
 		query := `
 			UPDATE users
 			SET name = ?, email = ?, avatar_url = ?, profile_url = ?, 
-			    is_verified = ?, roles = ?, last_seen = ?, updated_at = ?
+			    is_verified = ?, roles = ?, reputation_score = ?, last_seen = ?, updated_at = ?
 			WHERE site_id = ? AND id = ?
 		`
 
@@ -172,7 +173,7 @@ func (s *UserStore) CreateOrUpdate(user *User) error {
 		}
 
 		_, err = s.db.Exec(query, user.Name, email, avatarURL, profileURL,
-			user.IsVerified, rolesJSON, user.LastSeen, now, user.SiteID, user.ID)
+			user.IsVerified, rolesJSON, user.ReputationScore, user.LastSeen, now, user.SiteID, user.ID)
 		if err != nil {
 			return fmt.Errorf("failed to update user: %w", err)
 		}
@@ -191,8 +192,8 @@ func (s *UserStore) CreateOrUpdate(user *User) error {
 
 		query := `
 			INSERT INTO users (id, site_id, name, email, avatar_url, profile_url, 
-			                   is_verified, roles, first_seen, last_seen, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			                   is_verified, roles, reputation_score, first_seen, last_seen, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`
 
 		var email, avatarURL, profileURL sql.NullString
@@ -210,7 +211,7 @@ func (s *UserStore) CreateOrUpdate(user *User) error {
 		}
 
 		_, err = s.db.Exec(query, user.ID, user.SiteID, user.Name, email, avatarURL, profileURL,
-			user.IsVerified, rolesJSON, user.FirstSeen, user.LastSeen, user.CreatedAt, user.UpdatedAt)
+			user.IsVerified, rolesJSON, user.ReputationScore, user.FirstSeen, user.LastSeen, user.CreatedAt, user.UpdatedAt)
 		if err != nil {
 			return fmt.Errorf("failed to create user: %w", err)
 		}
@@ -250,4 +251,47 @@ func (s *UserStore) Delete(siteID, userID string) error {
 	}
 
 	return nil
+}
+
+// UpdateReputationScore updates the reputation score for a user
+func (s *UserStore) UpdateReputationScore(siteID, userID string, score int) error {
+	query := `
+		UPDATE users
+		SET reputation_score = ?, updated_at = ?
+		WHERE site_id = ? AND id = ?
+	`
+
+	now := time.Now()
+	_, err := s.db.Exec(query, score, now, siteID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update reputation score: %w", err)
+	}
+
+	return nil
+}
+
+// CalculateReputationScore calculates basic reputation score based on user activity
+// Phase 3 foundation: Simple calculation based on approved comments
+func (s *UserStore) CalculateReputationScore(siteID, userID string) (int, error) {
+	query := `
+		SELECT COUNT(*) as approved_comments
+		FROM comments
+		WHERE site_id = ? AND author_id = ? AND status = 'approved'
+	`
+
+	var approvedComments int
+	err := s.db.QueryRow(query, siteID, userID).Scan(&approvedComments)
+	if err != nil {
+		return 0, fmt.Errorf("failed to calculate reputation: %w", err)
+	}
+
+	// Basic reputation calculation:
+	// - 1 point per approved comment
+	// Future enhancements could include:
+	// - Points for reactions received on their comments
+	// - Bonus for verified status
+	// - Penalties for rejected comments
+	score := approvedComments
+
+	return score, nil
 }

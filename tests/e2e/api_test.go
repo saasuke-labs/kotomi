@@ -40,8 +40,7 @@ func TestE2E_PostComment(t *testing.T) {
 	pageID := "e2e-page-1"
 
 	comment := comments.Comment{
-		Author: "Test User",
-		Text:   "This is an E2E test comment",
+		Text: "This is an E2E test comment",
 	}
 
 	result := PostComment(t, testBaseURL, siteID, pageID, comment)
@@ -50,8 +49,12 @@ func TestE2E_PostComment(t *testing.T) {
 	if result.ID == "" {
 		t.Error("expected comment ID to be set, got empty string")
 	}
-	if result.Author != comment.Author {
-		t.Errorf("expected author '%s', got '%s'", comment.Author, result.Author)
+	// Author should come from JWT token
+	if result.Author != "E2E Test User" {
+		t.Errorf("expected author 'E2E Test User' (from JWT), got '%s'", result.Author)
+	}
+	if result.AuthorID != "e2e-test-user" {
+		t.Errorf("expected author_id 'e2e-test-user' (from JWT), got '%s'", result.AuthorID)
 	}
 	if result.Text != comment.Text {
 		t.Errorf("expected text '%s', got '%s'", comment.Text, result.Text)
@@ -70,14 +73,12 @@ func TestE2E_GetComments(t *testing.T) {
 
 	// Post a comment first
 	comment1 := comments.Comment{
-		Author: "User 1",
-		Text:   "First comment",
+		Text: "First comment",
 	}
 	posted1 := PostComment(t, testBaseURL, siteID, pageID, comment1)
 
 	comment2 := comments.Comment{
-		Author: "User 2",
-		Text:   "Second comment",
+		Text: "Second comment",
 	}
 	posted2 := PostComment(t, testBaseURL, siteID, pageID, comment2)
 

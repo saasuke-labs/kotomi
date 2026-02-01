@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/saasuke-labs/kotomi/pkg/comments"
+	"github.com/saasuke-labs/kotomi/pkg/models"
 )
 
 var (
@@ -164,6 +165,33 @@ func SeedTestData(t *testing.T, dbPath string) {
 		t.Fatalf("failed to create store: %v", err)
 	}
 	defer store.Close()
+	
+	db := store.GetDB()
+	
+	// Create auth configurations for test sites
+	authConfigStore := models.NewSiteAuthConfigStore(db)
+	testSites := []string{"e2e-site-1", "e2e-site-2", "test-site-1"}
+	
+	for _, siteID := range testSites {
+		authConfig := &models.SiteAuthConfig{
+			SiteID:                siteID,
+			AuthMode:              "external",
+			JWTValidationType:     "hmac",
+			JWTSecret:             "test-secret-for-e2e-testing-min-32-chars",
+			JWTIssuer:             "https://e2e-test.example.com",
+			JWTAudience:           "kotomi",
+			TokenExpirationBuffer: 60,
+		}
+		
+		// Check if auth config already exists before creating
+		existing, _ := authConfigStore.GetBySiteID(siteID)
+		if existing == nil {
+			if err := authConfigStore.Create(authConfig); err != nil {
+				// Ignore errors if auth config already exists
+				log.Printf("Warning: failed to create auth config for %s: %v", siteID, err)
+			}
+		}
+	}
 
 	// Add some test comments
 	testComments := []struct {
@@ -177,6 +205,7 @@ func SeedTestData(t *testing.T, dbPath string) {
 			comment: comments.Comment{
 				ID:        "comment-1",
 				Author:    "Alice",
+				AuthorID:  "alice-123",
 				Text:      "This is a test comment",
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
@@ -188,6 +217,7 @@ func SeedTestData(t *testing.T, dbPath string) {
 			comment: comments.Comment{
 				ID:        "comment-2",
 				Author:    "Bob",
+				AuthorID:  "bob-456",
 				Text:      "This is another test comment",
 				ParentID:  "comment-1",
 				CreatedAt: time.Now(),

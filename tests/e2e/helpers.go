@@ -9,8 +9,33 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/saasuke-labs/kotomi/pkg/comments"
 )
+
+// generateTestJWT creates a test JWT token for E2E testing
+func generateTestJWT() string {
+	// Create a test JWT token with HMAC signing
+	// This secret should match what the test server uses
+	secret := "test-secret-for-e2e-testing-min-32-chars"
+	
+	now := time.Now()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"iss": "https://e2e-test.example.com",
+		"sub": "e2e-test-user",
+		"aud": "kotomi",
+		"exp": now.Add(time.Hour).Unix(),
+		"iat": now.Unix(),
+		"kotomi_user": map[string]interface{}{
+			"id":    "e2e-test-user",
+			"name":  "E2E Test User",
+			"email": "e2e@test.example.com",
+		},
+	})
+	
+	tokenString, _ := token.SignedString([]byte(secret))
+	return tokenString
+}
 
 // GetComments retrieves comments via HTTP API
 func GetComments(t *testing.T, baseURL, siteID, pageID string) []comments.Comment {
@@ -46,7 +71,15 @@ func PostComment(t *testing.T, baseURL, siteID, pageID string, comment comments.
 		t.Fatalf("failed to marshal comment: %v", err)
 	}
 
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestJWT())
+	
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to post comment: %v", err)
 	}

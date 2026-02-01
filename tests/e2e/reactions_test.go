@@ -17,8 +17,7 @@ func TestE2E_ReactionsWorkflow(t *testing.T) {
 
 	// Post a comment first
 	comment := comments.Comment{
-		Author: "Test User",
-		Text:   "Comment for reactions test",
+		Text: "Comment for reactions test",
 	}
 	posted := PostComment(t, testBaseURL, siteID, pageID, comment)
 
@@ -199,14 +198,12 @@ func TestE2E_PageReactions(t *testing.T) {
 func TestE2E_ReactionIsolation(t *testing.T) {
 	// Create comments on two different sites
 	comment1 := comments.Comment{
-		Author: "User 1",
-		Text:   "Comment on site 1",
+		Text: "Comment on site 1",
 	}
 	posted1 := PostComment(t, testBaseURL, "reaction-isolation-1", "page-1", comment1)
 
 	comment2 := comments.Comment{
-		Author: "User 2",
-		Text:   "Comment on site 2",
+		Text: "Comment on site 2",
 	}
 	posted2 := PostComment(t, testBaseURL, "reaction-isolation-2", "page-1", comment2)
 
@@ -247,8 +244,7 @@ func TestE2E_MultipleReactions(t *testing.T) {
 
 	// Post a comment
 	comment := comments.Comment{
-		Author: "Test User",
-		Text:   "Comment for multiple reactions",
+		Text: "Comment for multiple reactions",
 	}
 	posted := PostComment(t, testBaseURL, siteID, pageID, comment)
 
@@ -328,8 +324,7 @@ func TestE2E_RemoveReaction(t *testing.T) {
 
 	// Post a comment
 	comment := comments.Comment{
-		Author: "Test User",
-		Text:   "Comment for reaction removal test",
+		Text: "Comment for reaction removal test",
 	}
 	posted := PostComment(t, testBaseURL, siteID, pageID, comment)
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/saasuke-labs/kotomi/pkg/comments"
+	"github.com/saasuke-labs/kotomi/pkg/models"
 )
 
 var (
@@ -105,6 +106,10 @@ func setupTestEnvironment() error {
 			if httpErr == nil && resp.StatusCode == http.StatusOK {
 				resp.Body.Close()
 				log.Println("Test server is ready")
+				
+				// Seed the database with auth configurations
+				seedAuthConfigurations(testDBPath)
+				
 				return nil
 			}
 			if resp != nil {
@@ -155,6 +160,106 @@ func teardownTestEnvironment() {
 	}
 }
 
+// seedAuthConfigurations seeds auth configurations for E2E test sites
+// This is called during setup and should not fail the setup if errors occur
+func seedAuthConfigurations(dbPath string) {
+	store, err := comments.NewSQLiteStore(dbPath)
+	if err != nil {
+		log.Printf("Warning: failed to open store for seeding auth configs: %v", err)
+		return
+	}
+	defer store.Close()
+	
+	db := store.GetDB()
+	
+	// First, create a test user (required by sites table FK)
+	// We'll insert it directly with a known ID
+	testUserID := "e2e-test-user-id"
+	_, err = db.Exec(`
+		INSERT OR IGNORE INTO users (id, email, name, auth0_sub, created_at, updated_at)
+		VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+	`, testUserID, "e2e-test@example.com", "E2E Test User", "e2e-test-auth0-sub")
+	
+	if err != nil {
+		log.Printf("Warning: Could not create test user: %v", err)
+		return
+	}
+	
+	// List of all site IDs that might be used in E2E tests
+	testSites := []struct {
+		id   string
+		name string
+	}{
+		{"e2e-site-1", "E2E Test Site 1"},
+		{"e2e-site-2", "E2E Test Site 2"},
+		{"e2e-site-3", "E2E Test Site 3"},
+		{"e2e-site-4", "E2E Test Site 4"},
+		{"test-site-1", "Test Site 1"},
+		{"reactions-site-1", "Reactions Test Site 1"},
+		{"reaction-isolation-1", "Reaction Isolation Site 1"},
+		{"reaction-isolation-2", "Reaction Isolation Site 2"},
+		{"multiple-reactions-site", "Multiple Reactions Test Site"},
+		{"multi-reactions-site", "Multi Reactions Test Site"},
+		{"remove-reaction-site", "Remove Reaction Test Site"},
+		{"site-1", "Generic Site 1"},
+		{"site-2", "Generic Site 2"},
+		{"isolation-site-1", "Isolation Site 1"},
+		{"isolation-site-2", "Isolation Site 2"},
+		{"site-isolation-1", "Site Isolation 1"},
+		{"site-isolation-2", "Site Isolation 2"},
+		{"concurrent-site", "Concurrent Test Site"},
+		{"error-site", "Error Test Site"},
+		{"large-payload-site", "Large Payload Test Site"},
+		{"malformed-site", "Malformed Request Test Site"},
+		{"page-isolation-site", "Page Isolation Test Site"},
+		{"page-reactions-site", "Page Reactions Test Site"},
+		{"rate-limit-site", "Rate Limit Test Site"},
+		{"special-chars-site", "Special Characters Test Site"},
+		{"timestamp-site", "Timestamp Test Site"},
+	}
+
+	
+	// Create sites with specific IDs
+	for _, site := range testSites {
+		_, err := db.Exec(`
+			INSERT OR IGNORE INTO sites (id, owner_id, name, domain, description, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+		`, site.id, testUserID, site.name, "", "E2E test site")
+		
+		if err != nil {
+			log.Printf("Warning: Could not create site %s: %v", site.id, err)
+		} else {
+			log.Printf("Debug: Created site %s", site.id)
+		}
+	}
+	
+	// Now create auth configurations for all sites
+	// These match the JWT secret used in helpers.go
+	authConfigStore := models.NewSiteAuthConfigStore(db)
+	
+	for _, site := range testSites {
+		authConfig := &models.SiteAuthConfig{
+			SiteID:                site.id,
+			AuthMode:              "external",
+			JWTValidationType:     "hmac",
+			JWTSecret:             "test-secret-for-e2e-testing-min-32-chars",
+			JWTIssuer:             "https://e2e-test.example.com",
+			JWTAudience:           "kotomi",
+			TokenExpirationBuffer: 60,
+		}
+		
+		// Try to create, ignore errors if already exists
+		if err := authConfigStore.Create(authConfig); err != nil {
+			// Config might already exist, that's OK
+			log.Printf("Debug: Could not create auth config for %s (might already exist): %v", site.id, err)
+		} else {
+			log.Printf("Debug: Created auth config for site %s", site.id)
+		}
+	}
+	
+	log.Println("Auth configurations seeded for E2E tests")
+}
+
 // SeedTestData seeds the database with test data
 func SeedTestData(t *testing.T, dbPath string) {
 	t.Helper()
@@ -164,6 +269,33 @@ func SeedTestData(t *testing.T, dbPath string) {
 		t.Fatalf("failed to create store: %v", err)
 	}
 	defer store.Close()
+	
+	db := store.GetDB()
+	
+	// Create auth configurations for test sites
+	authConfigStore := models.NewSiteAuthConfigStore(db)
+	testSites := []string{"e2e-site-1", "e2e-site-2", "test-site-1"}
+	
+	for _, siteID := range testSites {
+		authConfig := &models.SiteAuthConfig{
+			SiteID:                siteID,
+			AuthMode:              "external",
+			JWTValidationType:     "hmac",
+			JWTSecret:             "test-secret-for-e2e-testing-min-32-chars",
+			JWTIssuer:             "https://e2e-test.example.com",
+			JWTAudience:           "kotomi",
+			TokenExpirationBuffer: 60,
+		}
+		
+		// Check if auth config already exists before creating
+		existing, _ := authConfigStore.GetBySiteID(siteID)
+		if existing == nil {
+			if err := authConfigStore.Create(authConfig); err != nil {
+				// Ignore errors if auth config already exists
+				log.Printf("Warning: failed to create auth config for %s: %v", siteID, err)
+			}
+		}
+	}
 
 	// Add some test comments
 	testComments := []struct {
@@ -177,6 +309,7 @@ func SeedTestData(t *testing.T, dbPath string) {
 			comment: comments.Comment{
 				ID:        "comment-1",
 				Author:    "Alice",
+				AuthorID:  "alice-123",
 				Text:      "This is a test comment",
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
@@ -188,6 +321,7 @@ func SeedTestData(t *testing.T, dbPath string) {
 			comment: comments.Comment{
 				ID:        "comment-2",
 				Author:    "Bob",
+				AuthorID:  "bob-456",
 				Text:      "This is another test comment",
 				ParentID:  "comment-1",
 				CreatedAt: time.Now(),

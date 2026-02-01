@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,8 @@ import (
 	"time"
 
 	"github.com/saasuke-labs/kotomi/pkg/comments"
+	"github.com/saasuke-labs/kotomi/pkg/middleware"
+	"github.com/saasuke-labs/kotomi/pkg/models"
 )
 
 func TestGetHealthz(t *testing.T) {
@@ -115,18 +118,29 @@ func TestGetUrlParams_InvalidPath(t *testing.T) {
 	}
 }
 
+// createTestUserContext creates a context with a mock authenticated user
+func createTestUserContext(ctx context.Context) context.Context {
+	testUser := &models.KotomiUser{
+		ID:    "test-user-123",
+		Name:  "John Doe",
+		Email: "john@example.com",
+	}
+	return context.WithValue(ctx, middleware.ContextKeyUser, testUser)
+}
+
 func TestPostCommentsHandler_ValidInput(t *testing.T) {
 	// Reset comment store with in-memory adapter
 	commentStore = &InMemoryStoreAdapter{SitePagesIndex: comments.NewSitePagesIndex()}
 
 	comment := comments.Comment{
-		Author:   "John Doe",
 		Text:     "This is a test comment",
 		ParentID: "",
 	}
 
 	body, _ := json.Marshal(comment)
 	req := httptest.NewRequest("POST", "/api/site/testsite/page/testpage/comments", bytes.NewReader(body))
+	// Add authenticated user to context
+	req = req.WithContext(createTestUserContext(req.Context()))
 	w := httptest.NewRecorder()
 
 	postCommentsHandler(w, req)
@@ -147,8 +161,12 @@ func TestPostCommentsHandler_ValidInput(t *testing.T) {
 		t.Error("expected comment to have an ID")
 	}
 
-	if returnedComment.Author != comment.Author {
-		t.Errorf("expected author '%s', got '%s'", comment.Author, returnedComment.Author)
+	if returnedComment.Author != "John Doe" {
+		t.Errorf("expected author 'John Doe', got '%s'", returnedComment.Author)
+	}
+
+	if returnedComment.AuthorID != "test-user-123" {
+		t.Errorf("expected author_id 'test-user-123', got '%s'", returnedComment.AuthorID)
 	}
 
 	if returnedComment.Text != comment.Text {
@@ -169,6 +187,8 @@ func TestPostCommentsHandler_InvalidJSON(t *testing.T) {
 	commentStore = &InMemoryStoreAdapter{SitePagesIndex: comments.NewSitePagesIndex()}
 
 	req := httptest.NewRequest("POST", "/api/site/testsite/page/testpage/comments", bytes.NewReader([]byte("invalid json")))
+	// Add authenticated user to context
+	req = req.WithContext(createTestUserContext(req.Context()))
 	w := httptest.NewRecorder()
 
 	postCommentsHandler(w, req)

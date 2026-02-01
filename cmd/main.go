@@ -73,6 +73,13 @@ func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	siteId := vars["siteId"]
 	pageId := vars["pageId"]
 
+	// Get authenticated user from context (set by JWT middleware)
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+
 	// Decode body as a Comment
 	var comment comments.Comment
 	if err := json.NewDecoder(r.Body).Decode(&comment); err != nil {
@@ -81,16 +88,16 @@ func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	// Validate required fields
-	if comment.Author == "" {
-		http.Error(w, "Author is required", http.StatusBadRequest)
-		return
-	}
 	if comment.Text == "" {
 		http.Error(w, "Text is required", http.StatusBadRequest)
 		return
 	}
 	
+	// Set user information from authenticated user
 	comment.ID = uuid.NewString()
+	comment.AuthorID = user.ID
+	comment.Author = user.Name
+	comment.AuthorEmail = user.Email
 	comment.CreatedAt = time.Now()
 	comment.UpdatedAt = time.Now()
 
@@ -218,6 +225,13 @@ func addReactionHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	commentID := vars["commentId"]
 
+	// Get authenticated user from context (set by JWT middleware)
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+
 	var req struct {
 		AllowedReactionID string `json:"allowed_reaction_id"`
 	}
@@ -232,11 +246,8 @@ func addReactionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user identifier (IP address for now, could be user ID if authenticated)
-	userIdentifier := getUserIdentifier(r)
-
 	reactionStore := models.NewReactionStore(db)
-	reaction, err := reactionStore.AddReaction(commentID, req.AllowedReactionID, userIdentifier)
+	reaction, err := reactionStore.AddReaction(commentID, req.AllowedReactionID, user.ID)
 	if err != nil {
 		log.Printf("Error adding reaction: %v", err)
 		http.Error(w, "Failed to add reaction", http.StatusInternalServerError)
@@ -287,6 +298,13 @@ func addPageReactionHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	pageID := vars["pageId"]
 
+	// Get authenticated user from context (set by JWT middleware)
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+
 	var req struct {
 		AllowedReactionID string `json:"allowed_reaction_id"`
 	}
@@ -301,11 +319,8 @@ func addPageReactionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user identifier (IP address for now, could be user ID if authenticated)
-	userIdentifier := getUserIdentifier(r)
-
 	reactionStore := models.NewReactionStore(db)
-	reaction, err := reactionStore.AddPageReaction(pageID, req.AllowedReactionID, userIdentifier)
+	reaction, err := reactionStore.AddPageReaction(pageID, req.AllowedReactionID, user.ID)
 	if err != nil {
 		log.Printf("Error adding page reaction: %v", err)
 		http.Error(w, "Failed to add reaction", http.StatusInternalServerError)
@@ -674,40 +689,44 @@ func main() {
 	apiV1Router := router.PathPrefix("/api/v1").Subrouter()
 	apiV1Router.Use(corsMiddleware.Handler)
 	apiV1Router.Use(rateLimiter.Handler)
+	
+	// Read-only routes (no auth required for phase 1)
 	apiV1Router.HandleFunc("/site/{siteId}/page/{pageId}/comments", getCommentsHandler).Methods("GET")
-	apiV1Router.HandleFunc("/site/{siteId}/page/{pageId}/comments", postCommentsHandler).Methods("POST")
-	
-	// Reaction routes
 	apiV1Router.HandleFunc("/site/{siteId}/allowed-reactions", getAllowedReactionsHandler).Methods("GET")
-	
-	// Comment reactions
-	apiV1Router.HandleFunc("/comments/{commentId}/reactions", addReactionHandler).Methods("POST")
 	apiV1Router.HandleFunc("/comments/{commentId}/reactions", getReactionsByCommentHandler).Methods("GET")
 	apiV1Router.HandleFunc("/comments/{commentId}/reactions/counts", getReactionCountsHandler).Methods("GET")
-	
-	// Page reactions
-	apiV1Router.HandleFunc("/pages/{pageId}/reactions", addPageReactionHandler).Methods("POST")
 	apiV1Router.HandleFunc("/pages/{pageId}/reactions", getReactionsByPageHandler).Methods("GET")
 	apiV1Router.HandleFunc("/pages/{pageId}/reactions/counts", getPageReactionCountsHandler).Methods("GET")
 	
-	// Remove any reaction
-	apiV1Router.HandleFunc("/reactions/{reactionId}", removeReactionHandler).Methods("DELETE")
+	// Protected routes requiring JWT authentication
+	apiV1AuthRouter := apiV1Router.PathPrefix("").Subrouter()
+	apiV1AuthRouter.Use(middleware.JWTAuthMiddleware(db))
+	apiV1AuthRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", postCommentsHandler).Methods("POST")
+	apiV1AuthRouter.HandleFunc("/comments/{commentId}/reactions", addReactionHandler).Methods("POST")
+	apiV1AuthRouter.HandleFunc("/pages/{pageId}/reactions", addPageReactionHandler).Methods("POST")
+	apiV1AuthRouter.HandleFunc("/reactions/{reactionId}", removeReactionHandler).Methods("DELETE")
 
 	// Legacy API routes (backward compatibility with deprecation warning)
 	legacyAPIRouter := router.PathPrefix("/api").Subrouter()
 	legacyAPIRouter.Use(corsMiddleware.Handler)
 	legacyAPIRouter.Use(rateLimiter.Handler)
 	legacyAPIRouter.Use(deprecationMiddleware)
+	
+	// Read-only routes
 	legacyAPIRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", getCommentsHandler).Methods("GET")
-	legacyAPIRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", postCommentsHandler).Methods("POST")
 	legacyAPIRouter.HandleFunc("/site/{siteId}/allowed-reactions", getAllowedReactionsHandler).Methods("GET")
-	legacyAPIRouter.HandleFunc("/comments/{commentId}/reactions", addReactionHandler).Methods("POST")
 	legacyAPIRouter.HandleFunc("/comments/{commentId}/reactions", getReactionsByCommentHandler).Methods("GET")
 	legacyAPIRouter.HandleFunc("/comments/{commentId}/reactions/counts", getReactionCountsHandler).Methods("GET")
-	legacyAPIRouter.HandleFunc("/pages/{pageId}/reactions", addPageReactionHandler).Methods("POST")
 	legacyAPIRouter.HandleFunc("/pages/{pageId}/reactions", getReactionsByPageHandler).Methods("GET")
 	legacyAPIRouter.HandleFunc("/pages/{pageId}/reactions/counts", getPageReactionCountsHandler).Methods("GET")
-	legacyAPIRouter.HandleFunc("/reactions/{reactionId}", removeReactionHandler).Methods("DELETE")
+	
+	// Protected write routes
+	legacyAuthRouter := legacyAPIRouter.PathPrefix("").Subrouter()
+	legacyAuthRouter.Use(middleware.JWTAuthMiddleware(db))
+	legacyAuthRouter.HandleFunc("/site/{siteId}/page/{pageId}/comments", postCommentsHandler).Methods("POST")
+	legacyAuthRouter.HandleFunc("/comments/{commentId}/reactions", addReactionHandler).Methods("POST")
+	legacyAuthRouter.HandleFunc("/pages/{pageId}/reactions", addPageReactionHandler).Methods("POST")
+	legacyAuthRouter.HandleFunc("/reactions/{reactionId}", removeReactionHandler).Methods("DELETE")
 
 	// Health check endpoint (no CORS needed, but harmless if included)
 	router.HandleFunc("/healthz", getHealthz).Methods("GET")
@@ -770,6 +789,13 @@ func main() {
 		moderationHandler := admin.NewModerationHandler(db, templates)
 		adminRouter.HandleFunc("/sites/{siteId}/moderation", moderationHandler.HandleModerationForm).Methods("GET")
 		adminRouter.HandleFunc("/sites/{siteId}/moderation", moderationHandler.HandleModerationUpdate).Methods("POST")
+
+		// Auth configuration handlers
+		authConfigHandler := admin.NewAuthConfigHandler(db)
+		adminRouter.HandleFunc("/sites/{siteId}/auth/config", authConfigHandler.GetAuthConfig).Methods("GET")
+		adminRouter.HandleFunc("/sites/{siteId}/auth/config", authConfigHandler.CreateAuthConfig).Methods("POST")
+		adminRouter.HandleFunc("/sites/{siteId}/auth/config", authConfigHandler.UpdateAuthConfig).Methods("PUT")
+		adminRouter.HandleFunc("/sites/{siteId}/auth/config", authConfigHandler.DeleteAuthConfig).Methods("DELETE")
 
 		// Redirect /admin to dashboard
 		router.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {

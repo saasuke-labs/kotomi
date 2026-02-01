@@ -25,19 +25,19 @@ type Reaction struct {
 	PageID            string    `json:"page_id,omitempty"`    // Set for page reactions
 	CommentID         string    `json:"comment_id,omitempty"` // Set for comment reactions
 	AllowedReactionID string    `json:"allowed_reaction_id"`
-	UserIdentifier    string    `json:"user_identifier"` // IP address or user ID for tracking
+	UserID            string    `json:"user_id"` // Authenticated user ID
 	CreatedAt         time.Time `json:"created_at"`
 }
 
 // ReactionWithDetails includes the emoji and name from the allowed reaction
 type ReactionWithDetails struct {
-	ID             string    `json:"id"`
-	PageID         string    `json:"page_id,omitempty"`
-	CommentID      string    `json:"comment_id,omitempty"`
-	Name           string    `json:"name"`
-	Emoji          string    `json:"emoji"`
-	UserIdentifier string    `json:"user_identifier"`
-	CreatedAt      time.Time `json:"created_at"`
+	ID        string    `json:"id"`
+	PageID    string    `json:"page_id,omitempty"`
+	CommentID string    `json:"comment_id,omitempty"`
+	Name      string    `json:"name"`
+	Emoji     string    `json:"emoji"`
+	UserID    string    `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // ReactionCount represents aggregated reaction counts for a comment
@@ -229,9 +229,9 @@ func NewReactionStore(db *sql.DB) *ReactionStore {
 }
 
 // AddReaction adds a reaction to a comment (or toggles it off if already exists)
-func (s *ReactionStore) AddReaction(commentID, allowedReactionID, userIdentifier string) (*Reaction, error) {
+func (s *ReactionStore) AddReaction(commentID, allowedReactionID, userID string) (*Reaction, error) {
 	// Check if user already reacted with this reaction type
-	existing, err := s.GetUserCommentReaction(commentID, allowedReactionID, userIdentifier)
+	existing, err := s.GetUserCommentReaction(commentID, allowedReactionID, userID)
 	if err == nil && existing != nil {
 		// User already reacted with this type - toggle it off (remove it)
 		if err := s.RemoveReaction(existing.ID); err != nil {
@@ -246,17 +246,17 @@ func (s *ReactionStore) AddReaction(commentID, allowedReactionID, userIdentifier
 		ID:                uuid.NewString(),
 		CommentID:         commentID,
 		AllowedReactionID: allowedReactionID,
-		UserIdentifier:    userIdentifier,
+		UserID:            userID,
 		CreatedAt:         now,
 	}
 
 	query := `
-		INSERT INTO reactions (id, page_id, comment_id, allowed_reaction_id, user_identifier, created_at)
+		INSERT INTO reactions (id, page_id, comment_id, allowed_reaction_id, user_id, created_at)
 		VALUES (?, NULL, ?, ?, ?, ?)
 	`
 
 	_, err = s.db.Exec(query, reaction.ID, reaction.CommentID, reaction.AllowedReactionID,
-		reaction.UserIdentifier, reaction.CreatedAt)
+		reaction.UserID, reaction.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add reaction: %w", err)
 	}
@@ -265,9 +265,9 @@ func (s *ReactionStore) AddReaction(commentID, allowedReactionID, userIdentifier
 }
 
 // AddPageReaction adds a reaction to a page (or toggles it off if already exists)
-func (s *ReactionStore) AddPageReaction(pageID, allowedReactionID, userIdentifier string) (*Reaction, error) {
+func (s *ReactionStore) AddPageReaction(pageID, allowedReactionID, userID string) (*Reaction, error) {
 	// Check if user already reacted with this reaction type
-	existing, err := s.GetUserPageReaction(pageID, allowedReactionID, userIdentifier)
+	existing, err := s.GetUserPageReaction(pageID, allowedReactionID, userID)
 	if err == nil && existing != nil {
 		// User already reacted with this type - toggle it off (remove it)
 		if err := s.RemoveReaction(existing.ID); err != nil {
@@ -282,17 +282,17 @@ func (s *ReactionStore) AddPageReaction(pageID, allowedReactionID, userIdentifie
 		ID:                uuid.NewString(),
 		PageID:            pageID,
 		AllowedReactionID: allowedReactionID,
-		UserIdentifier:    userIdentifier,
+		UserID:            userID,
 		CreatedAt:         now,
 	}
 
 	query := `
-		INSERT INTO reactions (id, page_id, comment_id, allowed_reaction_id, user_identifier, created_at)
+		INSERT INTO reactions (id, page_id, comment_id, allowed_reaction_id, user_id, created_at)
 		VALUES (?, ?, NULL, ?, ?, ?)
 	`
 
 	_, err = s.db.Exec(query, reaction.ID, reaction.PageID, reaction.AllowedReactionID,
-		reaction.UserIdentifier, reaction.CreatedAt)
+		reaction.UserID, reaction.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add page reaction: %w", err)
 	}
@@ -301,18 +301,18 @@ func (s *ReactionStore) AddPageReaction(pageID, allowedReactionID, userIdentifie
 }
 
 // GetUserCommentReaction checks if a user has already reacted to a comment with a specific reaction type
-func (s *ReactionStore) GetUserCommentReaction(commentID, allowedReactionID, userIdentifier string) (*Reaction, error) {
+func (s *ReactionStore) GetUserCommentReaction(commentID, allowedReactionID, userID string) (*Reaction, error) {
 	query := `
-		SELECT id, page_id, comment_id, allowed_reaction_id, user_identifier, created_at
+		SELECT id, page_id, comment_id, allowed_reaction_id, user_id, created_at
 		FROM reactions
-		WHERE comment_id = ? AND allowed_reaction_id = ? AND user_identifier = ?
+		WHERE comment_id = ? AND allowed_reaction_id = ? AND user_id = ?
 	`
 
 	var reaction Reaction
 	var pageID sql.NullString
-	err := s.db.QueryRow(query, commentID, allowedReactionID, userIdentifier).Scan(
+	err := s.db.QueryRow(query, commentID, allowedReactionID, userID).Scan(
 		&reaction.ID, &pageID, &reaction.CommentID, &reaction.AllowedReactionID,
-		&reaction.UserIdentifier, &reaction.CreatedAt,
+		&reaction.UserID, &reaction.CreatedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -329,18 +329,18 @@ func (s *ReactionStore) GetUserCommentReaction(commentID, allowedReactionID, use
 }
 
 // GetUserPageReaction checks if a user has already reacted to a page with a specific reaction type
-func (s *ReactionStore) GetUserPageReaction(pageID, allowedReactionID, userIdentifier string) (*Reaction, error) {
+func (s *ReactionStore) GetUserPageReaction(pageID, allowedReactionID, userID string) (*Reaction, error) {
 	query := `
-		SELECT id, page_id, comment_id, allowed_reaction_id, user_identifier, created_at
+		SELECT id, page_id, comment_id, allowed_reaction_id, user_id, created_at
 		FROM reactions
-		WHERE page_id = ? AND allowed_reaction_id = ? AND user_identifier = ?
+		WHERE page_id = ? AND allowed_reaction_id = ? AND user_id = ?
 	`
 
 	var reaction Reaction
 	var commentID sql.NullString
-	err := s.db.QueryRow(query, pageID, allowedReactionID, userIdentifier).Scan(
+	err := s.db.QueryRow(query, pageID, allowedReactionID, userID).Scan(
 		&reaction.ID, &reaction.PageID, &commentID, &reaction.AllowedReactionID,
-		&reaction.UserIdentifier, &reaction.CreatedAt,
+		&reaction.UserID, &reaction.CreatedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -357,8 +357,8 @@ func (s *ReactionStore) GetUserPageReaction(pageID, allowedReactionID, userIdent
 }
 
 // GetUserReaction checks if a user has already reacted with a specific reaction type (deprecated, use GetUserCommentReaction)
-func (s *ReactionStore) GetUserReaction(commentID, allowedReactionID, userIdentifier string) (*Reaction, error) {
-	return s.GetUserCommentReaction(commentID, allowedReactionID, userIdentifier)
+func (s *ReactionStore) GetUserReaction(commentID, allowedReactionID, userID string) (*Reaction, error) {
+	return s.GetUserCommentReaction(commentID, allowedReactionID, userID)
 }
 
 // RemoveReaction removes a reaction by its ID
@@ -385,7 +385,7 @@ func (s *ReactionStore) RemoveReaction(reactionID string) error {
 // GetReactionsByComment retrieves all reactions for a comment with details
 func (s *ReactionStore) GetReactionsByComment(commentID string) ([]ReactionWithDetails, error) {
 	query := `
-		SELECT r.id, r.page_id, r.comment_id, ar.name, ar.emoji, r.user_identifier, r.created_at
+		SELECT r.id, r.page_id, r.comment_id, ar.name, ar.emoji, r.user_id, r.created_at
 		FROM reactions r
 		JOIN allowed_reactions ar ON r.allowed_reaction_id = ar.id
 		WHERE r.comment_id = ?
@@ -404,7 +404,7 @@ func (s *ReactionStore) GetReactionsByComment(commentID string) ([]ReactionWithD
 		var pageID sql.NullString
 		err := rows.Scan(
 			&reaction.ID, &pageID, &reaction.CommentID, &reaction.Name, &reaction.Emoji,
-			&reaction.UserIdentifier, &reaction.CreatedAt,
+			&reaction.UserID, &reaction.CreatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan reaction: %w", err)
@@ -429,7 +429,7 @@ func (s *ReactionStore) GetReactionsByComment(commentID string) ([]ReactionWithD
 // GetReactionsByPage retrieves all reactions for a page with details
 func (s *ReactionStore) GetReactionsByPage(pageID string) ([]ReactionWithDetails, error) {
 	query := `
-		SELECT r.id, r.page_id, r.comment_id, ar.name, ar.emoji, r.user_identifier, r.created_at
+		SELECT r.id, r.page_id, r.comment_id, ar.name, ar.emoji, r.user_id, r.created_at
 		FROM reactions r
 		JOIN allowed_reactions ar ON r.allowed_reaction_id = ar.id
 		WHERE r.page_id = ?
@@ -448,7 +448,7 @@ func (s *ReactionStore) GetReactionsByPage(pageID string) ([]ReactionWithDetails
 		var commentID sql.NullString
 		err := rows.Scan(
 			&reaction.ID, &reaction.PageID, &commentID, &reaction.Name, &reaction.Emoji,
-			&reaction.UserIdentifier, &reaction.CreatedAt,
+			&reaction.UserID, &reaction.CreatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan reaction: %w", err)

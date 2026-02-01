@@ -15,6 +15,8 @@ func NewSitePagesIndex() *SitePagesIndex {
 type Comment struct {
 	ID          string    `json:"id"`
 	Author      string    `json:"author"`
+	AuthorID    string    `json:"author_id"`
+	AuthorEmail string    `json:"author_email,omitempty"`
 	Text        string    `json:"text"`
 	ParentID    string    `json:"parent_id,omitempty"`
 	Status      string    `json:"status"`

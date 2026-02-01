@@ -11,6 +11,7 @@ Give your pages a voice
 
 - 💬 **Comments System** - Enable discussions on your static pages
 - 👍 **Reactions System** - Allow users to react to pages and comments with configurable emoji
+- 🔐 **JWT Authentication** - Secure user authentication with external JWT support (Phase 1)
 - 🤖 **AI Moderation** - Automatic content moderation using OpenAI GPT (optional)
 - 🔐 **Admin Panel** - Web-based dashboard with Auth0 authentication
 - 🏢 **Multi-Site Management** - Manage multiple sites from a single instance
@@ -211,6 +212,25 @@ Kotomi includes a web-based admin panel for managing sites, pages, and moderatin
 - `/logout` - Logout and clear session
 
 ## API Documentation
+
+### Authentication
+
+**All write operations** (POST/DELETE) require JWT-based authentication. Read operations (GET) remain unauthenticated.
+
+📚 **See [Authentication API Documentation](docs/AUTHENTICATION_API.md) for complete details:**
+- JWT token format and requirements
+- Configuration examples (HMAC, RSA, ECDSA)
+- Code examples in Node.js, Python, and Go
+- Integration guides and troubleshooting
+
+**Quick Example:**
+```bash
+# Generate a JWT token (see scripts/generate_jwt.js or scripts/generate_jwt.py)
+curl -X POST https://kotomi.example.com/api/v1/site/{siteId}/page/{pageId}/comments \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "This is my comment"}'
+```
 
 ### API Versioning
 

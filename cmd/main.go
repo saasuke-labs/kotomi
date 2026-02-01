@@ -22,7 +22,29 @@ import (
 	"github.com/saasuke-labs/kotomi/pkg/middleware"
 	"github.com/saasuke-labs/kotomi/pkg/models"
 	"github.com/saasuke-labs/kotomi/pkg/moderation"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
+	_ "github.com/saasuke-labs/kotomi/docs" // Import generated docs
 )
+
+// @title Kotomi API
+// @version 1.0
+// @description A comment and reaction system API for static sites
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url https://github.com/saasuke-labs/kotomi
+// @contact.email support@kotomi.dev
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description JWT Authorization header using the Bearer scheme. Example: "Bearer {token}"
 
 // CommentStore interface for abstracting storage implementation
 type CommentStore interface {
@@ -56,7 +78,21 @@ var auth0Config *auth.Auth0Config
 var moderator moderation.Moderator
 var moderationConfigStore *moderation.ConfigStore
 
-// /api/site/:site-id/page/:page-id/comments
+// postCommentsHandler creates a new comment for a page
+// @Summary Create a comment
+// @Description Add a new comment to a page (requires JWT authentication)
+// @Tags comments
+// @Accept json
+// @Produce json
+// @Param siteId path string true "Site ID"
+// @Param pageId path string true "Page ID"
+// @Param comment body comments.Comment true "Comment to create"
+// @Success 200 {object} comments.Comment
+// @Failure 400 {string} string "Invalid JSON or missing required fields"
+// @Failure 401 {string} string "Authentication required"
+// @Failure 500 {string} string "Failed to add comment"
+// @Security BearerAuth
+// @Router /site/{siteId}/page/{pageId}/comments [post]
 func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	
@@ -167,6 +203,17 @@ func getUrlParams(r *http.Request) (map[string]string, error) {
 
 }
 
+// getCommentsHandler retrieves all comments for a page
+// @Summary Get comments for a page
+// @Description Retrieve all comments for a specific page
+// @Tags comments
+// @Produce json
+// @Param siteId path string true "Site ID"
+// @Param pageId path string true "Page ID"
+// @Success 200 {array} comments.Comment
+// @Failure 400 {string} string "Invalid URL"
+// @Failure 500 {string} string "Failed to retrieve comments"
+// @Router /site/{siteId}/page/{pageId}/comments [get]
 func getCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	
@@ -194,7 +241,16 @@ func getCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	writeJsonResponse(w, comments)
 }
 
-// Reaction handlers
+// getAllowedReactionsHandler retrieves allowed reactions for a site
+// @Summary Get allowed reactions
+// @Description Retrieve all allowed reactions for a site, optionally filtered by type
+// @Tags reactions
+// @Produce json
+// @Param siteId path string true "Site ID"
+// @Param type query string false "Reaction type filter (page or comment)"
+// @Success 200 {array} models.AllowedReaction
+// @Failure 500 {string} string "Failed to retrieve allowed reactions"
+// @Router /site/{siteId}/allowed-reactions [get]
 func getAllowedReactionsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	siteID := vars["siteId"]
@@ -420,6 +476,13 @@ func writeJsonResponse(w http.ResponseWriter, data interface{}) {
 
 }
 
+// getHealthz health check endpoint
+// @Summary Health check
+// @Description Check if the API is running
+// @Tags health
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Router /healthz [get]
 func getHealthz(w http.ResponseWriter, r *http.Request) {
 
 	jsonResponse := struct {
@@ -806,6 +869,15 @@ func main() {
 		router.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("Admin panel is not configured. Please set AUTH0_* environment variables."))
 		}).Methods("GET")
+	}
+
+	// Swagger UI - Only available in development (when ENV != "production")
+	env := os.Getenv("ENV")
+	if env != "production" {
+		router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
+		log.Println("Swagger UI enabled at /swagger/index.html")
+	} else {
+		log.Println("Swagger UI disabled in production mode")
 	}
 
 	// Root handler

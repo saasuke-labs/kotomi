@@ -4,12 +4,26 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/saasuke-labs/kotomi/pkg/comments"
 )
+
+// makeAuthenticatedRequest creates an HTTP request with JWT authentication
+func makeAuthenticatedRequest(method, url, contentType string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("Authorization", "Bearer "+generateTestJWT())
+	
+	client := &http.Client{}
+	return client.Do(req)
+}
 
 // TestE2E_InvalidCommentData tests posting comments with invalid data
 func TestE2E_InvalidCommentData(t *testing.T) {
@@ -53,7 +67,7 @@ func TestE2E_InvalidCommentData(t *testing.T) {
 				}
 			}
 
-			resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+			resp, err := makeAuthenticatedRequest("POST", url, "application/json", bytes.NewBuffer(jsonData))
 			if err != nil {
 				t.Fatalf("failed to post comment: %v", err)
 			}
@@ -149,7 +163,7 @@ func TestE2E_MalformedRequests(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			url := fmt.Sprintf("%s/api/v1/site/%s/page/%s/comments", testBaseURL, siteID, pageID)
 			
-			resp, err := http.Post(url, tc.contentType, strings.NewReader(tc.body))
+			resp, err := makeAuthenticatedRequest("POST", url, tc.contentType, strings.NewReader(tc.body))
 			if err != nil {
 				t.Fatalf("failed to post: %v", err)
 			}
@@ -178,7 +192,7 @@ func TestE2E_LargePayload(t *testing.T) {
 	url := fmt.Sprintf("%s/api/v1/site/%s/page/%s/comments", testBaseURL, siteID, pageID)
 	jsonData, _ := json.Marshal(comment)
 	
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	resp, err := makeAuthenticatedRequest("POST", url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		t.Fatalf("failed to post large comment: %v", err)
 	}
@@ -218,7 +232,7 @@ func TestE2E_ConcurrentComments(t *testing.T) {
 			url := fmt.Sprintf("%s/api/v1/site/%s/page/%s/comments", testBaseURL, siteID, pageID)
 			jsonData, _ := json.Marshal(comment)
 			
-			resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+			resp, err := makeAuthenticatedRequest("POST", url, "application/json", bytes.NewBuffer(jsonData))
 			if err != nil {
 				errors <- err
 				done <- false
@@ -345,7 +359,7 @@ func TestE2E_RateLimiting(t *testing.T) {
 		url := fmt.Sprintf("%s/api/v1/site/%s/page/%s/comments", testBaseURL, siteID, pageID)
 		jsonData, _ := json.Marshal(comment)
 		
-		resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+		resp, err := makeAuthenticatedRequest("POST", url, "application/json", bytes.NewBuffer(jsonData))
 		if err != nil {
 			t.Fatalf("request %d failed: %v", i, err)
 		}

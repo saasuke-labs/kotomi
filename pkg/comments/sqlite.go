@@ -3,6 +3,8 @@ package comments
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -188,8 +190,12 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 	}
 
 	for _, migration := range migrations {
-		// Ignore errors if column already exists
-		_, _ = db.Exec(migration)
+		// Try to run migration, ignore only if column already exists
+		_, err := db.Exec(migration)
+		if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			// Log unexpected errors but don't fail - allows database to work
+			log.Printf("Warning: Migration error (continuing anyway): %v", err)
+		}
 	}
 
 	return &SQLiteStore{db: db}, nil
@@ -415,7 +421,7 @@ func (s *SQLiteStore) GetCommentsBySite(siteID string, status string) ([]Comment
 	var comments []Comment
 	for rows.Next() {
 		var c Comment
-		var pageID string // Not used but needed for Scan
+		var pageID string // Scanned but not included in returned Comment struct
 		var parentID sql.NullString
 		var moderatedBy sql.NullString
 		var moderatedAt sql.NullTime
@@ -463,7 +469,7 @@ func (s *SQLiteStore) GetCommentByID(commentID string) (*Comment, error) {
 	`
 
 	var c Comment
-	var pageID string // Not used but needed for Scan
+	var pageID string // Scanned but not included in returned Comment struct
 	var authorEmail sql.NullString
 	var parentID sql.NullString
 	var moderatedBy sql.NullString

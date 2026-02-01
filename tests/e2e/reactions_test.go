@@ -43,21 +43,27 @@ func TestE2E_ReactionsWorkflow(t *testing.T) {
 		t.Skip("No allowed reactions configured, skipping reaction tests")
 	}
 
-	// Get the first allowed reaction type
+	// Get the first allowed reaction ID
 	firstReaction := allowedReactions[0]
-	reactionType := firstReaction["emoji"].(string)
+	reactionID := firstReaction["id"].(string)
 
-	// Add a reaction to the comment
+	// Add a reaction to the comment using JWT auth
 	addReactionURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions",
 		testBaseURL, posted.ID)
 	
 	reactionData := map[string]string{
-		"reaction_type": reactionType,
-		"user_identifier": "test-user-1",
+		"allowed_reaction_id": reactionID,
 	}
 	jsonData, _ := json.Marshal(reactionData)
 	
-	resp, err = http.Post(addReactionURL, "application/json", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", addReactionURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestJWT())
+	
+	resp, err = http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("failed to add reaction: %v", err)
 	}
@@ -91,7 +97,7 @@ func TestE2E_ReactionsWorkflow(t *testing.T) {
 		t.Error("expected at least 1 reaction, got 0")
 	}
 
-	// Get reaction counts
+	// Get reaction counts (returns array, not map)
 	getCountsURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions/counts",
 		testBaseURL, posted.ID)
 	
@@ -105,14 +111,14 @@ func TestE2E_ReactionsWorkflow(t *testing.T) {
 		t.Fatalf("expected status 200 when getting reaction counts, got %d", resp.StatusCode)
 	}
 
-	var counts map[string]interface{}
+	var counts []map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&counts); err != nil {
 		t.Fatalf("failed to decode reaction counts: %v", err)
 	}
 
 	// Verify counts include our reaction
 	if len(counts) == 0 {
-		t.Error("expected reaction counts, got empty map")
+		t.Error("expected reaction counts, got empty array")
 	}
 }
 
@@ -142,20 +148,36 @@ func TestE2E_PageReactions(t *testing.T) {
 		t.Skip("No allowed reactions configured, skipping page reaction tests")
 	}
 
-	// Get the first allowed reaction type
-	reactionType := allowedReactions[0]["emoji"].(string)
+	// Get a page-type reaction ID
+	var reactionID string
+	for _, reaction := range allowedReactions {
+		if reactionType, ok := reaction["reaction_type"].(string); ok && reactionType == "page" {
+			reactionID = reaction["id"].(string)
+			break
+		}
+	}
+	
+	if reactionID == "" {
+		t.Skip("No page reactions configured, skipping page reaction tests")
+	}
 
-	// Add a reaction to the page
+	// Add a reaction to the page using JWT auth
 	addReactionURL := fmt.Sprintf("%s/api/v1/pages/%s/reactions",
 		testBaseURL, pageID)
 	
 	reactionData := map[string]string{
-		"reaction_type": reactionType,
-		"user_identifier": "test-user-page-1",
+		"allowed_reaction_id": reactionID,
 	}
 	jsonData, _ := json.Marshal(reactionData)
 	
-	resp, err = http.Post(addReactionURL, "application/json", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", addReactionURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestJWT())
+	
+	resp, err = http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("failed to add page reaction: %v", err)
 	}
@@ -237,7 +259,8 @@ func TestE2E_ReactionIsolation(t *testing.T) {
 	}
 }
 
-// TestE2E_MultipleReactions tests adding multiple reactions from different users
+// TestE2E_MultipleReactions tests adding multiple reactions from the same user
+// Note: With JWT auth, all requests come from the same user
 func TestE2E_MultipleReactions(t *testing.T) {
 	siteID := "multi-reactions-site"
 	pageID := "multi-reactions-page"
@@ -265,32 +288,35 @@ func TestE2E_MultipleReactions(t *testing.T) {
 		t.Skip("No allowed reactions configured, skipping multiple reactions test")
 	}
 
-	reactionType := allowedReactions[0]["emoji"].(string)
+	reactionID := allowedReactions[0]["id"].(string)
 
-	// Add reactions from multiple users
-	users := []string{"user-1", "user-2", "user-3"}
-	for _, userID := range users {
-		addReactionURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions",
-			testBaseURL, posted.ID)
-		
-		reactionData := map[string]string{
-			"reaction_type": reactionType,
-			"user_identifier": userID,
-		}
-		jsonData, _ := json.Marshal(reactionData)
-		
-		resp, err := http.Post(addReactionURL, "application/json", bytes.NewBuffer(jsonData))
-		if err != nil {
-			t.Fatalf("failed to add reaction for %s: %v", userID, err)
-		}
-		resp.Body.Close()
+	// Add a reaction (with JWT auth, all come from the same user)
+	addReactionURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions",
+		testBaseURL, posted.ID)
+	
+	reactionData := map[string]string{
+		"allowed_reaction_id": reactionID,
+	}
+	jsonData, _ := json.Marshal(reactionData)
+	
+	req, err := http.NewRequest("POST", addReactionURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestJWT())
+	
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to add reaction: %v", err)
+	}
+	resp.Body.Close()
 
-		if resp.StatusCode != http.StatusOK {
-			t.Errorf("expected status 200 when adding reaction for %s, got %d", userID, resp.StatusCode)
-		}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200 when adding reaction, got %d", resp.StatusCode)
 	}
 
-	// Get reaction counts
+	// Get reaction counts (returns array, not map)
 	getCountsURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions/counts",
 		testBaseURL, posted.ID)
 	
@@ -300,20 +326,14 @@ func TestE2E_MultipleReactions(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	var counts map[string]interface{}
+	var counts []map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&counts); err != nil {
 		t.Fatalf("failed to decode reaction counts: %v", err)
 	}
 
-	// Should have count of at least 3 for our reaction type
-	if len(counts) > 0 {
-		for _, count := range counts {
-			if countFloat, ok := count.(float64); ok {
-				if countFloat < 3 {
-					t.Logf("Warning: expected at least 3 reactions, got %.0f", countFloat)
-				}
-			}
-		}
+	// Should have count of at least 1 for our reaction
+	if len(counts) == 0 {
+		t.Error("expected at least 1 reaction count, got 0")
 	}
 }
 
@@ -345,37 +365,52 @@ func TestE2E_RemoveReaction(t *testing.T) {
 		t.Skip("No allowed reactions configured, skipping remove reaction test")
 	}
 
-	reactionType := allowedReactions[0]["emoji"].(string)
-	userID := "test-user-remove"
+	reactionID := allowedReactions[0]["id"].(string)
 
 	// Add a reaction
 	addReactionURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions",
 		testBaseURL, posted.ID)
 	
 	reactionData := map[string]string{
-		"reaction_type": reactionType,
-		"user_identifier": userID,
+		"allowed_reaction_id": reactionID,
 	}
 	jsonData, _ := json.Marshal(reactionData)
 	
-	resp, err = http.Post(addReactionURL, "application/json", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", addReactionURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestJWT())
+	
+	resp, err = http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("failed to add reaction: %v", err)
 	}
-	resp.Body.Close()
-
-	// Remove the reaction
-	removeReactionURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions",
-		testBaseURL, posted.ID)
 	
-	removeData := map[string]string{
-		"reaction_type": reactionType,
-		"user_identifier": userID,
+	// Decode the response to get the created reaction ID
+	var addedReaction map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&addedReaction); err != nil {
+		resp.Body.Close()
+		t.Fatalf("failed to decode added reaction: %v", err)
 	}
-	jsonData, _ = json.Marshal(removeData)
+	resp.Body.Close()
 	
-	req, _ := http.NewRequest("DELETE", removeReactionURL, bytes.NewBuffer(jsonData))
-	req.Header.Set("Content-Type", "application/json")
+	// Get the reaction ID from the response
+	addedReactionID, ok := addedReaction["id"].(string)
+	if !ok {
+		t.Fatalf("failed to get reaction ID from response")
+	}
+
+	// Remove the reaction using the reaction ID endpoint
+	removeReactionURL := fmt.Sprintf("%s/api/v1/reactions/%s",
+		testBaseURL, addedReactionID)
+	
+	req, err = http.NewRequest("DELETE", removeReactionURL, nil)
+	if err != nil {
+		t.Fatalf("failed to create delete request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+generateTestJWT())
 	
 	resp, err = http.DefaultClient.Do(req)
 	if err != nil {

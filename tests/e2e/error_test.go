@@ -38,7 +38,7 @@ func TestE2E_InvalidCommentData(t *testing.T) {
 		{
 			name:           "Empty author",
 			comment:        map[string]string{"text": "Comment with no author"},
-			expectedStatus: http.StatusBadRequest,
+			expectedStatus: http.StatusOK, // JWT auth provides author from token
 		},
 		{
 			name:           "Empty text",

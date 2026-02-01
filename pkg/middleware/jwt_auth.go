@@ -32,16 +32,6 @@ func JWTAuthMiddleware(db *sql.DB) mux.MiddlewareFunc {
 				siteID = vars["site_id"]
 			}
 
-			// If siteId not in path, try to look it up from commentId, pageId, or reactionId
-			if siteID == "" {
-				var err error
-				siteID, err = getSiteIDFromPathVars(db, vars)
-				if err != nil {
-					writeJSONError(w, "Unable to determine site from request", http.StatusBadRequest)
-					return
-				}
-			}
-
 			if siteID == "" {
 				writeJSONError(w, "Site ID not found in request", http.StatusBadRequest)
 				return
@@ -150,42 +140,4 @@ func writeJSONError(w http.ResponseWriter, message string, statusCode int) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"error": message,
 	})
-}
-
-// getSiteIDFromPathVars attempts to look up the site ID from commentId, pageId, or reactionId in path vars
-func getSiteIDFromPathVars(db *sql.DB, vars map[string]string) (string, error) {
-	// Try commentId first
-	if commentID := vars["commentId"]; commentID != "" {
-		var siteID string
-		err := db.QueryRow("SELECT site_id FROM comments WHERE id = ?", commentID).Scan(&siteID)
-		if err == nil {
-			return siteID, nil
-		}
-	}
-
-	// Try pageId
-	if pageID := vars["pageId"]; pageID != "" {
-		var siteID string
-		err := db.QueryRow("SELECT site_id FROM pages WHERE id = ?", pageID).Scan(&siteID)
-		if err == nil {
-			return siteID, nil
-		}
-	}
-
-	// Try reactionId - need to join through allowed_reactions
-	if reactionID := vars["reactionId"]; reactionID != "" {
-		var siteID string
-		query := `
-			SELECT ar.site_id 
-			FROM reactions r
-			JOIN allowed_reactions ar ON r.allowed_reaction_id = ar.id
-			WHERE r.id = ?
-		`
-		err := db.QueryRow(query, reactionID).Scan(&siteID)
-		if err == nil {
-			return siteID, nil
-		}
-	}
-
-	return "", fmt.Errorf("no valid ID found in path variables")
 }

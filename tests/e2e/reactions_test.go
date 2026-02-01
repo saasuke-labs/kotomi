@@ -48,8 +48,8 @@ func TestE2E_ReactionsWorkflow(t *testing.T) {
 	reactionID := firstReaction["id"].(string)
 
 	// Add a reaction to the comment using JWT auth
-	addReactionURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions",
-		testBaseURL, posted.ID)
+	addReactionURL := fmt.Sprintf("%s/api/v1/site/%s/comments/%s/reactions",
+		testBaseURL, siteID, posted.ID)
 	
 	reactionData := map[string]string{
 		"allowed_reaction_id": reactionID,
@@ -74,8 +74,8 @@ func TestE2E_ReactionsWorkflow(t *testing.T) {
 	}
 
 	// Get reactions for the comment
-	getReactionsURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions",
-		testBaseURL, posted.ID)
+	getReactionsURL := fmt.Sprintf("%s/api/v1/site/%s/comments/%s/reactions",
+		testBaseURL, siteID, posted.ID)
 	
 	resp, err = http.Get(getReactionsURL)
 	if err != nil {
@@ -98,8 +98,8 @@ func TestE2E_ReactionsWorkflow(t *testing.T) {
 	}
 
 	// Get reaction counts (returns array, not map)
-	getCountsURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions/counts",
-		testBaseURL, posted.ID)
+	getCountsURL := fmt.Sprintf("%s/api/v1/site/%s/comments/%s/reactions/counts",
+		testBaseURL, siteID, posted.ID)
 	
 	resp, err = http.Get(getCountsURL)
 	if err != nil {
@@ -162,8 +162,8 @@ func TestE2E_PageReactions(t *testing.T) {
 	}
 
 	// Add a reaction to the page using JWT auth
-	addReactionURL := fmt.Sprintf("%s/api/v1/pages/%s/reactions",
-		testBaseURL, pageID)
+	addReactionURL := fmt.Sprintf("%s/api/v1/site/%s/pages/%s/reactions",
+		testBaseURL, siteID, pageID)
 	
 	reactionData := map[string]string{
 		"allowed_reaction_id": reactionID,
@@ -188,8 +188,8 @@ func TestE2E_PageReactions(t *testing.T) {
 	}
 
 	// Get reactions for the page
-	getReactionsURL := fmt.Sprintf("%s/api/v1/pages/%s/reactions",
-		testBaseURL, pageID)
+	getReactionsURL := fmt.Sprintf("%s/api/v1/site/%s/pages/%s/reactions",
+		testBaseURL, siteID, pageID)
 	
 	resp, err = http.Get(getReactionsURL)
 	if err != nil {
@@ -202,8 +202,8 @@ func TestE2E_PageReactions(t *testing.T) {
 	}
 
 	// Get reaction counts for page
-	getCountsURL := fmt.Sprintf("%s/api/v1/pages/%s/reactions/counts",
-		testBaseURL, pageID)
+	getCountsURL := fmt.Sprintf("%s/api/v1/site/%s/pages/%s/reactions/counts",
+		testBaseURL, siteID, pageID)
 	
 	resp, err = http.Get(getCountsURL)
 	if err != nil {
@@ -291,8 +291,8 @@ func TestE2E_MultipleReactions(t *testing.T) {
 	reactionID := allowedReactions[0]["id"].(string)
 
 	// Add a reaction (with JWT auth, all come from the same user)
-	addReactionURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions",
-		testBaseURL, posted.ID)
+	addReactionURL := fmt.Sprintf("%s/api/v1/site/%s/comments/%s/reactions",
+		testBaseURL, siteID, posted.ID)
 	
 	reactionData := map[string]string{
 		"allowed_reaction_id": reactionID,
@@ -317,8 +317,8 @@ func TestE2E_MultipleReactions(t *testing.T) {
 	}
 
 	// Get reaction counts (returns array, not map)
-	getCountsURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions/counts",
-		testBaseURL, posted.ID)
+	getCountsURL := fmt.Sprintf("%s/api/v1/site/%s/comments/%s/reactions/counts",
+		testBaseURL, siteID, posted.ID)
 	
 	resp, err = http.Get(getCountsURL)
 	if err != nil {
@@ -368,8 +368,8 @@ func TestE2E_RemoveReaction(t *testing.T) {
 	reactionID := allowedReactions[0]["id"].(string)
 
 	// Add a reaction
-	addReactionURL := fmt.Sprintf("%s/api/v1/comments/%s/reactions",
-		testBaseURL, posted.ID)
+	addReactionURL := fmt.Sprintf("%s/api/v1/site/%s/comments/%s/reactions",
+		testBaseURL, siteID, posted.ID)
 	
 	reactionData := map[string]string{
 		"allowed_reaction_id": reactionID,
@@ -403,8 +403,8 @@ func TestE2E_RemoveReaction(t *testing.T) {
 	}
 
 	// Remove the reaction using the reaction ID endpoint
-	removeReactionURL := fmt.Sprintf("%s/api/v1/reactions/%s",
-		testBaseURL, addedReactionID)
+	removeReactionURL := fmt.Sprintf("%s/api/v1/site/%s/reactions/%s",
+		testBaseURL, siteID, addedReactionID)
 	
 	req, err = http.NewRequest("DELETE", removeReactionURL, nil)
 	if err != nil {

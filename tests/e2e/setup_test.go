@@ -192,17 +192,32 @@ func seedAuthConfigurations(dbPath string) {
 	}{
 		{"e2e-site-1", "E2E Test Site 1"},
 		{"e2e-site-2", "E2E Test Site 2"},
+		{"e2e-site-3", "E2E Test Site 3"},
+		{"e2e-site-4", "E2E Test Site 4"},
 		{"test-site-1", "Test Site 1"},
 		{"reactions-site-1", "Reactions Test Site 1"},
 		{"reaction-isolation-1", "Reaction Isolation Site 1"},
 		{"reaction-isolation-2", "Reaction Isolation Site 2"},
 		{"multiple-reactions-site", "Multiple Reactions Test Site"},
+		{"multi-reactions-site", "Multi Reactions Test Site"},
 		{"remove-reaction-site", "Remove Reaction Test Site"},
 		{"site-1", "Generic Site 1"},
 		{"site-2", "Generic Site 2"},
 		{"isolation-site-1", "Isolation Site 1"},
 		{"isolation-site-2", "Isolation Site 2"},
+		{"site-isolation-1", "Site Isolation 1"},
+		{"site-isolation-2", "Site Isolation 2"},
+		{"concurrent-site", "Concurrent Test Site"},
+		{"error-site", "Error Test Site"},
+		{"large-payload-site", "Large Payload Test Site"},
+		{"malformed-site", "Malformed Request Test Site"},
+		{"page-isolation-site", "Page Isolation Test Site"},
+		{"page-reactions-site", "Page Reactions Test Site"},
+		{"rate-limit-site", "Rate Limit Test Site"},
+		{"special-chars-site", "Special Characters Test Site"},
+		{"timestamp-site", "Timestamp Test Site"},
 	}
+
 	
 	// Create sites with specific IDs
 	for _, site := range testSites {

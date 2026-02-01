@@ -18,6 +18,7 @@ Give your pages a voice
 - 📄 **Page Tracking** - Organize comments by pages within sites
 - 🛡️ **Comment Moderation** - Approve, reject, or delete comments with ease
 - ⚡ **HTMX Interface** - Smooth, no-reload UI updates
+- 📖 **OpenAPI/Swagger** - Interactive API documentation (development mode)
 - 🪶 **Lightweight** - Built with Go for minimal resource usage
 - 🔌 **Easy Integration** - Simple REST API for seamless integration
 - 🔒 **Privacy-Focused** - Designed with user privacy in mind
@@ -147,6 +148,37 @@ Response:
 ```
 
 ## API Documentation
+
+### Interactive API Documentation (Swagger UI)
+
+Kotomi includes an interactive API documentation interface powered by OpenAPI/Swagger, available in **development mode only**.
+
+**Access Swagger UI:**
+```bash
+# Start the server in development mode (default)
+go run cmd/main.go
+
+# Visit the Swagger UI in your browser
+# http://localhost:8080/swagger/index.html
+```
+
+**Features:**
+- 📖 Complete API endpoint documentation
+- 🧪 Interactive "Try it out" functionality
+- 🔐 Built-in authorization support for protected endpoints
+- 📋 Request/response schema definitions
+- 🏷️ Organized by endpoint categories (health, comments, reactions)
+
+**Note:** Swagger UI is automatically disabled in production mode (when `ENV=production`). This ensures documentation is only available during development and testing.
+
+**Regenerating Documentation:**
+```bash
+# Install swag if not already installed
+go install github.com/swaggo/swag/cmd/swag@latest
+
+# Generate updated documentation
+swag init -g cmd/main.go -o docs
+```
 
 ### Health Check
 

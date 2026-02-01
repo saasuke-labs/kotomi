@@ -26,9 +26,9 @@ func setupTestServer(t *testing.T) (*mux.Router, string, func()) {
 	commentStore = store
 	db = store.GetDB()
 
-	// Create test user first (required by foreign key constraint)
-	userStore := models.NewUserStore(db)
-	user, err := userStore.Create("test@example.com", "Test User", "test-auth0-sub")
+	// Create test admin user first (required by foreign key constraint)
+	adminUserStore := models.NewAdminUserStore(db)
+	user, err := adminUserStore.Create("test@example.com", "Test User", "test-auth0-sub")
 	if err != nil {
 		t.Fatalf("Failed to create test user: %v", err)
 	}

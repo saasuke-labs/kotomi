@@ -615,9 +615,9 @@ defer store.Close()
 commentStore = store
 db = store.GetDB()
 
-// Create test user
-userStore := models.NewUserStore(db)
-user, _ := userStore.Create("test@example.com", "Test User", "test-auth0-sub")
+// Create test admin user
+adminUserStore := models.NewAdminUserStore(db)
+user, _ := adminUserStore.Create("test@example.com", "Test User", "test-auth0-sub")
 
 // Create test site
 siteStore := models.NewSiteStore(db)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/saasuke-labs/kotomi/pkg/comments"
+	"github.com/saasuke-labs/kotomi/pkg/middleware"
 	"github.com/saasuke-labs/kotomi/pkg/models"
 )
 
@@ -44,12 +46,13 @@ func setupTestServer(t *testing.T) (*mux.Router, string, func()) {
 		t.Fatalf("Failed to create test page: %v", err)
 	}
 	
-	// Create a test comment
+	// Create a test comment with required auth fields
 	testComment := comments.Comment{
-		ID:     "test-comment-1",
-		Author: "Test Author",
-		Text:   "Test comment",
-		Status: "approved",
+		ID:       "test-comment-1",
+		Author:   "Test Author",
+		AuthorID: "test-user-123",
+		Text:     "Test comment",
+		Status:   "approved",
 	}
 	if err := store.AddPageComment(site.ID, page.ID, testComment); err != nil {
 		t.Fatalf("Failed to add test comment: %v", err)
@@ -57,11 +60,31 @@ func setupTestServer(t *testing.T) (*mux.Router, string, func()) {
 
 	// Create router with reaction routes
 	router := mux.NewRouter()
+	
+	// Add test middleware that injects a mock user into the context
+	testAuthMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			testUser := &models.KotomiUser{
+				ID:    "test-user-123",
+				Name:  "Test User",
+				Email: "test@example.com",
+			}
+			ctx := context.WithValue(r.Context(), middleware.ContextKeyUser, testUser)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+	
 	router.HandleFunc("/api/site/{siteId}/allowed-reactions", getAllowedReactionsHandler).Methods("GET")
-	router.HandleFunc("/api/comments/{commentId}/reactions", addReactionHandler).Methods("POST")
+	
+	// Apply test auth middleware to POST/DELETE routes
+	authRouter := router.PathPrefix("").Subrouter()
+	authRouter.Use(testAuthMiddleware)
+	authRouter.HandleFunc("/api/comments/{commentId}/reactions", addReactionHandler).Methods("POST")
+	authRouter.HandleFunc("/api/reactions/{reactionId}", removeReactionHandler).Methods("DELETE")
+	
+	// GET routes don't need auth
 	router.HandleFunc("/api/comments/{commentId}/reactions", getReactionsByCommentHandler).Methods("GET")
 	router.HandleFunc("/api/comments/{commentId}/reactions/counts", getReactionCountsHandler).Methods("GET")
-	router.HandleFunc("/api/reactions/{reactionId}", removeReactionHandler).Methods("DELETE")
 
 	cleanup := func() {
 		store.Close()

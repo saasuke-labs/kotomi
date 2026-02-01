@@ -1,0 +1,193 @@
+basePath: /api/v1
+definitions:
+  comments.Comment:
+    properties:
+      author:
+        type: string
+      author_email:
+        type: string
+      author_id:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      moderated_at:
+        type: string
+      moderated_by:
+        type: string
+      parent_id:
+        type: string
+      status:
+        type: string
+      text:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.AllowedReaction:
+    properties:
+      created_at:
+        type: string
+      emoji:
+        description: "The emoji to display (e.g., \"\U0001F44D\", \"❤️\")"
+        type: string
+      id:
+        type: string
+      name:
+        description: Unique name for admins/logging (e.g., "thumbs_up", "heart")
+        type: string
+      reaction_type:
+        description: '''page'', ''comment'', or ''both'''
+        type: string
+      site_id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@kotomi.dev
+    name: API Support
+    url: https://github.com/saasuke-labs/kotomi
+  description: A comment and reaction system API for static sites
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Kotomi API
+  version: "1.0"
+paths:
+  /healthz:
+    get:
+      description: Check if the API is running
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - health
+  /site/{siteId}/allowed-reactions:
+    get:
+      description: Retrieve all allowed reactions for a site, optionally filtered
+        by type
+      parameters:
+      - description: Site ID
+        in: path
+        name: siteId
+        required: true
+        type: string
+      - description: Reaction type filter (page or comment)
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.AllowedReaction'
+            type: array
+        "500":
+          description: Failed to retrieve allowed reactions
+          schema:
+            type: string
+      summary: Get allowed reactions
+      tags:
+      - reactions
+  /site/{siteId}/page/{pageId}/comments:
+    get:
+      description: Retrieve all comments for a specific page
+      parameters:
+      - description: Site ID
+        in: path
+        name: siteId
+        required: true
+        type: string
+      - description: Page ID
+        in: path
+        name: pageId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/comments.Comment'
+            type: array
+        "400":
+          description: Invalid URL
+          schema:
+            type: string
+        "500":
+          description: Failed to retrieve comments
+          schema:
+            type: string
+      summary: Get comments for a page
+      tags:
+      - comments
+    post:
+      consumes:
+      - application/json
+      description: Add a new comment to a page (requires JWT authentication)
+      parameters:
+      - description: Site ID
+        in: path
+        name: siteId
+        required: true
+        type: string
+      - description: Page ID
+        in: path
+        name: pageId
+        required: true
+        type: string
+      - description: Comment to create
+        in: body
+        name: comment
+        required: true
+        schema:
+          $ref: '#/definitions/comments.Comment'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/comments.Comment'
+        "400":
+          description: Invalid JSON or missing required fields
+          schema:
+            type: string
+        "401":
+          description: Authentication required
+          schema:
+            type: string
+        "500":
+          description: Failed to add comment
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create a comment
+      tags:
+      - comments
+securityDefinitions:
+  BearerAuth:
+    description: 'JWT Authorization header using the Bearer scheme. Example: "Bearer
+      {token}"'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

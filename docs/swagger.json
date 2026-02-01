@@ -1,0 +1,286 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "A comment and reaction system API for static sites",
+        "title": "Kotomi API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "API Support",
+            "url": "https://github.com/saasuke-labs/kotomi",
+            "email": "support@kotomi.dev"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/healthz": {
+            "get": {
+                "description": "Check if the API is running",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/site/{siteId}/allowed-reactions": {
+            "get": {
+                "description": "Retrieve all allowed reactions for a site, optionally filtered by type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reactions"
+                ],
+                "summary": "Get allowed reactions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site ID",
+                        "name": "siteId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Reaction type filter (page or comment)",
+                        "name": "type",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.AllowedReaction"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to retrieve allowed reactions",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/site/{siteId}/page/{pageId}/comments": {
+            "get": {
+                "description": "Retrieve all comments for a specific page",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "comments"
+                ],
+                "summary": "Get comments for a page",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site ID",
+                        "name": "siteId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Page ID",
+                        "name": "pageId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/comments.Comment"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid URL",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to retrieve comments",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Add a new comment to a page (requires JWT authentication)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "comments"
+                ],
+                "summary": "Create a comment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site ID",
+                        "name": "siteId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Page ID",
+                        "name": "pageId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Comment to create",
+                        "name": "comment",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/comments.Comment"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/comments.Comment"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid JSON or missing required fields",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to add comment",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "comments.Comment": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "type": "string"
+                },
+                "author_email": {
+                    "type": "string"
+                },
+                "author_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "moderated_at": {
+                    "type": "string"
+                },
+                "moderated_by": {
+                    "type": "string"
+                },
+                "parent_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.AllowedReaction": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "emoji": {
+                    "description": "The emoji to display (e.g., \"👍\", \"❤️\")",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Unique name for admins/logging (e.g., \"thumbs_up\", \"heart\")",
+                    "type": "string"
+                },
+                "reaction_type": {
+                    "description": "'page', 'comment', or 'both'",
+                    "type": "string"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

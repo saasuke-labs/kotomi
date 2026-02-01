@@ -257,7 +257,32 @@ func seedAuthConfigurations(dbPath string) {
 		}
 	}
 	
-	log.Println("Auth configurations seeded for E2E tests")
+	// Seed default allowed reactions for all test sites
+	allowedReactionStore := models.NewAllowedReactionStore(db)
+	defaultReactions := []struct {
+		name         string
+		emoji        string
+		reactionType string
+	}{
+		{"thumbs_up", "👍", "comment"},
+		{"heart", "❤️", "comment"},
+		{"laugh", "😂", "comment"},
+		{"thinking", "🤔", "comment"},
+		{"page_like", "👍", "page"},
+		{"page_love", "❤️", "page"},
+	}
+	
+	for _, site := range testSites {
+		for _, reaction := range defaultReactions {
+			_, err := allowedReactionStore.Create(site.id, reaction.name, reaction.emoji, reaction.reactionType)
+			if err != nil {
+				// Reaction might already exist, that's OK
+				log.Printf("Debug: Could not create reaction %s for %s (might already exist): %v", reaction.name, site.id, err)
+			}
+		}
+	}
+	
+	log.Println("Auth configurations and allowed reactions seeded for E2E tests")
 }
 
 // SeedTestData seeds the database with test data

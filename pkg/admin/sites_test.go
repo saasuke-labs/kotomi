@@ -75,8 +75,8 @@ func TestSitesHandler_ListSites_Success(t *testing.T) {
 	handler := NewSitesHandler(db, nil)
 
 	// Create a test user and site
-	userStore := models.NewUserStore(db)
-	user, err := userStore.Create("test@example.com", "Test User", "auth0|123")
+	adminUserStore := models.NewAdminUserStore(db)
+	user, err := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
 	if err != nil {
 		t.Fatalf("Failed to create user: %v", err)
 	}
@@ -155,9 +155,9 @@ func TestSitesHandler_GetSite_Forbidden(t *testing.T) {
 	handler := NewSitesHandler(db, nil)
 
 	// Create two users
-	userStore := models.NewUserStore(db)
-	user1, _ := userStore.Create("user1@example.com", "User 1", "auth0|1")
-	user2, _ := userStore.Create("user2@example.com", "User 2", "auth0|2")
+	adminUserStore := models.NewAdminUserStore(db)
+	user1, _ := adminUserStore.Create("user1@example.com", "User 1", "auth0|1")
+	user2, _ := adminUserStore.Create("user2@example.com", "User 2", "auth0|2")
 
 	// User1 creates a site
 	siteStore := models.NewSiteStore(db)
@@ -187,8 +187,8 @@ func TestSitesHandler_GetSite_Success(t *testing.T) {
 	handler := NewSitesHandler(db, nil)
 
 	// Create a user and site
-	userStore := models.NewUserStore(db)
-	user, _ := userStore.Create("test@example.com", "Test User", "auth0|123")
+	adminUserStore := models.NewAdminUserStore(db)
+	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
 
 	siteStore := models.NewSiteStore(db)
 	site, _ := siteStore.Create(user.ID, "Test Site", "example.com", "Test description")
@@ -246,8 +246,8 @@ func TestSitesHandler_CreateSite_Success(t *testing.T) {
 	handler := NewSitesHandler(db, nil)
 
 	// Create a user
-	userStore := models.NewUserStore(db)
-	user, _ := userStore.Create("test@example.com", "Test User", "auth0|123")
+	adminUserStore := models.NewAdminUserStore(db)
+	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
 
 	body := bytes.NewBufferString("name=New Site&domain=newsite.com&description=Test description")
 	req := httptest.NewRequest("POST", "/admin/sites", body)
@@ -283,8 +283,8 @@ func TestSitesHandler_CreateSite_InvalidJSON(t *testing.T) {
 	handler := NewSitesHandler(db, nil)
 
 	// Create a user
-	userStore := models.NewUserStore(db)
-	user, _ := userStore.Create("test@example.com", "Test User", "auth0|123")
+	adminUserStore := models.NewAdminUserStore(db)
+	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
 
 	body := bytes.NewBufferString("")  // Empty name
 	req := httptest.NewRequest("POST", "/admin/sites", body)
@@ -326,8 +326,8 @@ func TestSitesHandler_UpdateSite_Success(t *testing.T) {
 	handler := NewSitesHandler(db, nil)
 
 	// Create a user and site
-	userStore := models.NewUserStore(db)
-	user, _ := userStore.Create("test@example.com", "Test User", "auth0|123")
+	adminUserStore := models.NewAdminUserStore(db)
+	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
 
 	siteStore := models.NewSiteStore(db)
 	site, _ := siteStore.Create(user.ID, "Original Site", "original.com", "Original description")
@@ -380,8 +380,8 @@ func TestSitesHandler_DeleteSite_Success(t *testing.T) {
 	handler := NewSitesHandler(db, nil)
 
 	// Create a user and site
-	userStore := models.NewUserStore(db)
-	user, _ := userStore.Create("test@example.com", "Test User", "auth0|123")
+	adminUserStore := models.NewAdminUserStore(db)
+	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
 
 	siteStore := models.NewSiteStore(db)
 	site, _ := siteStore.Create(user.ID, "Site to Delete", "delete.com", "Delete description")
@@ -433,8 +433,8 @@ func TestSitesHandler_HTMX_Requests(t *testing.T) {
 	handler := NewSitesHandler(db, nil)
 
 	// Create a user and site
-	userStore := models.NewUserStore(db)
-	user, _ := userStore.Create("test@example.com", "Test User", "auth0|123")
+	adminUserStore := models.NewAdminUserStore(db)
+	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
 
 	siteStore := models.NewSiteStore(db)
 	_, _ = siteStore.Create(user.ID, "Test Site", "example.com", "Test description")
@@ -461,8 +461,8 @@ func TestSitesHandler_CreateSite_FormEncoded(t *testing.T) {
 	handler := NewSitesHandler(db, nil)
 
 	// Create a user
-	userStore := models.NewUserStore(db)
-	user, _ := userStore.Create("test@example.com", "Test User", "auth0|123")
+	adminUserStore := models.NewAdminUserStore(db)
+	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
 
 	body := bytes.NewBufferString("name=Form Site&domain=form.com")
 	req := httptest.NewRequest("POST", "/admin/sites", body)

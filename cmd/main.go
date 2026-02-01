@@ -860,6 +860,12 @@ func main() {
 		adminRouter.HandleFunc("/sites/{siteId}/auth/config", authConfigHandler.UpdateAuthConfig).Methods("PUT")
 		adminRouter.HandleFunc("/sites/{siteId}/auth/config", authConfigHandler.DeleteAuthConfig).Methods("DELETE")
 
+		// User management handlers (Phase 2)
+		userMgmtHandler := admin.NewUserManagementHandler(db)
+		adminRouter.HandleFunc("/sites/{siteId}/users", userMgmtHandler.ListUsersHandler).Methods("GET")
+		adminRouter.HandleFunc("/sites/{siteId}/users/{userId}", userMgmtHandler.GetUserHandler).Methods("GET")
+		adminRouter.HandleFunc("/sites/{siteId}/users/{userId}", userMgmtHandler.DeleteUserHandler).Methods("DELETE")
+
 		// Redirect /admin to dashboard
 		router.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/admin/dashboard", http.StatusSeeOther)

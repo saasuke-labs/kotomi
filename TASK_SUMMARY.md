@@ -76,9 +76,12 @@ Based on the comprehensive analysis in `Status.md`, I have prepared **12 detaile
    - Reduces manual moderation burden
    - Uses OpenAI for content analysis
    
-9. **👤 Implement User Authentication for Comments** (24-40 hours)
-   - Allows users to edit/delete own comments
+9. **👤 [PARTIALLY COMPLETE] Implement User Authentication for Comments** (24-40 hours)
+   - **Status**: ✅ 50% DONE - External JWT auth complete, built-in auth pending
+   - **What's Done**: JWT middleware, protected endpoints, user tracking
+   - **What's Pending**: Email/password auth, social login, magic link
    - **Dependency**: After Issue #5
+   - **Reference**: [ADR 001](docs/adr/001-user-authentication-for-comments-and-reactions.md)
 
 ### Phase 4: Nice-to-Have (1-2 weeks)
 10. **📧 Implement Email Notifications** (12-16 hours)

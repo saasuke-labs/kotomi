@@ -247,7 +247,9 @@ Kotomi includes a web-based admin panel for managing sites, pages, and moderatin
 
 ### Authentication
 
-**All write operations** (POST/DELETE) require JWT-based authentication. Read operations (GET) remain unauthenticated.
+**All write operations** (POST/DELETE/PUT) require JWT-based authentication. Read operations (GET) remain unauthenticated.
+
+**Current Status:** External JWT authentication is fully implemented (ADR 001 Option 3). Sites with existing authentication systems can integrate by providing JWT tokens.
 
 📚 **See [Authentication API Documentation](docs/AUTHENTICATION_API.md) for complete details:**
 - JWT token format and requirements
@@ -810,7 +812,7 @@ Please follow Go best practices and include tests for new features.
 
 For information about architectural decisions, see the [Architecture Decision Records (ADR)](docs/adr/) directory. Key decisions include:
 
-- [ADR 001: User Authentication for Comments and Reactions](docs/adr/001-user-authentication-for-comments-and-reactions.md) - Proposal for implementing "bring your own authentication" using JWT tokens
+- [ADR 001: User Authentication for Comments and Reactions](docs/adr/001-user-authentication-for-comments-and-reactions.md) - External JWT-based authentication is implemented; built-in Kotomi auth pending (Status: Partially Implemented)
 
 ## License
 

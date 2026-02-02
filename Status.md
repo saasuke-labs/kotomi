@@ -21,10 +21,10 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 
 ### ✅ Fully Implemented Features
 
-#### 1. **Authentication (Auth0 Integration)** ✅
+#### 1. **Admin Authentication (Auth0 Integration)** ✅
 - **Status:** Fully Implemented
 - **Details:**
-  - Auth0 integration for secure authentication
+  - Auth0 integration for secure admin authentication
   - Session management with encrypted cookies
   - User registration and login flow
   - Callback handling and token exchange
@@ -38,6 +38,18 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
   - `AUTH0_CLIENT_SECRET`
   - `AUTH0_CALLBACK_URL` (optional, defaults to `http://localhost:8080/callback`)
   - `SESSION_SECRET` (optional, auto-generated in dev)
+
+#### 1b. **Public API JWT Authentication** ✅
+- **Status:** Fully Implemented (External JWT - ADR 001 Option 3)
+- **Details:**
+  - JWT-based authentication for comments and reactions APIs
+  - Supports multiple validation methods: HMAC, RSA, ECDSA, JWKS
+  - Validates standard JWT claims (issuer, audience, expiration)
+  - Extracts user info from `kotomi_user` claim
+  - All write operations (POST/PUT/DELETE) require authentication
+- **Location:** `pkg/middleware/jwt_auth.go`, `pkg/auth/jwt_validator.go`
+- **Database:** User model stores JWT user data, comments have `author_id`, reactions have `user_id`
+- **Reference:** [ADR 001](docs/adr/001-user-authentication-for-comments-and-reactions.md)
 
 #### 2. **Admin Panel** ✅
 - **Status:** Fully Implemented
@@ -355,20 +367,30 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Priority:** High (needed for end-users to integrate Kotomi)
 - **Estimated Work:** Large (requires JavaScript development, styling, documentation)
 
-#### 4. **User Authentication for Comments** ❌
-- **Status:** Not Implemented (only admin authentication exists)
-- **Description:** End-users (commenters) cannot authenticate, all comments are anonymous
+#### 4. **User Authentication for Comments and Reactions** ✅ PARTIALLY IMPLEMENTED
+- **Status:** External JWT Authentication Complete, Kotomi-Provided Auth Pending
+- **Description:** JWT-based authentication for comment and reaction APIs
 - **Current State:**
-  - Only admin panel has authentication
-  - Public API accepts any author name (no verification)
-  - No way to track authenticated users vs. guests
+  - ✅ External JWT authentication fully implemented (ADR 001 Option 3)
+  - ✅ JWT middleware validates tokens (HMAC, RSA, ECDSA, JWKS)
+  - ✅ All comment POST/PUT/DELETE operations require authentication
+  - ✅ All reaction POST/DELETE operations require authentication
+  - ✅ Comment model has `author_id` field (required, indexed)
+  - ✅ Reaction model has `user_id` field (required, indexed)
+  - ✅ User model stores authenticated user data from JWT
+  - ✅ Handlers properly extract authenticated user from context
+  - ✅ Sites can "bring their own authentication" via JWT tokens
 - **What's Missing:**
-  - User authentication for comment authors
-  - Optional guest/anonymous posting
-  - Edit/delete own comments (requires authentication)
-  - User profiles
-- **Priority:** Medium (depends on use case, many comment systems allow anonymous)
-- **Estimated Work:** Large (requires auth flow for end-users, not just admins)
+  - ❌ Kotomi-provided authentication (Option 4 from ADR 001)
+  - ❌ Built-in email/password authentication
+  - ❌ Social login (Google, GitHub, Twitter)
+  - ❌ Magic link passwordless authentication
+  - ❌ User signup/login/logout endpoints
+  - ❌ User profile management endpoints
+  - ❌ Email verification and password reset
+- **Priority:** Medium (Core JWT auth complete; built-in auth is optional advanced feature)
+- **Estimated Work:** 40-60 hours for Kotomi-provided auth
+- **Reference:** See [ADR 001](docs/adr/001-user-authentication-for-comments-and-reactions.md) for detailed implementation status
 
 #### 5. **Email Notifications** ❌
 - **Status:** Not Implemented

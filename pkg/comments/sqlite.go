@@ -181,23 +181,19 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 		id TEXT PRIMARY KEY,
 		site_id TEXT NOT NULL,
 		email TEXT NOT NULL,
-		password_hash TEXT NOT NULL,
+		auth0_sub TEXT NOT NULL,
 		name TEXT,
 		avatar_url TEXT,
 		is_verified INTEGER DEFAULT 0,
-		verification_token TEXT,
-		reset_token TEXT,
-		reset_token_expires TIMESTAMP,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-		UNIQUE(site_id, email)
+		UNIQUE(site_id, auth0_sub)
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_kotomi_auth_users_site ON kotomi_auth_users(site_id);
 	CREATE INDEX IF NOT EXISTS idx_kotomi_auth_users_email ON kotomi_auth_users(site_id, email);
-	CREATE INDEX IF NOT EXISTS idx_kotomi_auth_users_verification ON kotomi_auth_users(verification_token);
-	CREATE INDEX IF NOT EXISTS idx_kotomi_auth_users_reset ON kotomi_auth_users(reset_token);
+	CREATE INDEX IF NOT EXISTS idx_kotomi_auth_users_auth0 ON kotomi_auth_users(auth0_sub);
 
 	CREATE TABLE IF NOT EXISTS kotomi_auth_sessions (
 		id TEXT PRIMARY KEY,

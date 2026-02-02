@@ -899,7 +899,8 @@ func main() {
 	apiV1Router.Use(rateLimiter.Handler)
 	
 	// Kotomi authentication routes (no JWT auth required for these endpoints)
-	authHandler := auth.NewAuthHandler(db)
+	// Use the same Auth0 config as admin panel for kotomi auth mode
+	authHandler := auth.NewAuthHandler(db, auth0Config)
 	authHandler.RegisterRoutes(router)
 	
 	// Read-only routes (no auth required for phase 1)

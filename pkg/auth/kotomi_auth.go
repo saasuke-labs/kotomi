@@ -9,23 +9,19 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
-// KotomiAuthUser represents a user in the kotomi authentication system
+// KotomiAuthUser represents a user authenticated through Kotomi's Auth0 integration
 type KotomiAuthUser struct {
-	ID                 string    `json:"id"`
-	SiteID             string    `json:"site_id"`
-	Email              string    `json:"email"`
-	PasswordHash       string    `json:"-"` // Never expose in JSON
-	Name               string    `json:"name"`
-	AvatarURL          string    `json:"avatar_url,omitempty"`
-	IsVerified         bool      `json:"is_verified"`
-	VerificationToken  string    `json:"-"`
-	ResetToken         string    `json:"-"`
-	ResetTokenExpires  time.Time `json:"-"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	ID         string    `json:"id"`
+	SiteID     string    `json:"site_id"`
+	Email      string    `json:"email"`
+	Auth0Sub   string    `json:"auth0_sub"` // Auth0 subject identifier
+	Name       string    `json:"name"`
+	AvatarURL  string    `json:"avatar_url,omitempty"`
+	IsVerified bool      `json:"is_verified"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // KotomiAuthSession represents a user session with JWT tokens
@@ -50,20 +46,6 @@ func NewKotomiAuthStore(db *sql.DB) *KotomiAuthStore {
 	return &KotomiAuthStore{db: db}
 }
 
-// HashPassword creates a bcrypt hash of the password
-func HashPassword(password string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", fmt.Errorf("failed to hash password: %w", err)
-	}
-	return string(hash), nil
-}
-
-// CheckPassword compares a password with a hash
-func CheckPassword(password, hash string) error {
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-}
-
 // GenerateRandomToken generates a cryptographically secure random token
 func GenerateRandomToken() (string, error) {
 	b := make([]byte, 32)
@@ -73,63 +55,93 @@ func GenerateRandomToken() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-// CreateUser creates a new user in the kotomi auth system
-func (s *KotomiAuthStore) CreateUser(siteID, email, password, name string) (*KotomiAuthUser, error) {
-	// Hash password
-	passwordHash, err := HashPassword(password)
-	if err != nil {
-		return nil, err
+// CreateOrUpdateUserFromAuth0 creates or updates a user from Auth0 user info
+func (s *KotomiAuthStore) CreateOrUpdateUserFromAuth0(siteID string, userInfo *UserInfo) (*KotomiAuthUser, error) {
+	// Check if user exists by auth0_sub
+	existingUser, err := s.GetUserByAuth0Sub(siteID, userInfo.Sub)
+	
+	now := time.Now()
+	
+	if err != nil && err.Error() != "user not found" {
+		return nil, fmt.Errorf("failed to check user existence: %w", err)
 	}
-
-	// Generate verification token
-	verificationToken, err := GenerateRandomToken()
-	if err != nil {
-		return nil, err
+	
+	if existingUser != nil {
+		// Update existing user
+		existingUser.Email = userInfo.Email
+		existingUser.Name = userInfo.Name
+		existingUser.AvatarURL = userInfo.Picture
+		existingUser.IsVerified = userInfo.EmailVerified
+		existingUser.UpdatedAt = now
+		
+		query := `
+			UPDATE kotomi_auth_users
+			SET email = ?, name = ?, avatar_url = ?, is_verified = ?, updated_at = ?
+			WHERE id = ?
+		`
+		
+		var avatarURL sql.NullString
+		if existingUser.AvatarURL != "" {
+			avatarURL.String = existingUser.AvatarURL
+			avatarURL.Valid = true
+		}
+		
+		_, err = s.db.Exec(query, existingUser.Email, existingUser.Name, avatarURL, 
+			existingUser.IsVerified, existingUser.UpdatedAt, existingUser.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update user: %w", err)
+		}
+		
+		return existingUser, nil
 	}
-
+	
+	// Create new user
 	user := &KotomiAuthUser{
-		ID:                uuid.NewString(),
-		SiteID:            siteID,
-		Email:             email,
-		PasswordHash:      passwordHash,
-		Name:              name,
-		IsVerified:        false, // Email verification required by default
-		VerificationToken: verificationToken,
-		CreatedAt:         time.Now(),
-		UpdatedAt:         time.Now(),
+		ID:         uuid.NewString(),
+		SiteID:     siteID,
+		Email:      userInfo.Email,
+		Auth0Sub:   userInfo.Sub,
+		Name:       userInfo.Name,
+		AvatarURL:  userInfo.Picture,
+		IsVerified: userInfo.EmailVerified,
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}
-
+	
 	query := `
-		INSERT INTO kotomi_auth_users (id, site_id, email, password_hash, name, is_verified, verification_token, created_at, updated_at)
+		INSERT INTO kotomi_auth_users (id, site_id, email, auth0_sub, name, avatar_url, is_verified, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
-
-	_, err = s.db.Exec(query, user.ID, user.SiteID, user.Email, user.PasswordHash, user.Name,
-		user.IsVerified, user.VerificationToken, user.CreatedAt, user.UpdatedAt)
+	
+	var avatarURL sql.NullString
+	if user.AvatarURL != "" {
+		avatarURL.String = user.AvatarURL
+		avatarURL.Valid = true
+	}
+	
+	_, err = s.db.Exec(query, user.ID, user.SiteID, user.Email, user.Auth0Sub, user.Name,
+		avatarURL, user.IsVerified, user.CreatedAt, user.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
-
+	
 	return user, nil
 }
 
-// GetUserByEmail retrieves a user by site ID and email
-func (s *KotomiAuthStore) GetUserByEmail(siteID, email string) (*KotomiAuthUser, error) {
+// GetUserByAuth0Sub retrieves a user by site ID and Auth0 subject
+func (s *KotomiAuthStore) GetUserByAuth0Sub(siteID, auth0Sub string) (*KotomiAuthUser, error) {
 	query := `
-		SELECT id, site_id, email, password_hash, name, avatar_url, is_verified, 
-		       verification_token, reset_token, reset_token_expires, created_at, updated_at
+		SELECT id, site_id, email, auth0_sub, name, avatar_url, is_verified, created_at, updated_at
 		FROM kotomi_auth_users
-		WHERE site_id = ? AND email = ?
+		WHERE site_id = ? AND auth0_sub = ?
 	`
 
 	var user KotomiAuthUser
-	var avatarURL, verificationToken, resetToken sql.NullString
-	var resetTokenExpires sql.NullTime
+	var avatarURL sql.NullString
 
-	err := s.db.QueryRow(query, siteID, email).Scan(
-		&user.ID, &user.SiteID, &user.Email, &user.PasswordHash, &user.Name, &avatarURL,
-		&user.IsVerified, &verificationToken, &resetToken, &resetTokenExpires,
-		&user.CreatedAt, &user.UpdatedAt,
+	err := s.db.QueryRow(query, siteID, auth0Sub).Scan(
+		&user.ID, &user.SiteID, &user.Email, &user.Auth0Sub, &user.Name, &avatarURL,
+		&user.IsVerified, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -140,15 +152,6 @@ func (s *KotomiAuthStore) GetUserByEmail(siteID, email string) (*KotomiAuthUser,
 
 	if avatarURL.Valid {
 		user.AvatarURL = avatarURL.String
-	}
-	if verificationToken.Valid {
-		user.VerificationToken = verificationToken.String
-	}
-	if resetToken.Valid {
-		user.ResetToken = resetToken.String
-	}
-	if resetTokenExpires.Valid {
-		user.ResetTokenExpires = resetTokenExpires.Time
 	}
 
 	return &user, nil
@@ -157,20 +160,17 @@ func (s *KotomiAuthStore) GetUserByEmail(siteID, email string) (*KotomiAuthUser,
 // GetUserByID retrieves a user by ID
 func (s *KotomiAuthStore) GetUserByID(userID string) (*KotomiAuthUser, error) {
 	query := `
-		SELECT id, site_id, email, password_hash, name, avatar_url, is_verified,
-		       verification_token, reset_token, reset_token_expires, created_at, updated_at
+		SELECT id, site_id, email, auth0_sub, name, avatar_url, is_verified, created_at, updated_at
 		FROM kotomi_auth_users
 		WHERE id = ?
 	`
 
 	var user KotomiAuthUser
-	var avatarURL, verificationToken, resetToken sql.NullString
-	var resetTokenExpires sql.NullTime
+	var avatarURL sql.NullString
 
 	err := s.db.QueryRow(query, userID).Scan(
-		&user.ID, &user.SiteID, &user.Email, &user.PasswordHash, &user.Name, &avatarURL,
-		&user.IsVerified, &verificationToken, &resetToken, &resetTokenExpires,
-		&user.CreatedAt, &user.UpdatedAt,
+		&user.ID, &user.SiteID, &user.Email, &user.Auth0Sub, &user.Name, &avatarURL,
+		&user.IsVerified, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -182,32 +182,8 @@ func (s *KotomiAuthStore) GetUserByID(userID string) (*KotomiAuthUser, error) {
 	if avatarURL.Valid {
 		user.AvatarURL = avatarURL.String
 	}
-	if verificationToken.Valid {
-		user.VerificationToken = verificationToken.String
-	}
-	if resetToken.Valid {
-		user.ResetToken = resetToken.String
-	}
-	if resetTokenExpires.Valid {
-		user.ResetTokenExpires = resetTokenExpires.Time
-	}
 
 	return &user, nil
-}
-
-// AuthenticateUser validates email and password
-func (s *KotomiAuthStore) AuthenticateUser(siteID, email, password string) (*KotomiAuthUser, error) {
-	user, err := s.GetUserByEmail(siteID, email)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check password
-	if err := CheckPassword(password, user.PasswordHash); err != nil {
-		return nil, fmt.Errorf("invalid password")
-	}
-
-	return user, nil
 }
 
 // GenerateJWTToken generates a JWT token for a user
@@ -371,60 +347,6 @@ func (s *KotomiAuthStore) UpdateUser(user *KotomiAuthUser) error {
 	}
 	if rowsAffected == 0 {
 		return fmt.Errorf("user not found")
-	}
-
-	return nil
-}
-
-// SetPasswordResetToken sets a password reset token for a user
-func (s *KotomiAuthStore) SetPasswordResetToken(userID, token string, expiresAt time.Time) error {
-	query := `
-		UPDATE kotomi_auth_users
-		SET reset_token = ?, reset_token_expires = ?, updated_at = ?
-		WHERE id = ?
-	`
-
-	_, err := s.db.Exec(query, token, expiresAt, time.Now(), userID)
-	if err != nil {
-		return fmt.Errorf("failed to set reset token: %w", err)
-	}
-
-	return nil
-}
-
-// ResetPassword resets a user's password using a reset token
-func (s *KotomiAuthStore) ResetPassword(token, newPassword string) error {
-	// Find user by reset token
-	query := `
-		SELECT id FROM kotomi_auth_users
-		WHERE reset_token = ? AND reset_token_expires > ?
-	`
-
-	var userID string
-	err := s.db.QueryRow(query, token, time.Now()).Scan(&userID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return fmt.Errorf("invalid or expired reset token")
-		}
-		return fmt.Errorf("failed to find user: %w", err)
-	}
-
-	// Hash new password
-	passwordHash, err := HashPassword(newPassword)
-	if err != nil {
-		return err
-	}
-
-	// Update password and clear reset token
-	updateQuery := `
-		UPDATE kotomi_auth_users
-		SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL, updated_at = ?
-		WHERE id = ?
-	`
-
-	_, err = s.db.Exec(updateQuery, passwordHash, time.Now(), userID)
-	if err != nil {
-		return fmt.Errorf("failed to update password: %w", err)
 	}
 
 	return nil

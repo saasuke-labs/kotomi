@@ -9,33 +9,23 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/saasuke-labs/kotomi/pkg/models"
 )
 
-// AuthHandler handles kotomi authentication API endpoints
+// AuthHandler handles kotomi authentication API endpoints using Auth0
 type AuthHandler struct {
-	authStore *KotomiAuthStore
-	db        *sql.DB
+	authStore   *KotomiAuthStore
+	db          *sql.DB
+	auth0Config *Auth0Config  // Shared Auth0 config for kotomi auth
 }
 
 // NewAuthHandler creates a new auth handler
-func NewAuthHandler(db *sql.DB) *AuthHandler {
+func NewAuthHandler(db *sql.DB, auth0Config *Auth0Config) *AuthHandler {
 	return &AuthHandler{
-		authStore: NewKotomiAuthStore(db),
-		db:        db,
+		authStore:   NewKotomiAuthStore(db),
+		db:          db,
+		auth0Config: auth0Config,
 	}
-}
-
-// SignupRequest represents a signup request
-type SignupRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Name     string `json:"name"`
-}
-
-// LoginRequest represents a login request
-type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
 }
 
 // AuthResponse represents an auth response with tokens
@@ -54,114 +44,20 @@ type ErrorResponse struct {
 // GetJWTSecret retrieves the JWT secret for a site (internal key for kotomi mode)
 func (h *AuthHandler) GetJWTSecret(siteID string) (string, error) {
 	// For kotomi auth mode, we use a site-specific internal secret
-	// This is stored in an environment variable or generated per site
-	// For now, we'll use a simple approach: generate a consistent secret per site
-	
-	// In production, this should be:
-	// 1. Stored in environment variable (KOTOMI_JWT_SECRET)
-	// 2. Or stored in a secure key management system
-	// 3. Or generated and stored per-site in database
-	
-	// For MVP, we'll use a hardcoded secret (should be env variable in production)
-	// TODO: Move to environment variable or secure key storage
+	// In production, this should be stored in environment variable or secure key storage
+	// TODO: Move to environment variable or secure key management
 	return "kotomi-internal-jwt-secret-change-in-production-" + siteID, nil
 }
 
-// Signup handles user registration
-// @Summary Sign up a new user
-// @Description Create a new user account for kotomi authentication
+// Login redirects to Auth0 login
+// @Summary Login with Auth0
+// @Description Redirects to Auth0 Universal Login for authentication
 // @Tags auth
-// @Accept json
-// @Produce json
 // @Param siteId query string true "Site ID"
-// @Param request body SignupRequest true "Signup request"
-// @Success 200 {object} AuthResponse
+// @Param redirect_uri query string false "Redirect URI after login"
+// @Success 302 {string} string "Redirect to Auth0"
 // @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /auth/signup [post]
-func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
-	// Get site ID from query parameter
-	siteID := r.URL.Query().Get("siteId")
-	if siteID == "" {
-		http.Error(w, `{"error": "siteId is required"}`, http.StatusBadRequest)
-		return
-	}
-
-	// Parse request body
-	var req SignupRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error": "Invalid JSON"}`, http.StatusBadRequest)
-		return
-	}
-
-	// Validate input
-	if req.Email == "" || req.Password == "" || req.Name == "" {
-		http.Error(w, `{"error": "Email, password, and name are required"}`, http.StatusBadRequest)
-		return
-	}
-
-	// Basic email validation
-	if !strings.Contains(req.Email, "@") {
-		http.Error(w, `{"error": "Invalid email format"}`, http.StatusBadRequest)
-		return
-	}
-
-	// Password strength check (minimum 8 characters)
-	if len(req.Password) < 8 {
-		http.Error(w, `{"error": "Password must be at least 8 characters"}`, http.StatusBadRequest)
-		return
-	}
-
-	// Create user
-	user, err := h.authStore.CreateUser(siteID, req.Email, req.Password, req.Name)
-	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			http.Error(w, `{"error": "Email already exists"}`, http.StatusBadRequest)
-			return
-		}
-		http.Error(w, fmt.Sprintf(`{"error": "Failed to create user: %v"}`, err), http.StatusInternalServerError)
-		return
-	}
-
-	// Get JWT secret for this site
-	jwtSecret, err := h.GetJWTSecret(siteID)
-	if err != nil {
-		http.Error(w, `{"error": "Failed to generate token"}`, http.StatusInternalServerError)
-		return
-	}
-
-	// Create session
-	session, err := h.authStore.CreateSession(user, jwtSecret)
-	if err != nil {
-		http.Error(w, fmt.Sprintf(`{"error": "Failed to create session: %v"}`, err), http.StatusInternalServerError)
-		return
-	}
-
-	// Return response
-	response := AuthResponse{
-		User:         user,
-		Token:        session.Token,
-		RefreshToken: session.RefreshToken,
-		ExpiresAt:    session.ExpiresAt,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-// Login handles user login
-// @Summary Login
-// @Description Login with email and password
-// @Tags auth
-// @Accept json
-// @Produce json
-// @Param siteId query string true "Site ID"
-// @Param request body LoginRequest true "Login request"
-// @Success 200 {object} AuthResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /auth/login [post]
+// @Router /auth/login [get]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// Get site ID from query parameter
 	siteID := r.URL.Query().Get("siteId")
@@ -170,44 +66,84 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse request body
-	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error": "Invalid JSON"}`, http.StatusBadRequest)
-		return
-	}
-
-	// Validate input
-	if req.Email == "" || req.Password == "" {
-		http.Error(w, `{"error": "Email and password are required"}`, http.StatusBadRequest)
-		return
-	}
-
-	// Authenticate user
-	user, err := h.authStore.AuthenticateUser(siteID, req.Email, req.Password)
+	// Store site ID in session state for callback
+	state, err := GenerateRandomState()
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "invalid password") {
-			http.Error(w, `{"error": "Invalid email or password"}`, http.StatusUnauthorized)
-			return
-		}
-		http.Error(w, fmt.Sprintf(`{"error": "Authentication failed: %v"}`, err), http.StatusInternalServerError)
+		http.Error(w, `{"error": "Failed to generate state"}`, http.StatusInternalServerError)
 		return
 	}
+	state = fmt.Sprintf("%s:%s", siteID, state)
+	
+	// Get Auth0 login URL
+	loginURL := h.auth0Config.GetLoginURL(state)
+	
+	// Redirect to Auth0
+	http.Redirect(w, r, loginURL, http.StatusFound)
+}
 
+// Callback handles Auth0 callback
+// @Summary Auth0 callback
+// @Description Handles OAuth callback from Auth0
+// @Tags auth
+// @Param code query string true "Authorization code"
+// @Param state query string true "State parameter"
+// @Success 200 {object} AuthResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/callback [get]
+func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
+	// Get authorization code and state
+	code := r.URL.Query().Get("code")
+	state := r.URL.Query().Get("state")
+	
+	if code == "" || state == "" {
+		http.Error(w, `{"error": "Missing code or state"}`, http.StatusBadRequest)
+		return
+	}
+	
+	// Extract site ID from state
+	parts := strings.SplitN(state, ":", 2)
+	if len(parts) != 2 {
+		http.Error(w, `{"error": "Invalid state parameter"}`, http.StatusBadRequest)
+		return
+	}
+	siteID := parts[0]
+	
+	// Exchange code for token
+	token, err := h.auth0Config.ExchangeCode(r.Context(), code)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to exchange code: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+	
+	// Get user info from Auth0
+	userInfo, err := h.auth0Config.GetUserInfo(r.Context(), token)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to get user info: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+	
+	// Create or update user in database
+	user, err := h.authStore.CreateOrUpdateUserFromAuth0(siteID, userInfo)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to create user: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+	
 	// Get JWT secret for this site
 	jwtSecret, err := h.GetJWTSecret(siteID)
 	if err != nil {
 		http.Error(w, `{"error": "Failed to generate token"}`, http.StatusInternalServerError)
 		return
 	}
-
-	// Create session
+	
+	// Create session with our own JWT token
 	session, err := h.authStore.CreateSession(user, jwtSecret)
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error": "Failed to create session: %v"}`, err), http.StatusInternalServerError)
 		return
 	}
-
+	
 	// Set HTTP-only cookie for web clients
 	http.SetCookie(w, &http.Cookie{
 		Name:     "kotomi_auth_token",
@@ -218,7 +154,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Secure:   r.TLS != nil, // Only secure in HTTPS
 		SameSite: http.SameSiteLaxMode,
 	})
-
+	
 	// Return response
 	response := AuthResponse{
 		User:         user,
@@ -226,7 +162,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		RefreshToken: session.RefreshToken,
 		ExpiresAt:    session.ExpiresAt,
 	}
-
+	
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -317,6 +253,47 @@ func (h *AuthHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
+// GetAuthConfig returns the auth configuration for a site
+// @Summary Get auth config
+// @Description Get authentication configuration for a site (helps clients know which auth flow to use)
+// @Tags auth
+// @Produce json
+// @Param siteId query string true "Site ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Router /auth/config [get]
+func (h *AuthHandler) GetAuthConfig(w http.ResponseWriter, r *http.Request) {
+	// Get site ID from query parameter
+	siteID := r.URL.Query().Get("siteId")
+	if siteID == "" {
+		http.Error(w, `{"error": "siteId is required"}`, http.StatusBadRequest)
+		return
+	}
+	
+	// Get site auth config
+	authConfigStore := models.NewSiteAuthConfigStore(h.db)
+	authConfig, err := authConfigStore.GetBySiteID(siteID)
+	if err != nil {
+		http.Error(w, `{"error": "Site not found or auth not configured"}`, http.StatusNotFound)
+		return
+	}
+	
+	// Return public auth config info
+	response := map[string]interface{}{
+		"site_id":   siteID,
+		"auth_mode": authConfig.AuthMode,
+	}
+	
+	// Add Auth0 domain if kotomi mode
+	if authConfig.AuthMode == "kotomi" && h.auth0Config != nil {
+		response["auth0_domain"] = h.auth0Config.Domain
+		response["auth0_client_id"] = h.auth0Config.ClientID
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 // extractToken extracts JWT token from Authorization header or cookie
 func (h *AuthHandler) extractToken(r *http.Request) string {
 	// Try Authorization header first
@@ -342,8 +319,9 @@ func (h *AuthHandler) RegisterRoutes(router *mux.Router) {
 	// Create subrouter for auth endpoints
 	authRouter := router.PathPrefix("/api/v1/auth").Subrouter()
 
-	authRouter.HandleFunc("/signup", h.Signup).Methods("POST")
-	authRouter.HandleFunc("/login", h.Login).Methods("POST")
+	authRouter.HandleFunc("/login", h.Login).Methods("GET")
+	authRouter.HandleFunc("/callback", h.Callback).Methods("GET")
 	authRouter.HandleFunc("/logout", h.Logout).Methods("POST")
 	authRouter.HandleFunc("/user", h.GetCurrentUser).Methods("GET")
+	authRouter.HandleFunc("/config", h.GetAuthConfig).Methods("GET")
 }

@@ -13,7 +13,7 @@ This document contains a summary of all GitHub issues that should be created for
 | 5 | 🎨 Create Frontend Widget / JavaScript Embed | High | Pending | 16-24 hours | After #1, #4 |
 | 6 | 🔒 [COMPLETED] Conduct Security Audit | Critical | ✅ Done | 8-16 hours | After #1, #2 |
 | 7 | 🤖 [COMPLETED] Implement Automatic/AI Moderation | Medium | ✅ Done | 16-24 hours | Independent |
-| 8 | 👤 Implement User Authentication for Comments | Medium | Pending | 24-40 hours | After #5 |
+| 8 | 👤 [PARTIAL] User Authentication for Comments | Medium | ✅ 50% Done | 24-40 hours (12h done) | After #5 |
 | 9 | 📧 Implement Email Notifications | Low | Pending | 12-16 hours | After #8 |
 | 10 | 📊 Implement Analytics & Reporting | Low | Pending | 12-16 hours | After #3, #8 |
 | 11 | 💾 Implement Export/Import Functionality | Low | Pending | 8-12 hours | Independent |
@@ -21,7 +21,8 @@ This document contains a summary of all GitHub issues that should be created for
 
 **Total Estimated Effort**: 118-178 hours (approximately 3-4 weeks of full-time development)
 **Completed**: Issues #1, #2, #3, #4, #6, #7 (40-72 hours completed)
-**Remaining**: 78-106 hours
+**Partially Complete**: Issue #8 (12 hours completed, 12-28 hours remaining)
+**Remaining**: 66-94 hours
 
 ## Implementation Phases
 
@@ -52,12 +53,12 @@ This document contains a summary of all GitHub issues that should be created for
 ### Phase 3: Enhanced Features
 **Goal**: Add advanced capabilities
 **Timeline**: 2-3 weeks
-**Status**: ✅ 1/2 Complete (50%)
+**Status**: ✅ 1.5/2 Complete (75%)
 
 7. ✅ Issue #7: AI Moderation (16-24 hours) - **DONE**
-8. Issue #8: User Authentication (24-40 hours)
+8. ⚠️ Issue #8: User Authentication (24-40 hours) - **50% DONE** (External JWT complete, built-in auth pending)
 
-**Deliverable**: Enhanced user experience
+**Deliverable**: Enhanced user experience with authentication support
 
 ### Phase 4: Nice-to-Have Features
 **Goal**: Polish and additional features
@@ -349,32 +350,41 @@ This document contains a summary of all GitHub issues that should be created for
 
 ---
 
-### Issue #8: 👤 Implement User Authentication for Comments
-**Priority**: Medium | **Effort**: Large (24-40 hours)
+### Issue #8: 👤 [PARTIALLY COMPLETE] Implement User Authentication for Comments and Reactions
+**Priority**: Medium | **Effort**: Large (24-40 hours total, ~12 hours completed) | **Status**: ✅ 50% Complete
 
-**Enables**: Users to edit/delete their own comments and build profiles.
+**Current Status (as of 2026-02-02):**
+- ✅ **COMPLETED:** External JWT authentication (ADR 001 Option 3)
+- ❌ **PENDING:** Kotomi-provided authentication (ADR 001 Option 4)
 
-**Requirements**:
-- Email/password authentication for commenters
-- Social logins (Google, GitHub, Twitter)
-- Optional anonymous posting per site
-- Edit/delete own comments functionality
-- User profiles
+**What's Implemented:**
+- ✅ JWT middleware for validating tokens (HMAC, RSA, ECDSA, JWKS)
+- ✅ Protected comment and reaction endpoints requiring authentication
+- ✅ Comment model with `author_id` field (required, indexed)
+- ✅ Reaction model with `user_id` field (required, indexed)
+- ✅ User model stores JWT user information
+- ✅ Sites can integrate via external JWT tokens (bring your own auth)
+- ✅ Users can edit/delete their own comments (ownership verification)
 
-**Success Criteria**:
-- Users can register and login
-- Authenticated users can edit/delete their comments
-- Anonymous posting still works if enabled
-- Password reset flow works
+**What's Missing (Kotomi-Provided Auth):**
+- ❌ Email/password authentication endpoints
+- ❌ Social login integration (Google, GitHub, Twitter)
+- ❌ Magic link passwordless authentication
+- ❌ User signup/login/logout endpoints
+- ❌ User profile management
+- ❌ Email verification and password reset
+- ❌ Embeddable authentication widgets
 
-**Files to Create**: `pkg/auth/public_auth.go`, `pkg/models/public_user.go`
+**Why Partially Complete:**
+The core authentication requirement from ADR 001 is met: sites with existing authentication systems can integrate via JWT tokens. The optional Kotomi-provided authentication for sites without auth is not implemented but is an advanced feature for future releases.
 
-**Dependencies**: AFTER #5 (Frontend Widget), requires email service
+**Files Implemented**: `pkg/middleware/jwt_auth.go`, `pkg/auth/jwt_validator.go`, `pkg/models/user.go`
+**Files Not Created**: `pkg/auth/public_auth.go`, `pkg/models/kotomi_user.go`, auth endpoints
 
-**Design Decisions Needed**:
-- Separate auth system or share with admin Auth0?
-- Social login providers?
-- Edit time limit?
+**Reference**: [ADR 001: User Authentication](docs/adr/001-user-authentication-for-comments-and-reactions.md)
+
+**Next Steps (if needed):**
+Implement Kotomi-provided authentication service for static sites without existing auth infrastructure (estimated 20-30 additional hours).
 
 ---
 

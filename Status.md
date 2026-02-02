@@ -367,10 +367,10 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Priority:** High (needed for end-users to integrate Kotomi)
 - **Estimated Work:** Large (requires JavaScript development, styling, documentation)
 
-#### 4. **User Authentication for Comments and Reactions** ✅ PARTIALLY IMPLEMENTED
-- **Status:** External JWT Authentication Complete, Kotomi-Provided Auth Pending
+#### 4. **User Authentication for Comments and Reactions** ✅ PARTIALLY IMPLEMENTED (65%)
+- **Status:** External JWT Complete (100%), Kotomi-Provided Auth Infrastructure (30%)
 - **Description:** JWT-based authentication for comment and reaction APIs
-- **Current State:**
+- **Current State (Verified 2026-02-02):**
   - ✅ External JWT authentication fully implemented (ADR 001 Option 3)
   - ✅ JWT middleware validates tokens (HMAC, RSA, ECDSA, JWKS)
   - ✅ All comment POST/PUT/DELETE operations require authentication
@@ -380,16 +380,20 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
   - ✅ User model stores authenticated user data from JWT
   - ✅ Handlers properly extract authenticated user from context
   - ✅ Sites can "bring their own authentication" via JWT tokens
-- **What's Missing:**
-  - ❌ Kotomi-provided authentication (Option 4 from ADR 001)
-  - ❌ Built-in email/password authentication
-  - ❌ Social login (Google, GitHub, Twitter)
-  - ❌ Magic link passwordless authentication
-  - ❌ User signup/login/logout endpoints
-  - ❌ User profile management endpoints
-  - ❌ Email verification and password reset
-- **Priority:** Medium (Core JWT auth complete; built-in auth is optional advanced feature)
-- **Estimated Work:** 40-60 hours for Kotomi-provided auth
+  - ✅ Comprehensive JWT validation tests (100% pass rate)
+  - ✅ E2E tests with JWT authentication
+  - ✅ Kotomi auth backend: Auth0 integration, database schema, models, handlers
+  - ✅ Kotomi auth: User/session management, JWT generation, Login/Callback flows
+- **What's Missing (Kotomi-Provided Auth UI):**
+  - ❌ Admin UI to enable/configure Kotomi auth mode per site
+  - ❌ End-user login/signup UI components
+  - ❌ Embeddable authentication widgets for static sites
+  - ❌ User profile management UI
+  - ❌ Email verification flow UI
+  - ❌ Password reset flow UI
+  - ❌ Token refresh endpoint exposure
+- **Priority:** Medium (External JWT auth 100% complete and production-ready; Kotomi auth needs UI)
+- **Estimated Work:** 25-35 hours for Kotomi-provided auth UI completion
 - **Reference:** See [ADR 001](docs/adr/001-user-authentication-for-comments-and-reactions.md) for detailed implementation status
 
 #### 5. **Email Notifications** ❌

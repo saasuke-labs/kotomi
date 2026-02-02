@@ -35,17 +35,24 @@ func (v *JWTValidator) ValidateToken(tokenString string) (*models.KotomiUser, er
 	var token *jwt.Token
 	var err error
 
-	switch v.config.JWTValidationType {
-	case "hmac":
-		token, err = v.validateHMAC(tokenString)
-	case "rsa":
-		token, err = v.validateRSA(tokenString)
-	case "ecdsa":
-		token, err = v.validateECDSA(tokenString)
-	case "jwks":
-		token, err = v.validateJWKS(tokenString)
-	default:
-		return nil, fmt.Errorf("unsupported JWT validation type: %s", v.config.JWTValidationType)
+	// For kotomi auth mode, use HMAC validation with internal key
+	if v.config.AuthMode == "kotomi" {
+		// Kotomi auth mode uses internal HMAC secret
+		token, err = v.validateKotomiToken(tokenString)
+	} else {
+		// External auth mode uses configured validation type
+		switch v.config.JWTValidationType {
+		case "hmac":
+			token, err = v.validateHMAC(tokenString)
+		case "rsa":
+			token, err = v.validateRSA(tokenString)
+		case "ecdsa":
+			token, err = v.validateECDSA(tokenString)
+		case "jwks":
+			token, err = v.validateJWKS(tokenString)
+		default:
+			return nil, fmt.Errorf("unsupported JWT validation type: %s", v.config.JWTValidationType)
+		}
 	}
 
 	if err != nil {
@@ -70,6 +77,21 @@ func (v *JWTValidator) ValidateToken(tokenString string) (*models.KotomiUser, er
 	}
 
 	return user, nil
+}
+
+// validateKotomiToken validates token using kotomi internal HMAC key
+func (v *JWTValidator) validateKotomiToken(tokenString string) (*jwt.Token, error) {
+	// Use kotomi-specific internal secret
+	// This should match the secret used in handlers.go GetJWTSecret()
+	internalSecret := "kotomi-internal-jwt-secret-change-in-production-" + v.config.SiteID
+	
+	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Verify signing method
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(internalSecret), nil
+	})
 }
 
 // validateHMAC validates token using HMAC symmetric key

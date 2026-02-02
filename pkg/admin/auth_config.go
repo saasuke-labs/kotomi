@@ -230,13 +230,20 @@ func (h *AuthConfigHandler) verifySiteOwnership(siteID, userID string, w http.Re
 // validateAuthConfig validates the auth configuration
 func (h *AuthConfigHandler) validateAuthConfig(config *models.SiteAuthConfig) error {
 	// Validate auth mode
-	if config.AuthMode != "external" {
-		// Phase 1 only supports external JWT auth
-		// Future phases will support "kotomi" mode
-		return fmt.Errorf("only 'external' auth mode is supported in Phase 1")
+	validAuthModes := map[string]bool{
+		"external": true,
+		"kotomi":   true,
+	}
+	if !validAuthModes[config.AuthMode] {
+		return fmt.Errorf("invalid auth_mode: must be either 'external' or 'kotomi'")
 	}
 
-	// Validate JWT validation type
+	// For kotomi auth mode, no JWT validation settings are required (uses internal auth)
+	if config.AuthMode == "kotomi" {
+		return nil
+	}
+
+	// For external auth mode, validate JWT validation type
 	validTypes := map[string]bool{
 		"hmac":  true,
 		"rsa":   true,

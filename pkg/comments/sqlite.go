@@ -176,6 +176,45 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_site_auth_configs_site ON site_auth_configs(site_id);
+
+	CREATE TABLE IF NOT EXISTS kotomi_auth_users (
+		id TEXT PRIMARY KEY,
+		site_id TEXT NOT NULL,
+		email TEXT NOT NULL,
+		password_hash TEXT NOT NULL,
+		name TEXT,
+		avatar_url TEXT,
+		is_verified INTEGER DEFAULT 0,
+		verification_token TEXT,
+		reset_token TEXT,
+		reset_token_expires TIMESTAMP,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+		UNIQUE(site_id, email)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_kotomi_auth_users_site ON kotomi_auth_users(site_id);
+	CREATE INDEX IF NOT EXISTS idx_kotomi_auth_users_email ON kotomi_auth_users(site_id, email);
+	CREATE INDEX IF NOT EXISTS idx_kotomi_auth_users_verification ON kotomi_auth_users(verification_token);
+	CREATE INDEX IF NOT EXISTS idx_kotomi_auth_users_reset ON kotomi_auth_users(reset_token);
+
+	CREATE TABLE IF NOT EXISTS kotomi_auth_sessions (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		site_id TEXT NOT NULL,
+		token TEXT NOT NULL UNIQUE,
+		refresh_token TEXT NOT NULL UNIQUE,
+		expires_at TIMESTAMP NOT NULL,
+		refresh_expires_at TIMESTAMP NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES kotomi_auth_users(id) ON DELETE CASCADE,
+		FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_kotomi_auth_sessions_user ON kotomi_auth_sessions(user_id);
+	CREATE INDEX IF NOT EXISTS idx_kotomi_auth_sessions_token ON kotomi_auth_sessions(token);
+	CREATE INDEX IF NOT EXISTS idx_kotomi_auth_sessions_refresh ON kotomi_auth_sessions(refresh_token);
 	`
 
 	if _, err := db.Exec(schema); err != nil {

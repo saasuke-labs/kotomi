@@ -898,6 +898,10 @@ func main() {
 	apiV1Router.Use(corsMiddleware.Handler)
 	apiV1Router.Use(rateLimiter.Handler)
 	
+	// Kotomi authentication routes (no JWT auth required for these endpoints)
+	authHandler := auth.NewAuthHandler(db)
+	authHandler.RegisterRoutes(router)
+	
 	// Read-only routes (no auth required for phase 1)
 	apiV1Router.HandleFunc("/site/{siteId}/page/{pageId}/comments", getCommentsHandler).Methods("GET")
 	apiV1Router.HandleFunc("/site/{siteId}/allowed-reactions", getAllowedReactionsHandler).Methods("GET")

@@ -45,9 +45,18 @@ func JWTAuthMiddleware(db *sql.DB) mux.MiddlewareFunc {
 				return
 			}
 
-			// Extract JWT token from Authorization header
+			// Extract JWT token from Authorization header or cookie (for kotomi mode)
 			authHeader := r.Header.Get("Authorization")
 			token := auth.ExtractTokenFromHeader(authHeader)
+			
+			// If no token in header and auth mode is kotomi, try cookie
+			if token == "" && authConfig.AuthMode == "kotomi" {
+				cookie, err := r.Cookie("kotomi_auth_token")
+				if err == nil {
+					token = cookie.Value
+				}
+			}
+			
 			if token == "" {
 				writeJSONError(w, "Authorization token required", http.StatusUnauthorized)
 				return

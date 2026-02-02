@@ -24,7 +24,7 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 		t.Fatalf("Failed to enable foreign keys: %v", err)
 	}
 
-	// Create schema
+	// Create schema - updated for Auth0
 	schema := `
 	CREATE TABLE IF NOT EXISTS sites (
 		id TEXT PRIMARY KEY,
@@ -38,17 +38,14 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 		id TEXT PRIMARY KEY,
 		site_id TEXT NOT NULL,
 		email TEXT NOT NULL,
-		password_hash TEXT NOT NULL,
+		auth0_sub TEXT NOT NULL,
 		name TEXT,
 		avatar_url TEXT,
 		is_verified INTEGER DEFAULT 0,
-		verification_token TEXT,
-		reset_token TEXT,
-		reset_token_expires TIMESTAMP,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-		UNIQUE(site_id, email)
+		UNIQUE(site_id, auth0_sub)
 	);
 
 	CREATE TABLE IF NOT EXISTS kotomi_auth_sessions (
@@ -85,42 +82,6 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 	return db, cleanup
 }
 
-func TestHashPassword(t *testing.T) {
-	password := "testpassword123"
-	hash, err := HashPassword(password)
-	if err != nil {
-		t.Fatalf("HashPassword failed: %v", err)
-	}
-
-	if hash == "" {
-		t.Error("Expected non-empty hash")
-	}
-
-	if hash == password {
-		t.Error("Hash should not equal plain password")
-	}
-}
-
-func TestCheckPassword(t *testing.T) {
-	password := "testpassword123"
-	hash, err := HashPassword(password)
-	if err != nil {
-		t.Fatalf("HashPassword failed: %v", err)
-	}
-
-	// Test correct password
-	err = CheckPassword(password, hash)
-	if err != nil {
-		t.Errorf("CheckPassword failed for correct password: %v", err)
-	}
-
-	// Test incorrect password
-	err = CheckPassword("wrongpassword", hash)
-	if err == nil {
-		t.Error("CheckPassword should fail for incorrect password")
-	}
-}
-
 func TestGenerateRandomToken(t *testing.T) {
 	token1, err := GenerateRandomToken()
 	if err != nil {
@@ -141,16 +102,25 @@ func TestGenerateRandomToken(t *testing.T) {
 	}
 }
 
-func TestCreateUser(t *testing.T) {
+func TestCreateOrUpdateUserFromAuth0(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
 	store := NewKotomiAuthStore(db)
 
-	// Create user
-	user, err := store.CreateUser("test-site", "test@example.com", "password123", "Test User")
+	// Create mock Auth0 user info
+	userInfo := &UserInfo{
+		Sub:           "auth0|12345",
+		Email:         "test@example.com",
+		Name:          "Test User",
+		Picture:       "https://example.com/avatar.jpg",
+		EmailVerified: true,
+	}
+
+	// Create user from Auth0
+	user, err := store.CreateOrUpdateUserFromAuth0("test-site", userInfo)
 	if err != nil {
-		t.Fatalf("CreateUser failed: %v", err)
+		t.Fatalf("CreateOrUpdateUserFromAuth0 failed: %v", err)
 	}
 
 	// Verify user properties
@@ -163,50 +133,65 @@ func TestCreateUser(t *testing.T) {
 	if user.Email != "test@example.com" {
 		t.Errorf("Expected email to be 'test@example.com', got %s", user.Email)
 	}
+	if user.Auth0Sub != "auth0|12345" {
+		t.Errorf("Expected Auth0Sub to be 'auth0|12345', got %s", user.Auth0Sub)
+	}
 	if user.Name != "Test User" {
 		t.Errorf("Expected name to be 'Test User', got %s", user.Name)
 	}
-	if user.IsVerified {
-		t.Error("Expected IsVerified to be false by default")
-	}
-	if user.VerificationToken == "" {
-		t.Error("Expected verification token to be generated")
+	if !user.IsVerified {
+		t.Error("Expected IsVerified to be true")
 	}
 
-	// Test duplicate email
-	_, err = store.CreateUser("test-site", "test@example.com", "password456", "Another User")
-	if err == nil {
-		t.Error("Expected error when creating user with duplicate email")
+	// Update the same user
+	userInfo.Name = "Updated Name"
+	updatedUser, err := store.CreateOrUpdateUserFromAuth0("test-site", userInfo)
+	if err != nil {
+		t.Fatalf("CreateOrUpdateUserFromAuth0 (update) failed: %v", err)
+	}
+
+	// Should be same user ID
+	if updatedUser.ID != user.ID {
+		t.Errorf("Expected same user ID, got %s vs %s", updatedUser.ID, user.ID)
+	}
+	if updatedUser.Name != "Updated Name" {
+		t.Errorf("Expected name to be 'Updated Name', got %s", updatedUser.Name)
 	}
 }
 
-func TestGetUserByEmail(t *testing.T) {
+func TestGetUserByAuth0Sub(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
 	store := NewKotomiAuthStore(db)
 
 	// Create user
-	created, err := store.CreateUser("test-site", "test@example.com", "password123", "Test User")
+	userInfo := &UserInfo{
+		Sub:           "auth0|12345",
+		Email:         "test@example.com",
+		Name:          "Test User",
+		EmailVerified: true,
+	}
+	created, err := store.CreateOrUpdateUserFromAuth0("test-site", userInfo)
 	if err != nil {
-		t.Fatalf("CreateUser failed: %v", err)
+		t.Fatalf("CreateOrUpdateUserFromAuth0 failed: %v", err)
 	}
 
-	// Get user by email
-	user, err := store.GetUserByEmail("test-site", "test@example.com")
+	// Get user by Auth0 sub
+	user, err := store.GetUserByAuth0Sub("test-site", "auth0|12345")
 	if err != nil {
-		t.Fatalf("GetUserByEmail failed: %v", err)
+		t.Fatalf("GetUserByAuth0Sub failed: %v", err)
 	}
 
 	if user.ID != created.ID {
 		t.Errorf("Expected user ID %s, got %s", created.ID, user.ID)
 	}
-	if user.Email != "test@example.com" {
-		t.Errorf("Expected email 'test@example.com', got %s", user.Email)
+	if user.Auth0Sub != "auth0|12345" {
+		t.Errorf("Expected Auth0Sub 'auth0|12345', got %s", user.Auth0Sub)
 	}
 
 	// Test non-existent user
-	_, err = store.GetUserByEmail("test-site", "nonexistent@example.com")
+	_, err = store.GetUserByAuth0Sub("test-site", "nonexistent-sub")
 	if err == nil {
 		t.Error("Expected error for non-existent user")
 	}
@@ -219,9 +204,15 @@ func TestGetUserByID(t *testing.T) {
 	store := NewKotomiAuthStore(db)
 
 	// Create user
-	created, err := store.CreateUser("test-site", "test@example.com", "password123", "Test User")
+	userInfo := &UserInfo{
+		Sub:           "auth0|12345",
+		Email:         "test@example.com",
+		Name:          "Test User",
+		EmailVerified: true,
+	}
+	created, err := store.CreateOrUpdateUserFromAuth0("test-site", userInfo)
 	if err != nil {
-		t.Fatalf("CreateUser failed: %v", err)
+		t.Fatalf("CreateOrUpdateUserFromAuth0 failed: %v", err)
 	}
 
 	// Get user by ID
@@ -244,45 +235,12 @@ func TestGetUserByID(t *testing.T) {
 	}
 }
 
-func TestAuthenticateUser(t *testing.T) {
-	db, cleanup := setupTestDB(t)
-	defer cleanup()
-
-	store := NewKotomiAuthStore(db)
-
-	// Create user
-	_, err := store.CreateUser("test-site", "test@example.com", "password123", "Test User")
-	if err != nil {
-		t.Fatalf("CreateUser failed: %v", err)
-	}
-
-	// Test successful authentication
-	user, err := store.AuthenticateUser("test-site", "test@example.com", "password123")
-	if err != nil {
-		t.Fatalf("AuthenticateUser failed: %v", err)
-	}
-	if user.Email != "test@example.com" {
-		t.Errorf("Expected email 'test@example.com', got %s", user.Email)
-	}
-
-	// Test wrong password
-	_, err = store.AuthenticateUser("test-site", "test@example.com", "wrongpassword")
-	if err == nil {
-		t.Error("Expected error for wrong password")
-	}
-
-	// Test non-existent user
-	_, err = store.AuthenticateUser("test-site", "nonexistent@example.com", "password123")
-	if err == nil {
-		t.Error("Expected error for non-existent user")
-	}
-}
-
 func TestGenerateJWTToken(t *testing.T) {
 	user := &KotomiAuthUser{
 		ID:         "user-123",
 		SiteID:     "test-site",
 		Email:      "test@example.com",
+		Auth0Sub:   "auth0|12345",
 		Name:       "Test User",
 		IsVerified: true,
 	}
@@ -297,8 +255,7 @@ func TestGenerateJWTToken(t *testing.T) {
 		t.Error("Expected non-empty token")
 	}
 
-	// Verify token can be parsed
-	// (This is a basic check, full validation is done in jwt_validator_test.go)
+	// Verify token has reasonable length for a JWT
 	if len(token) < 100 {
 		t.Error("Token seems too short to be valid JWT")
 	}
@@ -311,9 +268,15 @@ func TestCreateSession(t *testing.T) {
 	store := NewKotomiAuthStore(db)
 
 	// Create user
-	user, err := store.CreateUser("test-site", "test@example.com", "password123", "Test User")
+	userInfo := &UserInfo{
+		Sub:           "auth0|12345",
+		Email:         "test@example.com",
+		Name:          "Test User",
+		EmailVerified: true,
+	}
+	user, err := store.CreateOrUpdateUserFromAuth0("test-site", userInfo)
 	if err != nil {
-		t.Fatalf("CreateUser failed: %v", err)
+		t.Fatalf("CreateOrUpdateUserFromAuth0 failed: %v", err)
 	}
 
 	// Create session
@@ -354,9 +317,15 @@ func TestGetSessionByToken(t *testing.T) {
 	store := NewKotomiAuthStore(db)
 
 	// Create user and session
-	user, err := store.CreateUser("test-site", "test@example.com", "password123", "Test User")
+	userInfo := &UserInfo{
+		Sub:           "auth0|12345",
+		Email:         "test@example.com",
+		Name:          "Test User",
+		EmailVerified: true,
+	}
+	user, err := store.CreateOrUpdateUserFromAuth0("test-site", userInfo)
 	if err != nil {
-		t.Fatalf("CreateUser failed: %v", err)
+		t.Fatalf("CreateOrUpdateUserFromAuth0 failed: %v", err)
 	}
 
 	created, err := store.CreateSession(user, "test-secret")
@@ -391,9 +360,15 @@ func TestGetSessionByRefreshToken(t *testing.T) {
 	store := NewKotomiAuthStore(db)
 
 	// Create user and session
-	user, err := store.CreateUser("test-site", "test@example.com", "password123", "Test User")
+	userInfo := &UserInfo{
+		Sub:           "auth0|12345",
+		Email:         "test@example.com",
+		Name:          "Test User",
+		EmailVerified: true,
+	}
+	user, err := store.CreateOrUpdateUserFromAuth0("test-site", userInfo)
 	if err != nil {
-		t.Fatalf("CreateUser failed: %v", err)
+		t.Fatalf("CreateOrUpdateUserFromAuth0 failed: %v", err)
 	}
 
 	created, err := store.CreateSession(user, "test-secret")
@@ -428,9 +403,15 @@ func TestDeleteSession(t *testing.T) {
 	store := NewKotomiAuthStore(db)
 
 	// Create user and session
-	user, err := store.CreateUser("test-site", "test@example.com", "password123", "Test User")
+	userInfo := &UserInfo{
+		Sub:           "auth0|12345",
+		Email:         "test@example.com",
+		Name:          "Test User",
+		EmailVerified: true,
+	}
+	user, err := store.CreateOrUpdateUserFromAuth0("test-site", userInfo)
 	if err != nil {
-		t.Fatalf("CreateUser failed: %v", err)
+		t.Fatalf("CreateOrUpdateUserFromAuth0 failed: %v", err)
 	}
 
 	session, err := store.CreateSession(user, "test-secret")
@@ -458,9 +439,15 @@ func TestDeleteSessionByToken(t *testing.T) {
 	store := NewKotomiAuthStore(db)
 
 	// Create user and session
-	user, err := store.CreateUser("test-site", "test@example.com", "password123", "Test User")
+	userInfo := &UserInfo{
+		Sub:           "auth0|12345",
+		Email:         "test@example.com",
+		Name:          "Test User",
+		EmailVerified: true,
+	}
+	user, err := store.CreateOrUpdateUserFromAuth0("test-site", userInfo)
 	if err != nil {
-		t.Fatalf("CreateUser failed: %v", err)
+		t.Fatalf("CreateOrUpdateUserFromAuth0 failed: %v", err)
 	}
 
 	session, err := store.CreateSession(user, "test-secret")
@@ -488,9 +475,15 @@ func TestUpdateUser(t *testing.T) {
 	store := NewKotomiAuthStore(db)
 
 	// Create user
-	user, err := store.CreateUser("test-site", "test@example.com", "password123", "Test User")
+	userInfo := &UserInfo{
+		Sub:           "auth0|12345",
+		Email:         "test@example.com",
+		Name:          "Test User",
+		EmailVerified: false,
+	}
+	user, err := store.CreateOrUpdateUserFromAuth0("test-site", userInfo)
 	if err != nil {
-		t.Fatalf("CreateUser failed: %v", err)
+		t.Fatalf("CreateOrUpdateUserFromAuth0 failed: %v", err)
 	}
 
 	// Update user
@@ -517,112 +510,5 @@ func TestUpdateUser(t *testing.T) {
 	}
 	if !updated.IsVerified {
 		t.Error("Expected IsVerified to be true")
-	}
-}
-
-func TestSetPasswordResetToken(t *testing.T) {
-	db, cleanup := setupTestDB(t)
-	defer cleanup()
-
-	store := NewKotomiAuthStore(db)
-
-	// Create user
-	user, err := store.CreateUser("test-site", "test@example.com", "password123", "Test User")
-	if err != nil {
-		t.Fatalf("CreateUser failed: %v", err)
-	}
-
-	// Set reset token
-	token := "reset-token-123"
-	expiresAt := time.Now().Add(1 * time.Hour)
-	err = store.SetPasswordResetToken(user.ID, token, expiresAt)
-	if err != nil {
-		t.Fatalf("SetPasswordResetToken failed: %v", err)
-	}
-
-	// Verify reset token is set
-	updated, err := store.GetUserByID(user.ID)
-	if err != nil {
-		t.Fatalf("GetUserByID failed: %v", err)
-	}
-
-	if updated.ResetToken != token {
-		t.Errorf("Expected reset token '%s', got '%s'", token, updated.ResetToken)
-	}
-}
-
-func TestResetPassword(t *testing.T) {
-	db, cleanup := setupTestDB(t)
-	defer cleanup()
-
-	store := NewKotomiAuthStore(db)
-
-	// Create user
-	user, err := store.CreateUser("test-site", "test@example.com", "oldpassword", "Test User")
-	if err != nil {
-		t.Fatalf("CreateUser failed: %v", err)
-	}
-
-	// Set reset token
-	token := "reset-token-123"
-	expiresAt := time.Now().Add(1 * time.Hour)
-	err = store.SetPasswordResetToken(user.ID, token, expiresAt)
-	if err != nil {
-		t.Fatalf("SetPasswordResetToken failed: %v", err)
-	}
-
-	// Reset password
-	newPassword := "newpassword123"
-	err = store.ResetPassword(token, newPassword)
-	if err != nil {
-		t.Fatalf("ResetPassword failed: %v", err)
-	}
-
-	// Verify new password works
-	_, err = store.AuthenticateUser("test-site", "test@example.com", newPassword)
-	if err != nil {
-		t.Errorf("Authentication with new password failed: %v", err)
-	}
-
-	// Verify old password doesn't work
-	_, err = store.AuthenticateUser("test-site", "test@example.com", "oldpassword")
-	if err == nil {
-		t.Error("Expected authentication with old password to fail")
-	}
-
-	// Verify reset token is cleared
-	updated, err := store.GetUserByID(user.ID)
-	if err != nil {
-		t.Fatalf("GetUserByID failed: %v", err)
-	}
-	if updated.ResetToken != "" {
-		t.Error("Expected reset token to be cleared after password reset")
-	}
-}
-
-func TestResetPassword_ExpiredToken(t *testing.T) {
-	db, cleanup := setupTestDB(t)
-	defer cleanup()
-
-	store := NewKotomiAuthStore(db)
-
-	// Create user
-	user, err := store.CreateUser("test-site", "test@example.com", "password123", "Test User")
-	if err != nil {
-		t.Fatalf("CreateUser failed: %v", err)
-	}
-
-	// Set expired reset token
-	token := "reset-token-123"
-	expiresAt := time.Now().Add(-1 * time.Hour) // Expired
-	err = store.SetPasswordResetToken(user.ID, token, expiresAt)
-	if err != nil {
-		t.Fatalf("SetPasswordResetToken failed: %v", err)
-	}
-
-	// Try to reset password with expired token
-	err = store.ResetPassword(token, "newpassword")
-	if err == nil {
-		t.Error("Expected error when using expired reset token")
 	}
 }

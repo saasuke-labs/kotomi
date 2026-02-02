@@ -8,6 +8,12 @@ definitions:
         type: string
       author_id:
         type: string
+      author_reputation:
+        description: 'Phase 3: Show user reputation'
+        type: integer
+      author_verified:
+        description: 'Phase 3: Show user verification status'
+        type: boolean
       created_at:
         type: string
       id:
@@ -17,6 +23,8 @@ definitions:
       moderated_by:
         type: string
       parent_id:
+        type: string
+      site_id:
         type: string
       status:
         type: string
@@ -104,6 +112,101 @@ paths:
       summary: Get allowed reactions
       tags:
       - reactions
+  /site/{siteId}/comments/{commentId}:
+    delete:
+      description: Delete an existing comment (requires JWT authentication and ownership)
+      parameters:
+      - description: Site ID
+        in: path
+        name: siteId
+        required: true
+        type: string
+      - description: Comment ID
+        in: path
+        name: commentId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Comment deleted successfully
+        "401":
+          description: Authentication required
+          schema:
+            type: string
+        "403":
+          description: Forbidden - not the comment owner
+          schema:
+            type: string
+        "404":
+          description: Comment not found
+          schema:
+            type: string
+        "500":
+          description: Failed to delete comment
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete a comment
+      tags:
+      - comments
+    put:
+      consumes:
+      - application/json
+      description: Update the text of an existing comment (requires JWT authentication
+        and ownership)
+      parameters:
+      - description: Site ID
+        in: path
+        name: siteId
+        required: true
+        type: string
+      - description: Comment ID
+        in: path
+        name: commentId
+        required: true
+        type: string
+      - description: Updated comment text
+        in: body
+        name: update
+        required: true
+        schema:
+          properties:
+            text:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/comments.Comment'
+        "400":
+          description: Invalid JSON or missing required fields
+          schema:
+            type: string
+        "401":
+          description: Authentication required
+          schema:
+            type: string
+        "403":
+          description: Forbidden - not the comment owner
+          schema:
+            type: string
+        "404":
+          description: Comment not found
+          schema:
+            type: string
+        "500":
+          description: Failed to update comment
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update a comment
+      tags:
+      - comments
   /site/{siteId}/page/{pageId}/comments:
     get:
       description: Retrieve all comments for a specific page

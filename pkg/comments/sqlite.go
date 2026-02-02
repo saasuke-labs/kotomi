@@ -3,6 +3,8 @@ package comments
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -60,6 +62,7 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 		profile_url TEXT,
 		is_verified INTEGER DEFAULT 0,
 		roles TEXT,
+		reputation_score INTEGER DEFAULT 0,
 		first_seen TIMESTAMP NOT NULL,
 		last_seen TIMESTAMP NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -178,6 +181,21 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 	if _, err := db.Exec(schema); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to create schema: %w", err)
+	}
+
+	// Run migrations for existing databases
+	migrations := []string{
+		// Phase 3: Add reputation_score to users table if it doesn't exist
+		`ALTER TABLE users ADD COLUMN reputation_score INTEGER DEFAULT 0`,
+	}
+
+	for _, migration := range migrations {
+		// Try to run migration, ignore only if column already exists
+		_, err := db.Exec(migration)
+		if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			// Log unexpected errors but don't fail - allows database to work
+			log.Printf("Warning: Migration error (continuing anyway): %v", err)
+		}
 	}
 
 	return &SQLiteStore{db: db}, nil
@@ -303,10 +321,14 @@ func (s *SQLiteStore) AddPageComment(site, page string, comment Comment) error {
 // GetPageComments retrieves all comments for a specific page on a site
 func (s *SQLiteStore) GetPageComments(site, page string) ([]Comment, error) {
 	query := `
-		SELECT id, author, author_id, author_email, text, parent_id, status, moderated_by, moderated_at, created_at, updated_at
-		FROM comments
-		WHERE site_id = ? AND page_id = ?
-		ORDER BY created_at ASC
+		SELECT c.id, c.author, c.author_id, c.author_email, c.text, c.parent_id, c.status, 
+		       c.moderated_by, c.moderated_at, c.created_at, c.updated_at,
+		       COALESCE(u.is_verified, 0) as author_verified,
+		       COALESCE(u.reputation_score, 0) as author_reputation
+		FROM comments c
+		LEFT JOIN users u ON c.site_id = u.site_id AND c.author_id = u.id
+		WHERE c.site_id = ? AND c.page_id = ?
+		ORDER BY c.created_at ASC
 	`
 
 	rows, err := s.db.Query(query, site, page)
@@ -323,7 +345,8 @@ func (s *SQLiteStore) GetPageComments(site, page string) ([]Comment, error) {
 		var moderatedAt sql.NullTime
 		var authorEmail sql.NullString
 
-		err := rows.Scan(&c.ID, &c.Author, &c.AuthorID, &authorEmail, &c.Text, &parentID, &c.Status, &moderatedBy, &moderatedAt, &c.CreatedAt, &c.UpdatedAt)
+		err := rows.Scan(&c.ID, &c.Author, &c.AuthorID, &authorEmail, &c.Text, &parentID, &c.Status, 
+			&moderatedBy, &moderatedAt, &c.CreatedAt, &c.UpdatedAt, &c.AuthorVerified, &c.AuthorReputation)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan comment: %w", err)
 		}
@@ -372,18 +395,22 @@ func (s *SQLiteStore) GetDB() *sql.DB {
 // GetCommentsBySite retrieves all comments for a specific site
 func (s *SQLiteStore) GetCommentsBySite(siteID string, status string) ([]Comment, error) {
 	query := `
-		SELECT id, site_id, page_id, author, text, parent_id, status, moderated_by, moderated_at, created_at, updated_at
-		FROM comments
-		WHERE site_id = ?
+		SELECT c.id, c.site_id, c.page_id, c.author, c.author_id, c.author_email, c.text, c.parent_id, 
+		       c.status, c.moderated_by, c.moderated_at, c.created_at, c.updated_at,
+		       COALESCE(u.is_verified, 0) as author_verified,
+		       COALESCE(u.reputation_score, 0) as author_reputation
+		FROM comments c
+		LEFT JOIN users u ON c.site_id = u.site_id AND c.author_id = u.id
+		WHERE c.site_id = ?
 	`
 	args := []interface{}{siteID}
 
 	if status != "" {
-		query += " AND status = ?"
+		query += " AND c.status = ?"
 		args = append(args, status)
 	}
 
-	query += " ORDER BY created_at DESC"
+	query += " ORDER BY c.created_at DESC"
 
 	rows, err := s.db.Query(query, args...)
 	if err != nil {
@@ -394,12 +421,14 @@ func (s *SQLiteStore) GetCommentsBySite(siteID string, status string) ([]Comment
 	var comments []Comment
 	for rows.Next() {
 		var c Comment
-		var siteID, pageID string // Not used but needed for Scan
+		var pageID string // Scanned but not included in returned Comment struct
 		var parentID sql.NullString
 		var moderatedBy sql.NullString
 		var moderatedAt sql.NullTime
+		var authorEmail sql.NullString
 
-		err := rows.Scan(&c.ID, &siteID, &pageID, &c.Author, &c.Text, &parentID, &c.Status, &moderatedBy, &moderatedAt, &c.CreatedAt, &c.UpdatedAt)
+		err := rows.Scan(&c.ID, &c.SiteID, &pageID, &c.Author, &c.AuthorID, &authorEmail, &c.Text, &parentID, 
+			&c.Status, &moderatedBy, &moderatedAt, &c.CreatedAt, &c.UpdatedAt, &c.AuthorVerified, &c.AuthorReputation)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan comment: %w", err)
 		}
@@ -412,6 +441,9 @@ func (s *SQLiteStore) GetCommentsBySite(siteID string, status string) ([]Comment
 		}
 		if moderatedAt.Valid {
 			c.ModeratedAt = moderatedAt.Time
+		}
+		if authorEmail.Valid {
+			c.AuthorEmail = authorEmail.String
 		}
 
 		comments = append(comments, c)
@@ -431,19 +463,20 @@ func (s *SQLiteStore) GetCommentsBySite(siteID string, status string) ([]Comment
 // GetCommentByID retrieves a comment by its ID
 func (s *SQLiteStore) GetCommentByID(commentID string) (*Comment, error) {
 	query := `
-		SELECT id, site_id, page_id, author, text, parent_id, status, moderated_by, moderated_at, created_at, updated_at
+		SELECT id, site_id, page_id, author, author_id, author_email, text, parent_id, status, moderated_by, moderated_at, created_at, updated_at
 		FROM comments
 		WHERE id = ?
 	`
 
 	var c Comment
-	var siteID, pageID string // Not used but needed for Scan
+	var pageID string // Scanned but not included in returned Comment struct
+	var authorEmail sql.NullString
 	var parentID sql.NullString
 	var moderatedBy sql.NullString
 	var moderatedAt sql.NullTime
 
 	err := s.db.QueryRow(query, commentID).Scan(
-		&c.ID, &siteID, &pageID, &c.Author, &c.Text, &parentID, &c.Status, &moderatedBy, &moderatedAt, &c.CreatedAt, &c.UpdatedAt,
+		&c.ID, &c.SiteID, &pageID, &c.Author, &c.AuthorID, &authorEmail, &c.Text, &parentID, &c.Status, &moderatedBy, &moderatedAt, &c.CreatedAt, &c.UpdatedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -452,6 +485,9 @@ func (s *SQLiteStore) GetCommentByID(commentID string) (*Comment, error) {
 		return nil, fmt.Errorf("failed to query comment: %w", err)
 	}
 
+	if authorEmail.Valid {
+		c.AuthorEmail = authorEmail.String
+	}
 	if parentID.Valid {
 		c.ParentID = parentID.String
 	}
@@ -477,6 +513,32 @@ func (s *SQLiteStore) UpdateCommentStatus(commentID, status, moderatorID string)
 	_, err := s.db.Exec(query, status, moderatorID, now, now, commentID)
 	if err != nil {
 		return fmt.Errorf("failed to update comment status: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateCommentText updates the text content of a comment
+func (s *SQLiteStore) UpdateCommentText(commentID, text string) error {
+	query := `
+		UPDATE comments
+		SET text = ?, updated_at = ?
+		WHERE id = ?
+	`
+
+	now := time.Now()
+	result, err := s.db.Exec(query, text, now, commentID)
+	if err != nil {
+		return fmt.Errorf("failed to update comment text: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("comment not found")
 	}
 
 	return nil

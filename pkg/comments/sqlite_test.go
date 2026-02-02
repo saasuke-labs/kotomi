@@ -470,3 +470,68 @@ func TestSQLiteStore_MultipleSitesAndPages(t *testing.T) {
 		}
 	}
 }
+
+// TestSQLiteStore_UpdateCommentText tests updating comment text
+func TestSQLiteStore_UpdateCommentText(t *testing.T) {
+	store, _ := createTestDB(t)
+	defer store.Close()
+
+	// Create a comment
+	comment := Comment{
+		ID:        "test-comment-1",
+		Author:    "John Doe",
+		AuthorID:  "user123",
+		Text:      "Original text",
+		Status:    "approved",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	err := store.AddPageComment("site1", "page1", comment)
+	if err != nil {
+		t.Fatalf("failed to add comment: %v", err)
+	}
+
+	// Update the comment text
+	newText := "Updated text content"
+	err = store.UpdateCommentText(comment.ID, newText)
+	if err != nil {
+		t.Fatalf("UpdateCommentText failed: %v", err)
+	}
+
+	// Retrieve and verify the comment was updated
+	updated, err := store.GetCommentByID(comment.ID)
+	if err != nil {
+		t.Fatalf("failed to get updated comment: %v", err)
+	}
+
+	if updated.Text != newText {
+		t.Errorf("expected text '%s', got '%s'", newText, updated.Text)
+	}
+
+	// Verify other fields remain unchanged
+	if updated.ID != comment.ID {
+		t.Errorf("expected ID '%s', got '%s'", comment.ID, updated.ID)
+	}
+	if updated.Author != comment.Author {
+		t.Errorf("expected author '%s', got '%s'", comment.Author, updated.Author)
+	}
+	if updated.Status != comment.Status {
+		t.Errorf("expected status '%s', got '%s'", comment.Status, updated.Status)
+	}
+}
+
+// TestSQLiteStore_UpdateCommentText_NotFound tests updating non-existent comment
+func TestSQLiteStore_UpdateCommentText_NotFound(t *testing.T) {
+	store, _ := createTestDB(t)
+	defer store.Close()
+
+	err := store.UpdateCommentText("nonexistent-id", "Some text")
+	if err == nil {
+		t.Error("expected error for non-existent comment, got nil")
+	}
+	if err.Error() != "comment not found" {
+		t.Errorf("expected 'comment not found' error, got: %v", err)
+	}
+}
+

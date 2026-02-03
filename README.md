@@ -14,6 +14,7 @@ Give your pages a voice
 - 🔐 **JWT Authentication** - Secure user authentication with external JWT support (Phase 1)
 - 🤖 **AI Moderation** - Automatic content moderation using OpenAI GPT (optional)
 - 📧 **Email Notifications** - Notify site owners and users about comments and moderation events
+- 📊 **Analytics & Reporting** - Track engagement metrics, user activity, and trends
 - 🔐 **Admin Panel** - Web-based dashboard with Auth0 authentication
 - 🏢 **Multi-Site Management** - Manage multiple sites from a single instance
 - 📄 **Page Tracking** - Organize comments by pages within sites
@@ -246,12 +247,54 @@ Kotomi includes a web-based admin panel for managing sites, pages, and moderatin
 - `/admin/dashboard` - Overview of sites and pending comments
 - `/admin/sites` - List all sites
 - `/admin/sites/{siteId}` - View site details and pages
+- `/admin/sites/{siteId}/analytics` - View analytics and engagement metrics
 - `/admin/sites/{siteId}/reactions` - Manage allowed reactions for a site
 - `/admin/sites/{siteId}/comments` - Moderate comments for a site
 - `/admin/sites/{siteId}/export` - Export site data
 - `/admin/sites/{siteId}/import` - Import site data
 - `/login` - Auth0 login
 - `/logout` - Logout and clear session
+
+### Analytics & Reporting
+
+Kotomi provides comprehensive analytics for tracking engagement metrics, user activity, and trends. Access the analytics dashboard through the admin panel at `/admin/sites/{siteId}/analytics`.
+
+**Metrics Available:**
+
+- **Comment Metrics**
+  - Total comments, pending, approved, rejected counts
+  - Approval and rejection rates
+  - Daily, weekly, and monthly trends
+  - Time-series charts showing comment activity over time
+
+- **User Metrics**
+  - Total registered users
+  - Active users (today, this week, this month)
+  - Top contributors with comment counts
+
+- **Reaction Metrics**
+  - Total reactions with daily/weekly/monthly breakdowns
+  - Reactions by type with distribution charts
+  - Most reacted pages and comments
+
+- **Moderation Metrics**
+  - Total moderated comments
+  - Auto-rejected vs auto-approved vs manual reviews
+  - Average moderation time
+  - Spam detection rate
+
+**Features:**
+
+- **Date Range Filtering** - View metrics for custom date ranges
+- **Interactive Charts** - Powered by Chart.js for visual insights
+- **CSV Export** - Download complete analytics data for external analysis
+- **Real-time Updates** - Metrics update based on current database state
+
+**API Endpoints:**
+
+- `GET /admin/sites/{siteId}/analytics` - View analytics dashboard (HTML)
+- `GET /admin/sites/{siteId}/analytics/data` - Get analytics data (JSON)
+- `GET /admin/sites/{siteId}/analytics/export` - Export analytics to CSV
 
 ## API Documentation
 

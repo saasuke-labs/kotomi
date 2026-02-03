@@ -8,6 +8,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/saasuke-labs/kotomi/pkg/models"
 )
 
@@ -224,8 +225,8 @@ func (i *Importer) importCommentReaction(tx *sql.Tx, commentID string, reaction 
 		return 0, 0, fmt.Errorf("failed to get/create user: %w", err)
 	}
 
-	// Generate a new ID for the reaction
-	reactionID := fmt.Sprintf("reaction-%d", time.Now().UnixNano())
+	// Generate a new UUID for the reaction
+	reactionID := uuid.NewString()
 
 	// Import the reaction
 	_, err = tx.Exec(`
@@ -262,8 +263,8 @@ func (i *Importer) importPageReaction(tx *sql.Tx, pageID string, reaction *model
 		return 0, 0, fmt.Errorf("failed to get/create user: %w", err)
 	}
 
-	// Generate a new ID for the reaction
-	reactionID := fmt.Sprintf("reaction-%d", time.Now().UnixNano())
+	// Generate a new UUID for the reaction
+	reactionID := uuid.NewString()
 
 	// Import the reaction
 	_, err = tx.Exec(`

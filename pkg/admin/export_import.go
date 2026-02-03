@@ -213,11 +213,26 @@ func (h *ExportImportHandler) ImportData(w http.ResponseWriter, r *http.Request)
 
 	// Determine format from file extension
 	var result *importpkg.ImportResult
-	if header.Filename[len(header.Filename)-5:] == ".json" {
+	filename := header.Filename
+	if len(filename) < 4 {
+		http.Error(w, "Invalid file name", http.StatusBadRequest)
+		return
+	}
+	
+	// Check file extension safely
+	ext := ""
+	if len(filename) >= 5 && filename[len(filename)-5:] == ".json" {
+		ext = ".json"
+	} else if len(filename) >= 4 && filename[len(filename)-4:] == ".csv" {
+		ext = ".csv"
+	}
+	
+	switch ext {
+	case ".json":
 		result, err = importer.ImportFromJSON(file, siteID)
-	} else if header.Filename[len(header.Filename)-4:] == ".csv" {
+	case ".csv":
 		result, err = importer.ImportFromCSV(file, siteID)
-	} else {
+	default:
 		http.Error(w, "Unsupported file format (must be .json or .csv)", http.StatusBadRequest)
 		return
 	}

@@ -554,6 +554,81 @@ Get all individual reactions for a page (includes user identifiers).
 ]
 ```
 
+## Frontend Widget
+
+Kotomi includes a JavaScript widget that makes it easy to embed comments and reactions into your static websites.
+
+### Quick Start
+
+Add the widget to your HTML page:
+
+```html
+<!-- Include Kotomi CSS -->
+<link rel="stylesheet" href="https://your-kotomi-server.com/static/kotomi.css">
+
+<!-- Comment widget container -->
+<div id="kotomi-comments"></div>
+
+<!-- Include Kotomi JavaScript -->
+<script src="https://your-kotomi-server.com/static/kotomi.js"></script>
+
+<!-- Initialize the widget -->
+<script>
+  const kotomi = new Kotomi({
+    baseUrl: 'https://your-kotomi-server.com',
+    siteId: 'your-site-id',
+    pageId: 'page-slug',
+    container: '#kotomi-comments',
+    theme: 'light', // or 'dark'
+    jwtToken: null // Optional: Set if you have authentication
+  });
+  
+  kotomi.render();
+</script>
+```
+
+### Features
+
+- 💬 Display and post comments
+- 👍 React to comments with emoji
+- 💬 Threaded replies
+- 🎨 Light and dark themes
+- 📱 Responsive design
+- 🔒 JWT authentication support
+- 🚀 Zero dependencies
+
+### Configuration Options
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `baseUrl` | string | Yes | - | URL of your Kotomi server |
+| `siteId` | string | Yes | - | Your site identifier |
+| `pageId` | string | Yes | - | Unique identifier for the page |
+| `container` | string | No | `#kotomi-comments` | CSS selector for the container |
+| `theme` | string | No | `light` | Theme: `light` or `dark` |
+| `enableReactions` | boolean | No | `true` | Enable/disable reactions |
+| `enableReplies` | boolean | No | `true` | Enable/disable threaded replies |
+| `jwtToken` | string | No | `null` | JWT token for authenticated requests |
+
+### Full Documentation
+
+For complete widget documentation, examples, and integration guides, see:
+- [Frontend Widget README](frontend/README.md)
+- [Widget Examples](frontend/examples/)
+
+### Building the Widget
+
+If you need to customize or rebuild the widget:
+
+```bash
+cd frontend
+./build.sh
+```
+
+This will generate distributable files in `frontend/dist/`:
+- `kotomi.js` and `kotomi.min.js` - JavaScript bundle
+- `kotomi.css` and `kotomi.min.css` - Styles
+
 ## Configuration
 
 Kotomi can be configured using environment variables:

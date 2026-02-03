@@ -1,6 +1,7 @@
 package comments
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -17,9 +18,24 @@ type SQLiteStore struct {
 
 // NewSQLiteStore creates a new SQLite-based comment store
 func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
-	db, err := sql.Open("sqlite3", dbPath)
+	// Configure SQLite with WAL mode for better concurrency and busy timeout
+	db, err := sql.Open("sqlite3", dbPath+"?_journal_mode=WAL&_busy_timeout=5000")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+
+	// Configure connection pool for production
+	db.SetMaxOpenConns(25)                      // Limit concurrent connections
+	db.SetMaxIdleConns(5)                       // Keep some connections warm
+	db.SetConnMaxLifetime(5 * time.Minute)      // Recycle old connections
+	db.SetConnMaxIdleTime(time.Minute)          // Close idle connections
+
+	// Verify connection
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("database not responding: %w", err)
 	}
 
 	// Enable foreign key constraints

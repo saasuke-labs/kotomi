@@ -1,7 +1,7 @@
 # Kotomi - Current Status Report
 
 **Version:** 0.0.1  
-**Last Updated:** January 31, 2026  
+**Last Updated:** February 3, 2026  
 **Status:** Early Development / Not Production Ready
 
 > ⚠️ **Important:** Kotomi is currently in early development (v0.0.1) and is **not recommended for production use** yet. This document provides an overview of the current state of implemented features and what remains to be completed before deployment.
@@ -471,15 +471,26 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Estimated Work:** 25-35 hours for Kotomi-provided auth UI completion
 - **Reference:** See [ADR 001](docs/adr/001-user-authentication-for-comments-and-reactions.md) for detailed implementation status
 
-#### 5. **Email Notifications** ❌
-- **Status:** Not Implemented
-- **Description:** Notifications for site owners and users
-- **What's Missing:**
-  - No email notifications when new comments are posted
-  - No notifications when comments are moderated
-  - No reply notifications for users
-- **Priority:** Low (nice to have)
-- **Estimated Work:** Medium (requires email service integration)
+#### 5. **Email Notifications** ✅
+- **Status:** Fully Implemented
+- **Description:** Email notification system for site owners and users
+- **Details:**
+  - Background queue processor with retry logic (max 3 attempts)
+  - SMTP provider support (TLS, STARTTLS, plain)
+  - SendGrid API provider support
+  - HTML email templates for all notification types
+  - Per-site notification configuration via admin panel
+  - Notification types: new comments, replies, moderation updates
+  - Automatic cleanup of old notifications (7 days)
+  - Test email functionality in admin UI
+- **Location:** `pkg/notifications/`, `pkg/admin/notifications.go`
+- **Database:** `notification_settings`, `notification_queue`, `notification_log` tables
+- **Admin UI:** `/admin/sites/{siteId}/notifications`
+- **Configuration Required:**
+  - Per-site settings via admin panel (SMTP or SendGrid credentials)
+  - Site owner email address for notifications
+- **Priority:** Low (nice to have) - COMPLETED
+- **Integration:** Integrated with comment creation and moderation handlers
 
 #### 6. **Analytics & Reporting** ❌
 - **Status:** Not Implemented

@@ -211,6 +211,68 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 	CREATE INDEX IF NOT EXISTS idx_kotomi_auth_sessions_user ON kotomi_auth_sessions(user_id);
 	CREATE INDEX IF NOT EXISTS idx_kotomi_auth_sessions_token ON kotomi_auth_sessions(token);
 	CREATE INDEX IF NOT EXISTS idx_kotomi_auth_sessions_refresh ON kotomi_auth_sessions(refresh_token);
+
+	CREATE TABLE IF NOT EXISTS notification_settings (
+		id TEXT PRIMARY KEY,
+		site_id TEXT NOT NULL UNIQUE,
+		enabled INTEGER DEFAULT 0,
+		provider TEXT DEFAULT 'smtp',
+		from_email TEXT NOT NULL,
+		from_name TEXT NOT NULL,
+		reply_to TEXT,
+		smtp_host TEXT,
+		smtp_port INTEGER,
+		smtp_user TEXT,
+		smtp_password TEXT,
+		smtp_encryption TEXT,
+		sendgrid_api_key TEXT,
+		notify_new_comment INTEGER DEFAULT 1,
+		notify_reply INTEGER DEFAULT 1,
+		notify_moderation INTEGER DEFAULT 1,
+		owner_email TEXT NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_notification_settings_site ON notification_settings(site_id);
+
+	CREATE TABLE IF NOT EXISTS notification_queue (
+		id TEXT PRIMARY KEY,
+		site_id TEXT NOT NULL,
+		type TEXT NOT NULL,
+		recipient TEXT NOT NULL,
+		subject TEXT NOT NULL,
+		body TEXT NOT NULL,
+		data TEXT,
+		status TEXT DEFAULT 'pending',
+		attempts INTEGER DEFAULT 0,
+		error TEXT,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		sent_at TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_notification_queue_site ON notification_queue(site_id);
+	CREATE INDEX IF NOT EXISTS idx_notification_queue_status ON notification_queue(status);
+	CREATE INDEX IF NOT EXISTS idx_notification_queue_created ON notification_queue(created_at);
+
+	CREATE TABLE IF NOT EXISTS notification_log (
+		id TEXT PRIMARY KEY,
+		site_id TEXT NOT NULL,
+		type TEXT NOT NULL,
+		recipient TEXT NOT NULL,
+		subject TEXT NOT NULL,
+		status TEXT NOT NULL,
+		error TEXT,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		sent_at TIMESTAMP,
+		FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_notification_log_site ON notification_log(site_id);
+	CREATE INDEX IF NOT EXISTS idx_notification_log_created ON notification_log(created_at);
 	`
 
 	if _, err := db.Exec(schema); err != nil {

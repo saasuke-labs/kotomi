@@ -23,6 +23,7 @@ import (
 	"github.com/saasuke-labs/kotomi/pkg/middleware"
 	"github.com/saasuke-labs/kotomi/pkg/models"
 	"github.com/saasuke-labs/kotomi/pkg/moderation"
+	"github.com/saasuke-labs/kotomi/pkg/notifications"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 	_ "github.com/saasuke-labs/kotomi/docs" // Import generated docs
 )
@@ -78,6 +79,7 @@ var templates *template.Template
 var auth0Config *auth.Auth0Config
 var moderator moderation.Moderator
 var moderationConfigStore *moderation.ConfigStore
+var notificationQueue *notifications.Queue
 
 // postCommentsHandler creates a new comment for a page
 // @Summary Create a comment
@@ -166,6 +168,44 @@ func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error adding comment: %v", err)
 		apierrors.WriteErrorWithRequestID(w, apierrors.DatabaseError("Failed to add comment").WithDetails(err.Error()), requestID)
 		return
+	}
+
+	// Enqueue notification for new comment (if notifications are enabled)
+	if notificationQueue != nil {
+		// Get site and page info for notification
+		siteStore := models.NewSiteStore(db)
+		site, err := siteStore.GetByID(siteId)
+		if err == nil && site != nil {
+			pageStore := models.NewPageStore(db)
+			page, err := pageStore.GetByID(pageId)
+			if err == nil && page != nil {
+				// Get notification settings
+				notifStore := notifications.NewStore(db)
+				settings, err := notifStore.GetSettings(siteId)
+				if err == nil && settings != nil && settings.Enabled && settings.NotifyNewComment {
+					// Build comment URL (placeholder - should be configured per site)
+					commentURL := fmt.Sprintf("%s?comment=%s", page.Path, comment.ID)
+					unsubscribeURL := fmt.Sprintf("/unsubscribe?site=%s", siteId)
+					
+					// Enqueue notification
+					err = notificationQueue.EnqueueNewComment(
+						siteId,
+						site.Name,
+						page.Title,
+						commentURL,
+						comment.Author,
+						comment.Text,
+						settings.OwnerEmail,
+						unsubscribeURL,
+					)
+					if err != nil {
+						log.Printf("Warning: Failed to enqueue notification: %v", err)
+					} else {
+						log.Printf("Enqueued new comment notification for site %s", siteId)
+					}
+				}
+			}
+		}
 	}
 
 	writeJsonResponse(w, comment)
@@ -863,6 +903,7 @@ func main() {
 			"templates/admin/reactions/list.html",
 			"templates/admin/reactions/form.html",
 			"templates/admin/moderation/form.html",
+			"templates/admin/notifications/form.html",
 		}
 		for _, file := range templateFiles {
 			_, err := templates.ParseFiles(file)
@@ -886,6 +927,11 @@ func main() {
 	// Set up graceful shutdown
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// Initialize notification queue
+	notificationQueue = notifications.NewQueue(db, 30*time.Second, 10)
+	go notificationQueue.Start(ctx)
+	log.Println("Notification queue processor started")
 
 	// Create router
 	router := mux.NewRouter()
@@ -996,6 +1042,7 @@ func main() {
 
 		// Comments handlers
 		commentsHandler := admin.NewCommentsHandler(db, sqliteStore, templates)
+		commentsHandler.SetNotificationQueue(notificationQueue)
 		adminRouter.HandleFunc("/sites/{siteId}/comments", commentsHandler.ListComments).Methods("GET")
 		adminRouter.HandleFunc("/sites/{siteId}/pages/{pageId}/comments", commentsHandler.ListPageComments).Methods("GET")
 		adminRouter.HandleFunc("/comments/{commentId}/approve", commentsHandler.ApproveComment).Methods("POST")
@@ -1016,6 +1063,12 @@ func main() {
 		moderationHandler := admin.NewModerationHandler(db, templates)
 		adminRouter.HandleFunc("/sites/{siteId}/moderation", moderationHandler.HandleModerationForm).Methods("GET")
 		adminRouter.HandleFunc("/sites/{siteId}/moderation", moderationHandler.HandleModerationUpdate).Methods("POST")
+
+		// Notifications handlers
+		notificationsHandler := admin.NewNotificationsHandler(db, templates)
+		adminRouter.HandleFunc("/sites/{siteId}/notifications", notificationsHandler.HandleNotificationsForm).Methods("GET")
+		adminRouter.HandleFunc("/sites/{siteId}/notifications", notificationsHandler.HandleNotificationsUpdate).Methods("POST")
+		adminRouter.HandleFunc("/sites/{siteId}/notifications/test", notificationsHandler.HandleTestEmail).Methods("POST")
 
 		// Auth configuration handlers
 		authConfigHandler := admin.NewAuthConfigHandler(db)

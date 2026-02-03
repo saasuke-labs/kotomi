@@ -79,10 +79,15 @@ docker run -p 8080:8080 -v kotomi-data:/app/data kotomi
 
 ## Documentation & Guides
 
+### 🚀 Quick Starts
+
+- **[5-Minute Gengo Quick Start](docs/GENGO_QUICK_START.md)** - Get Kotomi running on your Gengo blog in 5 minutes
+- **[Complete Gengo Integration Guide](docs/GENGO_INTEGRATION_GUIDE.md)** - Comprehensive step-by-step guide for Gengo users
+
 ### Integration Guides
 
-- **[Gengo Integration Guide](docs/GENGO_INTEGRATION_GUIDE.md)** - Complete step-by-step guide for integrating Kotomi with Gengo static site generator
 - [Frontend Widget Documentation](frontend/README.md) - Widget API reference and configuration
+- [Widget Examples](frontend/examples/) - Working examples and templates
 - [Authentication API Guide](docs/AUTHENTICATION_API.md) - JWT authentication setup and examples
 
 ### Additional Documentation

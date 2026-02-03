@@ -2,6 +2,8 @@
 
 > **Add dynamic comments and reactions to your Gengo static site**
 
+**🚀 Want to get started quickly?** Check out the [5-Minute Quick Start Guide](GENGO_QUICK_START.md) first!
+
 This guide will walk you through integrating Kotomi (a dynamic commenting and reaction system) with your Gengo static site generator. By the end, you'll have a fully functional commenting system on your static blog.
 
 ## Table of Contents

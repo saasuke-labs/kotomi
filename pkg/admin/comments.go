@@ -3,29 +3,39 @@ package admin
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/saasuke-labs/kotomi/pkg/auth"
 	"github.com/saasuke-labs/kotomi/pkg/comments"
 	"github.com/saasuke-labs/kotomi/pkg/models"
+	"github.com/saasuke-labs/kotomi/pkg/notifications"
 )
 
 // CommentsHandler handles comment moderation requests
 type CommentsHandler struct {
-	db           *sql.DB
-	commentStore *comments.SQLiteStore
-	templates    *template.Template
+	db                *sql.DB
+	commentStore      *comments.SQLiteStore
+	templates         *template.Template
+	notificationQueue *notifications.Queue
 }
 
 // NewCommentsHandler creates a new comments handler
 func NewCommentsHandler(db *sql.DB, commentStore *comments.SQLiteStore, templates *template.Template) *CommentsHandler {
 	return &CommentsHandler{
-		db:           db,
-		commentStore: commentStore,
-		templates:    templates,
+		db:                db,
+		commentStore:      commentStore,
+		templates:         templates,
+		notificationQueue: nil, // Will be set later if needed
 	}
+}
+
+// SetNotificationQueue sets the notification queue for the handler
+func (h *CommentsHandler) SetNotificationQueue(queue *notifications.Queue) {
+	h.notificationQueue = queue
 }
 
 // ListComments handles GET /admin/sites/{siteId}/comments
@@ -150,6 +160,40 @@ func (h *CommentsHandler) ApproveComment(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Enqueue moderation update notification
+	if h.notificationQueue != nil && comment.AuthorEmail != "" {
+		notifStore := notifications.NewStore(h.db)
+		settings, err := notifStore.GetSettings(siteID)
+		if err == nil && settings != nil && settings.Enabled && settings.NotifyModeration {
+			// Get page_id for this comment
+			var pageID string
+			err = h.db.QueryRow("SELECT page_id FROM comments WHERE id = ?", commentID).Scan(&pageID)
+			if err == nil {
+				// Get page info for notification
+				pageStore := models.NewPageStore(h.db)
+				page, err := pageStore.GetByID(pageID)
+				if err == nil && page != nil {
+					commentURL := fmt.Sprintf("%s?comment=%s", page.Path, comment.ID)
+					unsubscribeURL := fmt.Sprintf("/unsubscribe?site=%s", siteID)
+					
+					err = h.notificationQueue.EnqueueModerationUpdate(
+						siteID,
+						page.Title,
+						commentURL,
+						comment.Text,
+						"approved",
+						"", // No reason for approval
+						comment.AuthorEmail,
+						unsubscribeURL,
+					)
+					if err != nil {
+						log.Printf("Warning: Failed to enqueue moderation notification: %v", err)
+					}
+				}
+			}
+		}
+	}
+
 	// For HTMX requests, return updated comment row
 	if r.Header.Get("HX-Request") == "true" {
 		comment.Status = "approved"
@@ -202,6 +246,40 @@ func (h *CommentsHandler) RejectComment(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		http.Error(w, "Failed to reject comment", http.StatusInternalServerError)
 		return
+	}
+
+	// Enqueue moderation update notification
+	if h.notificationQueue != nil && comment.AuthorEmail != "" {
+		notifStore := notifications.NewStore(h.db)
+		settings, err := notifStore.GetSettings(siteID)
+		if err == nil && settings != nil && settings.Enabled && settings.NotifyModeration {
+			// Get page_id for this comment
+			var pageID string
+			err = h.db.QueryRow("SELECT page_id FROM comments WHERE id = ?", commentID).Scan(&pageID)
+			if err == nil {
+				// Get page info for notification
+				pageStore := models.NewPageStore(h.db)
+				page, err := pageStore.GetByID(pageID)
+				if err == nil && page != nil {
+					commentURL := fmt.Sprintf("%s?comment=%s", page.Path, comment.ID)
+					unsubscribeURL := fmt.Sprintf("/unsubscribe?site=%s", siteID)
+					
+					err = h.notificationQueue.EnqueueModerationUpdate(
+						siteID,
+						page.Title,
+						commentURL,
+						comment.Text,
+						"rejected",
+						"Content violated community guidelines", // Default reason
+						comment.AuthorEmail,
+						unsubscribeURL,
+					)
+					if err != nil {
+						log.Printf("Warning: Failed to enqueue moderation notification: %v", err)
+					}
+				}
+			}
+		}
 	}
 
 	// For HTMX requests, return updated comment row

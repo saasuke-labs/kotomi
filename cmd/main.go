@@ -170,6 +170,44 @@ func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Enqueue notification for new comment (if notifications are enabled)
+	if notificationQueue != nil {
+		// Get site and page info for notification
+		siteStore := models.NewSiteStore(db)
+		site, err := siteStore.GetByID(siteId)
+		if err == nil && site != nil {
+			pageStore := models.NewPageStore(db)
+			page, err := pageStore.GetByID(pageId)
+			if err == nil && page != nil {
+				// Get notification settings
+				notifStore := notifications.NewStore(db)
+				settings, err := notifStore.GetSettings(siteId)
+				if err == nil && settings != nil && settings.Enabled && settings.NotifyNewComment {
+					// Build comment URL (placeholder - should be configured per site)
+					commentURL := fmt.Sprintf("%s?comment=%s", page.Path, comment.ID)
+					unsubscribeURL := fmt.Sprintf("/unsubscribe?site=%s", siteId)
+					
+					// Enqueue notification
+					err = notificationQueue.EnqueueNewComment(
+						siteId,
+						site.Name,
+						page.Title,
+						commentURL,
+						comment.Author,
+						comment.Text,
+						settings.OwnerEmail,
+						unsubscribeURL,
+					)
+					if err != nil {
+						log.Printf("Warning: Failed to enqueue notification: %v", err)
+					} else {
+						log.Printf("Enqueued new comment notification for site %s", siteId)
+					}
+				}
+			}
+		}
+	}
+
 	writeJsonResponse(w, comment)
 }
 
@@ -1004,6 +1042,7 @@ func main() {
 
 		// Comments handlers
 		commentsHandler := admin.NewCommentsHandler(db, sqliteStore, templates)
+		commentsHandler.SetNotificationQueue(notificationQueue)
 		adminRouter.HandleFunc("/sites/{siteId}/comments", commentsHandler.ListComments).Methods("GET")
 		adminRouter.HandleFunc("/sites/{siteId}/pages/{pageId}/comments", commentsHandler.ListPageComments).Methods("GET")
 		adminRouter.HandleFunc("/comments/{commentId}/approve", commentsHandler.ApproveComment).Methods("POST")

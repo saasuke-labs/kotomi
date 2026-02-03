@@ -1,6 +1,7 @@
 package comments
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -98,7 +99,7 @@ func TestSQLiteOptimizations(t *testing.T) {
 			Text:     "Test comment for WAL",
 			Status:   "approved",
 		}
-		if err := store.AddPageComment("test-site", "test-page", comment); err != nil {
+		if err := store.AddPageComment(context.Background(), "test-site", "test-page", comment); err != nil {
 			t.Fatalf("Failed to add comment: %v", err)
 		}
 
@@ -148,11 +149,11 @@ func TestSQLiteOptimizations_MemoryDB(t *testing.T) {
 		Text:     "Test comment",
 		Status:   "approved",
 	}
-	if err := store.AddPageComment("test-site", "test-page", comment); err != nil {
+	if err := store.AddPageComment(context.Background(), "test-site", "test-page", comment); err != nil {
 		t.Fatalf("Failed to add comment to memory DB: %v", err)
 	}
 
-	comments, err := store.GetPageComments("test-site", "test-page")
+	comments, err := store.GetPageComments(context.Background(), "test-site", "test-page")
 	if err != nil {
 		t.Fatalf("Failed to get comments from memory DB: %v", err)
 	}
@@ -199,7 +200,7 @@ func TestConnectionPoolBehavior(t *testing.T) {
 			Text:     "Test comment",
 			Status:   "approved",
 		}
-		if err := store.AddPageComment(siteID, pageID, comment); err != nil {
+		if err := store.AddPageComment(context.Background(), siteID, pageID, comment); err != nil {
 			t.Fatalf("Failed to add comment: %v", err)
 		}
 	}

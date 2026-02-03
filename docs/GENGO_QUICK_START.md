@@ -2,6 +2,28 @@
 
 Get Kotomi comments running on your Gengo blog in 5 minutes.
 
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Integration Flow                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. Start Kotomi Server (Docker/Go)                          │
+│     └─→ Provides REST API & Admin Panel                     │
+│                                                              │
+│  2. Create Site in Kotomi Admin                              │
+│     └─→ Get your Site ID                                    │
+│                                                              │
+│  3. Add Widget to Gengo Template                             │
+│     └─→ Include CSS + JS + Initialize                       │
+│                                                              │
+│  4. Build & Deploy Gengo Site                                │
+│     └─→ Static HTML with embedded comment widget            │
+│                                                              │
+│  User visits page → Widget loads → Connects to Kotomi API   │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
 ## Step 1: Start Kotomi Server (1 minute)
 
 ```bash

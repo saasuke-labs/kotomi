@@ -887,6 +887,13 @@ func main() {
 	// Create router
 	router := mux.NewRouter()
 
+	// Create structured logger
+	logger := middleware.NewLogger()
+
+	// Apply global middleware (request ID and logging)
+	router.Use(middleware.RequestIDMiddleware)
+	router.Use(middleware.LoggingMiddleware(logger))
+
 	// Create CORS middleware
 	corsMiddleware := middleware.NewCORSMiddleware()
 

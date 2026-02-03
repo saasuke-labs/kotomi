@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kotomi Widget - Example Integration</title>
+  
+  <!-- Include Kotomi CSS -->
+  <link rel="stylesheet" href="../dist/kotomi.css">
+  
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    
+    h1 {
+      color: #333;
+    }
+    
+    .article-content {
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid #e1e4e8;
+    }
+    
+    .config-panel {
+      background: #f6f8fa;
+      padding: 1.5rem;
+      border-radius: 6px;
+      margin-bottom: 2rem;
+    }
+    
+    .config-panel h3 {
+      margin-top: 0;
+    }
+    
+    .config-option {
+      margin-bottom: 1rem;
+    }
+    
+    .config-option label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-weight: 500;
+    }
+    
+    .config-option input[type="text"] {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #d1d5da;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    
+    .config-option input[type="checkbox"] {
+      margin-right: 0.5rem;
+    }
+    
+    button {
+      padding: 0.5rem 1rem;
+      background: #0366d6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    button:hover {
+      background: #0256c4;
+    }
+    
+    button.secondary {
+      background: #6c757d;
+    }
+    
+    button.secondary:hover {
+      background: #5a6268;
+    }
+    
+    code {
+      background: #f6f8fa;
+      padding: 0.2rem 0.4rem;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    
+    pre {
+      background: #f6f8fa;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="article-content">
+    <h1>Kotomi Widget - Live Example</h1>
+    <p>
+      This page demonstrates the Kotomi comment widget integration. 
+      Below you'll find configuration options and the live comment widget.
+    </p>
+    
+    <div class="config-panel">
+      <h3>Configuration</h3>
+      
+      <div class="config-option">
+        <label for="baseUrl">Base URL:</label>
+        <input type="text" id="baseUrl" value="http://localhost:8080" placeholder="http://localhost:8080">
+        <small style="color: #6a737d;">URL of your Kotomi server</small>
+      </div>
+      
+      <div class="config-option">
+        <label for="siteId">Site ID:</label>
+        <input type="text" id="siteId" value="example-site" placeholder="example-site">
+        <small style="color: #6a737d;">Your site identifier</small>
+      </div>
+      
+      <div class="config-option">
+        <label for="pageId">Page ID:</label>
+        <input type="text" id="pageId" value="example-page" placeholder="example-page">
+        <small style="color: #6a737d;">Unique identifier for this page</small>
+      </div>
+      
+      <div class="config-option">
+        <label for="jwtToken">JWT Token (optional):</label>
+        <input type="text" id="jwtToken" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+        <small style="color: #6a737d;">Required for posting comments</small>
+      </div>
+      
+      <div class="config-option">
+        <label>
+          <input type="checkbox" id="enableReactions" checked>
+          Enable Reactions
+        </label>
+      </div>
+      
+      <div class="config-option">
+        <label>
+          <input type="checkbox" id="enableReplies" checked>
+          Enable Replies
+        </label>
+      </div>
+      
+      <div class="config-option">
+        <label for="theme">Theme:</label>
+        <select id="theme" style="padding: 0.5rem; border: 1px solid #d1d5da; border-radius: 4px;">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+      
+      <button onclick="initKotomi()">Initialize Widget</button>
+      <button class="secondary" onclick="refreshKotomi()">Refresh</button>
+    </div>
+    
+    <h2>Integration Instructions</h2>
+    
+    <p>To integrate Kotomi into your website, add the following code:</p>
+    
+    <pre><code>&lt;!-- Include Kotomi CSS --&gt;
+&lt;link rel="stylesheet" href="https://your-cdn.com/kotomi.css"&gt;
+
+&lt;!-- Comment widget container --&gt;
+&lt;div id="kotomi-comments"&gt;&lt;/div&gt;
+
+&lt;!-- Include Kotomi JavaScript --&gt;
+&lt;script src="https://your-cdn.com/kotomi.js"&gt;&lt;/script&gt;
+
+&lt;!-- Initialize the widget --&gt;
+&lt;script&gt;
+  const kotomi = new Kotomi({
+    baseUrl: 'https://your-kotomi-server.com',
+    siteId: 'your-site-id',
+    pageId: 'page-slug',
+    container: '#kotomi-comments',
+    theme: 'light', // or 'dark'
+    enableReactions: true,
+    enableReplies: true,
+    jwtToken: null // Optional: Set if you have authentication
+  });
+  
+  kotomi.render();
+&lt;/script&gt;</code></pre>
+  </div>
+
+  <h2>Comments</h2>
+  
+  <!-- Comment widget will be rendered here -->
+  <div id="kotomi-comments"></div>
+
+  <!-- Include Kotomi JavaScript -->
+  <script src="../dist/kotomi.js"></script>
+  
+  <!-- Initialize widget -->
+  <script>
+    let kotomi = null;
+    
+    function initKotomi() {
+      const baseUrl = document.getElementById('baseUrl').value;
+      const siteId = document.getElementById('siteId').value;
+      const pageId = document.getElementById('pageId').value;
+      const jwtToken = document.getElementById('jwtToken').value;
+      const theme = document.getElementById('theme').value;
+      const enableReactions = document.getElementById('enableReactions').checked;
+      const enableReplies = document.getElementById('enableReplies').checked;
+      
+      if (!siteId || !pageId) {
+        alert('Site ID and Page ID are required');
+        return;
+      }
+      
+      // Destroy existing widget if any
+      if (kotomi) {
+        kotomi.destroy();
+      }
+      
+      // Create new widget instance
+      kotomi = new Kotomi({
+        baseUrl: baseUrl,
+        siteId: siteId,
+        pageId: pageId,
+        container: '#kotomi-comments',
+        theme: theme,
+        enableReactions: enableReactions,
+        enableReplies: enableReplies,
+        jwtToken: jwtToken || null
+      });
+      
+      // Render the widget
+      kotomi.render().catch(error => {
+        console.error('Failed to initialize Kotomi:', error);
+        alert('Failed to initialize widget. Check console for details.');
+      });
+    }
+    
+    function refreshKotomi() {
+      if (kotomi) {
+        kotomi.refresh().catch(error => {
+          console.error('Failed to refresh Kotomi:', error);
+          alert('Failed to refresh widget. Check console for details.');
+        });
+      } else {
+        alert('Widget not initialized. Click "Initialize Widget" first.');
+      }
+    }
+    
+    // Auto-initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      initKotomi();
+    });
+  </script>
+</body>
+</html>

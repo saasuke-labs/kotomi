@@ -25,6 +25,7 @@ Each ADR follows this structure:
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [001](001-user-authentication-for-comments-and-reactions.md) | User Authentication for Comments and Reactions | Proposed | 2026-01-31 |
+| [002](002-code-structure-and-go-1.25-improvements.md) | Code Structure and Go 1.25 Improvements | Proposed | 2026-02-03 |
 
 ## Creating a New ADR
 

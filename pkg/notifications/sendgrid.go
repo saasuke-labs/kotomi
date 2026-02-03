@@ -8,6 +8,9 @@ import (
 	"net/http"
 )
 
+// Compile-time check to ensure SendGridProvider implements EmailProvider interface
+var _ EmailProvider = (*SendGridProvider)(nil)
+
 // SendGridProvider implements email sending via SendGrid API
 type SendGridProvider struct {
 	apiKey    string

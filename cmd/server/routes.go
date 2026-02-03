@@ -22,6 +22,7 @@ func (s *Server) RegisterRoutes(router *mux.Router) {
 		s.Moderator,
 		s.ModerationConfigStore,
 		s.NotificationQueue,
+		s.Logger,
 	)
 	
 	logger := middleware.NewLogger()

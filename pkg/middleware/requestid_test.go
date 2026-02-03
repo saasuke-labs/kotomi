@@ -87,7 +87,6 @@ func TestRequestIDMiddleware_UniqueIDs(t *testing.T) {
 	var id1, id2 string
 	
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// This handler will be called twice, capture IDs
 		w.WriteHeader(http.StatusOK)
 	})
 

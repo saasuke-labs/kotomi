@@ -195,12 +195,23 @@ func sanitizePath(path string) string {
 
 // sanitizeIP removes port from IP address for cleaner logs
 func sanitizeIP(addr string) string {
-	if idx := strings.LastIndex(addr, ":"); idx != -1 {
-		// Check if it's an IPv6 address
-		if strings.Count(addr, ":") > 1 {
-			return addr
+	// Handle IPv6 addresses with port notation: [address]:port
+	if strings.HasPrefix(addr, "[") {
+		if idx := strings.Index(addr, "]:"); idx != -1 {
+			// Extract just the address part without brackets
+			return addr[1:idx]
 		}
+	}
+	
+	// Check if it's a plain IPv6 address (multiple colons, no brackets)
+	if strings.Count(addr, ":") > 1 {
+		return addr
+	}
+	
+	// Handle IPv4 with port: address:port
+	if idx := strings.LastIndex(addr, ":"); idx != -1 {
 		return addr[:idx]
 	}
+	
 	return addr
 }

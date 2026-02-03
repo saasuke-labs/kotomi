@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	apierrors "github.com/saasuke-labs/kotomi/pkg/errors"
 	"github.com/saasuke-labs/kotomi/pkg/middleware"
 	"github.com/saasuke-labs/kotomi/pkg/models"
 )
@@ -39,7 +40,8 @@ func (s *ServerHandlers) GetAllowedReactions(w http.ResponseWriter, r *http.Requ
 
 	if err != nil {
 		log.Printf("Error retrieving allowed reactions: %v", err)
-		http.Error(w, "Failed to retrieve allowed reactions", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.DatabaseError("Failed to retrieve allowed reactions").WithRequestID(requestID))
 		return
 	}
 
@@ -54,7 +56,8 @@ func (s *ServerHandlers) AddReaction(w http.ResponseWriter, r *http.Request) {
 	// Get authenticated user from context (set by JWT middleware)
 	user := middleware.GetUserFromContext(r.Context())
 	if user == nil {
-		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.Unauthorized("Authentication required").WithRequestID(requestID))
 		return
 	}
 
@@ -63,12 +66,14 @@ func (s *ServerHandlers) AddReaction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.InvalidJSON("Invalid request body").WithRequestID(requestID))
 		return
 	}
 
 	if req.AllowedReactionID == "" {
-		http.Error(w, "allowed_reaction_id is required", http.StatusBadRequest)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.ValidationError("allowed_reaction_id is required").WithRequestID(requestID))
 		return
 	}
 
@@ -76,7 +81,8 @@ func (s *ServerHandlers) AddReaction(w http.ResponseWriter, r *http.Request) {
 	reaction, err := reactionStore.AddReaction(r.Context(), commentID, req.AllowedReactionID, user.ID)
 	if err != nil {
 		log.Printf("Error adding reaction: %v", err)
-		http.Error(w, "Failed to add reaction", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.DatabaseError("Failed to add reaction").WithRequestID(requestID))
 		return
 	}
 
@@ -98,7 +104,8 @@ func (s *ServerHandlers) GetReactionsByComment(w http.ResponseWriter, r *http.Re
 	reactions, err := reactionStore.GetReactionsByComment(r.Context(), commentID)
 	if err != nil {
 		log.Printf("Error retrieving reactions: %v", err)
-		http.Error(w, "Failed to retrieve reactions", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.DatabaseError("Failed to retrieve reactions").WithRequestID(requestID))
 		return
 	}
 
@@ -114,7 +121,8 @@ func (s *ServerHandlers) GetReactionCounts(w http.ResponseWriter, r *http.Reques
 	counts, err := reactionStore.GetReactionCounts(r.Context(), commentID)
 	if err != nil {
 		log.Printf("Error retrieving reaction counts: %v", err)
-		http.Error(w, "Failed to retrieve reaction counts", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.DatabaseError("Failed to retrieve reaction counts").WithRequestID(requestID))
 		return
 	}
 
@@ -129,7 +137,8 @@ func (s *ServerHandlers) AddPageReaction(w http.ResponseWriter, r *http.Request)
 	// Get authenticated user from context (set by JWT middleware)
 	user := middleware.GetUserFromContext(r.Context())
 	if user == nil {
-		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.Unauthorized("Authentication required").WithRequestID(requestID))
 		return
 	}
 
@@ -138,12 +147,14 @@ func (s *ServerHandlers) AddPageReaction(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.InvalidJSON("Invalid request body").WithRequestID(requestID))
 		return
 	}
 
 	if req.AllowedReactionID == "" {
-		http.Error(w, "allowed_reaction_id is required", http.StatusBadRequest)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.ValidationError("allowed_reaction_id is required").WithRequestID(requestID))
 		return
 	}
 
@@ -151,7 +162,8 @@ func (s *ServerHandlers) AddPageReaction(w http.ResponseWriter, r *http.Request)
 	reaction, err := reactionStore.AddPageReaction(r.Context(), pageID, req.AllowedReactionID, user.ID)
 	if err != nil {
 		log.Printf("Error adding page reaction: %v", err)
-		http.Error(w, "Failed to add reaction", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.DatabaseError("Failed to add reaction").WithRequestID(requestID))
 		return
 	}
 
@@ -173,7 +185,8 @@ func (s *ServerHandlers) GetReactionsByPage(w http.ResponseWriter, r *http.Reque
 	reactions, err := reactionStore.GetReactionsByPage(r.Context(), pageID)
 	if err != nil {
 		log.Printf("Error retrieving page reactions: %v", err)
-		http.Error(w, "Failed to retrieve reactions", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.DatabaseError("Failed to retrieve reactions").WithRequestID(requestID))
 		return
 	}
 
@@ -189,7 +202,8 @@ func (s *ServerHandlers) GetPageReactionCounts(w http.ResponseWriter, r *http.Re
 	counts, err := reactionStore.GetPageReactionCounts(r.Context(), pageID)
 	if err != nil {
 		log.Printf("Error retrieving page reaction counts: %v", err)
-		http.Error(w, "Failed to retrieve reaction counts", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.DatabaseError("Failed to retrieve reaction counts").WithRequestID(requestID))
 		return
 	}
 
@@ -204,7 +218,8 @@ func (s *ServerHandlers) RemoveReaction(w http.ResponseWriter, r *http.Request) 
 	reactionStore := models.NewReactionStore(s.DB)
 	if err := reactionStore.RemoveReaction(r.Context(), reactionID); err != nil {
 		log.Printf("Error removing reaction: %v", err)
-		http.Error(w, "Failed to remove reaction", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.DatabaseError("Failed to remove reaction").WithRequestID(requestID))
 		return
 	}
 

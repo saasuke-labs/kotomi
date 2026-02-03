@@ -7,6 +7,8 @@ import (
 	"os"
 
 	"github.com/saasuke-labs/kotomi/pkg/auth"
+	apierrors "github.com/saasuke-labs/kotomi/pkg/errors"
+	"github.com/saasuke-labs/kotomi/pkg/middleware"
 	"github.com/saasuke-labs/kotomi/pkg/models"
 )
 
@@ -32,20 +34,23 @@ func (s *ServerHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	// Generate random state
 	state, err := auth.GenerateRandomState()
 	if err != nil {
-		http.Error(w, "Failed to generate state", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.InternalServerError("Failed to generate state").WithRequestID(requestID))
 		return
 	}
 
 	// Store state in session
 	session, err := auth.GetSession(r)
 	if err != nil {
-		http.Error(w, "Session error", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.InternalServerError("Session error").WithRequestID(requestID))
 		return
 	}
 
 	session.Values[auth.SessionKeyState] = state
 	if err := session.Save(r, w); err != nil {
-		http.Error(w, "Failed to save session", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.InternalServerError("Failed to save session").WithRequestID(requestID))
 		return
 	}
 
@@ -59,32 +64,37 @@ func (s *ServerHandlers) Callback(w http.ResponseWriter, r *http.Request) {
 	// Verify state
 	session, err := auth.GetSession(r)
 	if err != nil {
-		http.Error(w, "Session error", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.InternalServerError("Session error").WithRequestID(requestID))
 		return
 	}
 
 	savedState, ok := session.Values[auth.SessionKeyState].(string)
 	if !ok || savedState == "" {
-		http.Error(w, "Invalid session state", http.StatusBadRequest)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.BadRequest("Invalid session state").WithRequestID(requestID))
 		return
 	}
 
 	if r.URL.Query().Get("state") != savedState {
-		http.Error(w, "Invalid state parameter", http.StatusBadRequest)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.BadRequest("Invalid state parameter").WithRequestID(requestID))
 		return
 	}
 
 	// Exchange code for token
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		http.Error(w, "No code in request", http.StatusBadRequest)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.BadRequest("No code in request").WithRequestID(requestID))
 		return
 	}
 
 	token, err := s.Auth0Config.ExchangeCode(r.Context(), code)
 	if err != nil {
 		log.Printf("Failed to exchange code: %v", err)
-		http.Error(w, "Failed to exchange code", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.InternalServerError("Failed to exchange code").WithRequestID(requestID))
 		return
 	}
 
@@ -92,7 +102,8 @@ func (s *ServerHandlers) Callback(w http.ResponseWriter, r *http.Request) {
 	userInfo, err := s.Auth0Config.GetUserInfo(r.Context(), token)
 	if err != nil {
 		log.Printf("Failed to get user info: %v", err)
-		http.Error(w, "Failed to get user info", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.InternalServerError("Failed to get user info").WithRequestID(requestID))
 		return
 	}
 
@@ -101,7 +112,8 @@ func (s *ServerHandlers) Callback(w http.ResponseWriter, r *http.Request) {
 	user, err := adminUserStore.GetByAuth0Sub(r.Context(), userInfo.Sub)
 	if err != nil {
 		log.Printf("Error checking user: %v", err)
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.DatabaseError("Database error").WithRequestID(requestID))
 		return
 	}
 
@@ -110,7 +122,8 @@ func (s *ServerHandlers) Callback(w http.ResponseWriter, r *http.Request) {
 		user, err = adminUserStore.Create(r.Context(), userInfo.Email, userInfo.Name, userInfo.Sub)
 		if err != nil {
 			log.Printf("Failed to create user: %v", err)
-			http.Error(w, "Failed to create user", http.StatusInternalServerError)
+			requestID := middleware.GetRequestID(r)
+			apierrors.WriteError(w, apierrors.DatabaseError("Failed to create user").WithRequestID(requestID))
 			return
 		}
 		log.Printf("Created new user: %s", user.Email)
@@ -124,7 +137,8 @@ func (s *ServerHandlers) Callback(w http.ResponseWriter, r *http.Request) {
 	delete(session.Values, auth.SessionKeyState) // Clear the state
 
 	if err := session.Save(r, w); err != nil {
-		http.Error(w, "Failed to save session", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.InternalServerError("Failed to save session").WithRequestID(requestID))
 		return
 	}
 
@@ -152,7 +166,8 @@ func (s *ServerHandlers) Logout(w http.ResponseWriter, r *http.Request) {
 func (s *ServerHandlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 	userID := auth.GetUserIDFromContext(r.Context())
 	if userID == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.Unauthorized("Unauthorized").WithRequestID(requestID))
 		return
 	}
 
@@ -160,7 +175,8 @@ func (s *ServerHandlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 	adminUserStore := models.NewAdminUserStore(s.DB)
 	user, err := adminUserStore.GetByID(r.Context(), userID)
 	if err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.NotFound("User not found").WithRequestID(requestID))
 		return
 	}
 
@@ -168,7 +184,8 @@ func (s *ServerHandlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 	siteStore := models.NewSiteStore(s.DB)
 	sites, err := siteStore.GetByOwner(r.Context(), userID)
 	if err != nil {
-		http.Error(w, "Failed to fetch sites", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.DatabaseError("Failed to fetch sites").WithRequestID(requestID))
 		return
 	}
 
@@ -180,14 +197,16 @@ func (s *ServerHandlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.Templates.ExecuteTemplate(w, "admin/dashboard.html", data); err != nil {
 		log.Printf("Template error: %v", err)
-		http.Error(w, "Template error", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.InternalServerError("Template error").WithRequestID(requestID))
 	}
 }
 
 // ShowLoginPage renders the login page
 func (s *ServerHandlers) ShowLoginPage(w http.ResponseWriter, r *http.Request) {
 	if err := s.Templates.ExecuteTemplate(w, "login.html", nil); err != nil {
-		http.Error(w, "Template error", http.StatusInternalServerError)
+		requestID := middleware.GetRequestID(r)
+		apierrors.WriteError(w, apierrors.InternalServerError("Template error").WithRequestID(requestID))
 	}
 }
 

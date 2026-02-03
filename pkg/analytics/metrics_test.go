@@ -2,7 +2,6 @@ package analytics
 
 import (
 	"database/sql"
-	"os"
 	"testing"
 	"time"
 
@@ -10,9 +9,9 @@ import (
 )
 
 func setupTestDB(t *testing.T) (*sql.DB, func()) {
-	// Create temporary database
-	dbPath := "/tmp/analytics_test.db"
-	os.Remove(dbPath) // Clean up any existing test db
+	// Create temporary database using t.TempDir() for cross-platform compatibility
+	tmpDir := t.TempDir()
+	dbPath := tmpDir + "/analytics_test.db"
 
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
@@ -86,7 +85,7 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 
 	cleanup := func() {
 		db.Close()
-		os.Remove(dbPath)
+		// TempDir is automatically cleaned up by Go testing framework
 	}
 
 	return db, cleanup

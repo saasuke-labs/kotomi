@@ -247,12 +247,12 @@ func (s *Store) GetReactionMetrics(siteID string, dateRange DateRange) (Reaction
 		LIMIT 5
 	`
 	
-	rows, err = s.db.Query(pageQuery, siteID, dateRange.From, dateRange.To)
+	pageRows, err := s.db.Query(pageQuery, siteID, dateRange.From, dateRange.To)
 	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
+		defer pageRows.Close()
+		for pageRows.Next() {
 			var item MostReactedItem
-			if err := rows.Scan(&item.Type, &item.PagePath, &item.ReactionCount); err != nil {
+			if err := pageRows.Scan(&item.Type, &item.PagePath, &item.ReactionCount); err != nil {
 				log.Printf("Failed to scan most reacted page: %v", err)
 				continue
 			}
@@ -271,12 +271,12 @@ func (s *Store) GetReactionMetrics(siteID string, dateRange DateRange) (Reaction
 		LIMIT 5
 	`
 	
-	rows, err = s.db.Query(commentQuery, siteID, dateRange.From, dateRange.To)
+	commentRows, err := s.db.Query(commentQuery, siteID, dateRange.From, dateRange.To)
 	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
+		defer commentRows.Close()
+		for commentRows.Next() {
 			var item MostReactedItem
-			if err := rows.Scan(&item.Type, &item.CommentText, &item.ReactionCount); err != nil {
+			if err := commentRows.Scan(&item.Type, &item.CommentText, &item.ReactionCount); err != nil {
 				log.Printf("Failed to scan most reacted comment: %v", err)
 				continue
 			}

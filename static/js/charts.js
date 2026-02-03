@@ -107,6 +107,10 @@ function createPieChart(canvasId, label, data) {
 
 /**
  * Create a bar chart for comparison data
+ * Note: This function is provided for future use and extensibility.
+ * It is not currently used in the analytics dashboard but may be useful
+ * for future features or custom implementations.
+ * 
  * @param {string} canvasId - ID of the canvas element
  * @param {string} label - Chart label
  * @param {object} data - Data object with labels and values arrays
@@ -185,6 +189,10 @@ function generateColors(count) {
 
 /**
  * Update chart data dynamically
+ * Note: This function is provided for future use and extensibility.
+ * It enables dynamic updates of chart data without recreating the entire chart,
+ * which can be useful for real-time data updates or AJAX-based refreshes.
+ * 
  * @param {Chart} chart - Chart.js instance
  * @param {object} newData - New data object with labels and values
  */

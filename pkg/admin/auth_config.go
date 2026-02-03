@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"html/template"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -13,15 +15,59 @@ import (
 
 // AuthConfigHandler handles site authentication configuration requests
 type AuthConfigHandler struct {
-	db *sql.DB
+	db        *sql.DB
+	templates *template.Template
 }
 
 // NewAuthConfigHandler creates a new auth config handler
-func NewAuthConfigHandler(db *sql.DB) *AuthConfigHandler {
-	return &AuthConfigHandler{db: db}
+func NewAuthConfigHandler(db *sql.DB, templates *template.Template) *AuthConfigHandler {
+	return &AuthConfigHandler{
+		db:        db,
+		templates: templates,
+	}
 }
 
-// GetAuthConfig handles GET /admin/sites/{siteId}/auth/config
+// HandleAuthConfigForm displays the authentication configuration form
+func (h *AuthConfigHandler) HandleAuthConfigForm(w http.ResponseWriter, r *http.Request) {
+	userID := auth.GetUserIDFromContext(r.Context())
+	if userID == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	vars := mux.Vars(r)
+	siteID := vars["siteId"]
+
+	// Verify site ownership
+	if !h.verifySiteOwnership(siteID, userID, w) {
+		return
+	}
+
+	// Get auth configuration or use defaults
+	authConfigStore := models.NewSiteAuthConfigStore(h.db)
+	config, err := authConfigStore.GetBySiteID(siteID)
+	if err != nil {
+		// Config doesn't exist yet, use defaults
+		config = &models.SiteAuthConfig{
+			SiteID:                siteID,
+			AuthMode:              "external",
+			JWTValidationType:     "hmac",
+			TokenExpirationBuffer: 30,
+		}
+	}
+
+	data := map[string]interface{}{
+		"SiteID": siteID,
+		"Config": config,
+	}
+
+	if err := h.templates.ExecuteTemplate(w, "auth/form.html", data); err != nil {
+		log.Printf("Error rendering auth config form: %v", err)
+		http.Error(w, "Failed to render form", http.StatusInternalServerError)
+	}
+}
+
+// GetAuthConfig handles GET /admin/sites/{siteId}/auth/config (JSON API)
 func (h *AuthConfigHandler) GetAuthConfig(w http.ResponseWriter, r *http.Request) {
 	userID := auth.GetUserIDFromContext(r.Context())
 	if userID == "" {

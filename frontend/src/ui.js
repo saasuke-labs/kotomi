@@ -55,15 +55,19 @@ class KotomiUI {
       if (this.options.enableReactions) {
         this.allowedReactions = await this.api.getAllowedReactions('comment');
         
-        // Load reaction counts for each comment
-        for (const comment of this.comments) {
-          try {
-            this.reactionCounts[comment.id] = await this.api.getCommentReactionCounts(comment.id);
-          } catch (e) {
-            // Ignore if reactions not available for this comment
-            this.reactionCounts[comment.id] = [];
-          }
-        }
+        // Load reaction counts for all comments in parallel
+        const reactionPromises = this.comments.map(comment =>
+          this.api.getCommentReactionCounts(comment.id)
+            .then(counts => ({ id: comment.id, counts }))
+            .catch(e => ({ id: comment.id, counts: [] })) // Ignore errors for individual comments
+        );
+        
+        const reactionResults = await Promise.all(reactionPromises);
+        
+        // Store results in reactionCounts object
+        reactionResults.forEach(result => {
+          this.reactionCounts[result.id] = result.counts;
+        });
       }
     } catch (error) {
       console.error('Failed to load Kotomi data:', error);

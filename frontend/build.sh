@@ -160,12 +160,20 @@ cp "$SRC_DIR/styles.css" "$DIST_DIR/kotomi.css"
 # Create minified versions (simple approach without external tools)
 echo "Creating minified versions..."
 
-# For CSS, just remove comments and excess whitespace
-sed 's|/\*[^*]*\*\+\([^/*][^*]*\*\+\)*/||g' "$DIST_DIR/kotomi.css" | \
-  sed 's/^[[:space:]]*//g' | \
-  sed '/^$/d' > "$DIST_DIR/kotomi.min.css"
+# For CSS, remove comments and excess whitespace
+# Note: This is a simple minification. For production, consider using a proper CSS minifier.
+cat "$DIST_DIR/kotomi.css" | \
+  tr '\n' ' ' | \
+  sed 's|/\*[^*]*\*\+\([^/*][^*]*\*\+\)*/||g' | \
+  sed 's/[[:space:]]\{2,\}/ /g' | \
+  sed 's/[[:space:]]*{[[:space:]]*/ {/g' | \
+  sed 's/[[:space:]]*}[[:space:]]*/ }/g' | \
+  sed 's/[[:space:]]*;[[:space:]]*/ ;/g' | \
+  sed 's/[[:space:]]*,[[:space:]]*/ ,/g' | \
+  sed 's/^[[:space:]]*//g' > "$DIST_DIR/kotomi.min.css"
 
 # For JS, we'd normally use a minifier, but for now just copy
+# Note: For production, consider using UglifyJS, Terser, or similar
 cp "$DIST_DIR/kotomi.js" "$DIST_DIR/kotomi.min.js"
 
 echo "Build complete!"

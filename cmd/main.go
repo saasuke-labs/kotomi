@@ -1090,6 +1090,12 @@ func main() {
 		adminRouter.HandleFunc("/sites/{siteId}/import", exportImportHandler.ShowImportForm).Methods("GET")
 		adminRouter.HandleFunc("/sites/{siteId}/import", exportImportHandler.ImportData).Methods("POST")
 
+		// Analytics handlers
+		analyticsHandler := admin.NewAnalyticsHandler(db, templates)
+		adminRouter.HandleFunc("/sites/{siteId}/analytics", analyticsHandler.ShowDashboard).Methods("GET")
+		adminRouter.HandleFunc("/sites/{siteId}/analytics/data", analyticsHandler.GetAnalyticsData).Methods("GET")
+		adminRouter.HandleFunc("/sites/{siteId}/analytics/export", analyticsHandler.ExportCSV).Methods("GET")
+
 		// Redirect /admin to dashboard
 		router.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/admin/dashboard", http.StatusSeeOther)

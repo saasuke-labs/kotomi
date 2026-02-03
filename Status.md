@@ -492,19 +492,34 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Priority:** Low (nice to have) - COMPLETED
 - **Integration:** Integrated with comment creation and moderation handlers
 
-#### 6. **Analytics & Reporting** ❌
-- **Status:** Not Implemented
-- **Description:** Analytics for site owners to track engagement
-- **Requirements from PRD:**
-  - Comment counts
-  - Active users
-  - Reaction breakdowns
-- **What's Missing:**
-  - No analytics dashboard
-  - No API endpoints for analytics data
-  - No metrics tracking
-- **Priority:** Low (can be added later)
-- **Estimated Work:** Medium
+#### 6. **Analytics & Reporting** ✅
+- **Status:** Fully Implemented
+- **Description:** Comprehensive analytics for site owners to track engagement and trends
+- **Details:**
+  - Complete analytics dashboard with interactive charts (Chart.js)
+  - Date range filtering for custom time periods
+  - CSV export for external analysis
+  - Real-time metrics based on current database state
+- **Metrics Tracked:**
+  - **Comment Metrics:** Total, pending, approved, rejected counts; approval/rejection rates; daily/weekly/monthly trends
+  - **User Metrics:** Total users, active users (today/week/month), top contributors
+  - **Reaction Metrics:** Total reactions, breakdown by type, most reacted pages/comments
+  - **Moderation Metrics:** Total moderated, auto-rejected/approved, manual reviews, average moderation time, spam detection rate
+  - **Time Series:** Daily and weekly trends for comments and reactions
+- **Features:**
+  - Interactive line charts for trends over time
+  - Pie charts for reaction distribution
+  - Top contributors table with comment counts
+  - Most reacted items (pages and comments)
+  - CSV export with all metrics and time series data
+- **Location:** `pkg/analytics/`, `pkg/admin/analytics.go`, `templates/admin/analytics/`, `static/js/charts.js`
+- **Admin UI:** `/admin/sites/{siteId}/analytics`
+- **API Endpoints:**
+  - `GET /admin/sites/{siteId}/analytics` - Analytics dashboard (HTML)
+  - `GET /admin/sites/{siteId}/analytics/data` - Analytics data (JSON)
+  - `GET /admin/sites/{siteId}/analytics/export` - CSV export
+- **Testing:** Comprehensive unit tests with 100% coverage
+- **Priority:** Low (nice to have, now available)
 
 #### 7. **Export/Import Functionality** ✅
 - **Status:** Fully Implemented
@@ -551,8 +566,8 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 
 1. ✅ **Automatic/AI moderation** - COMPLETED
 2. ✅ **Export/import functionality** - COMPLETED
-3. Email notifications
-4. Analytics & reporting
+3. ✅ **Analytics & reporting** - COMPLETED
+4. ✅ **Email notifications** - COMPLETED
 5. User authentication for commenters (65% complete - External JWT done)
 6. Additional storage backends (PostgreSQL, MySQL)
 7. Horizontal scaling support

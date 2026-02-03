@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -35,7 +36,7 @@ func NewUserStore(db *sql.DB) *UserStore {
 }
 
 // GetBySiteAndID retrieves a user by site and user ID
-func (s *UserStore) GetBySiteAndID(siteID, userID string) (*User, error) {
+func (s *UserStore) GetBySiteAndID(ctx context.Context, siteID, userID string) (*User, error) {
 	query := `
 		SELECT id, site_id, name, email, avatar_url, profile_url, is_verified, roles, 
 		       reputation_score, first_seen, last_seen, created_at, updated_at
@@ -47,7 +48,7 @@ func (s *UserStore) GetBySiteAndID(siteID, userID string) (*User, error) {
 	var email, avatarURL, profileURL sql.NullString
 	var rolesJSON sql.NullString
 
-	err := s.db.QueryRow(query, siteID, userID).Scan(
+	err := s.db.QueryRowContext(ctx, query, siteID, userID).Scan(
 		&u.ID, &u.SiteID, &u.Name, &email, &avatarURL, &profileURL,
 		&u.IsVerified, &rolesJSON, &u.ReputationScore, &u.FirstSeen, &u.LastSeen, &u.CreatedAt, &u.UpdatedAt,
 	)
@@ -77,7 +78,7 @@ func (s *UserStore) GetBySiteAndID(siteID, userID string) (*User, error) {
 }
 
 // ListBySite retrieves all users for a specific site
-func (s *UserStore) ListBySite(siteID string) ([]*User, error) {
+func (s *UserStore) ListBySite(ctx context.Context, siteID string) ([]*User, error) {
 	query := `
 		SELECT id, site_id, name, email, avatar_url, profile_url, is_verified, roles,
 		       reputation_score, first_seen, last_seen, created_at, updated_at
@@ -86,7 +87,7 @@ func (s *UserStore) ListBySite(siteID string) ([]*User, error) {
 		ORDER BY last_seen DESC
 	`
 
-	rows, err := s.db.Query(query, siteID)
+	rows, err := s.db.QueryContext(ctx, query, siteID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query users: %w", err)
 	}
@@ -128,7 +129,7 @@ func (s *UserStore) ListBySite(siteID string) ([]*User, error) {
 }
 
 // CreateOrUpdate creates a new user or updates if exists
-func (s *UserStore) CreateOrUpdate(user *User) error {
+func (s *UserStore) CreateOrUpdate(ctx context.Context, user *User) error {
 	now := time.Now()
 	
 	// Serialize roles to JSON
@@ -144,7 +145,7 @@ func (s *UserStore) CreateOrUpdate(user *User) error {
 
 	// Check if user exists
 	// Note: GetBySiteAndID returns (nil, nil) when user not found, so err != nil means actual DB error
-	existing, err := s.GetBySiteAndID(user.SiteID, user.ID)
+	existing, err := s.GetBySiteAndID(ctx, user.SiteID, user.ID)
 	if err != nil {
 		return err
 	}
@@ -172,7 +173,7 @@ func (s *UserStore) CreateOrUpdate(user *User) error {
 			profileURL.Valid = true
 		}
 
-		_, err = s.db.Exec(query, user.Name, email, avatarURL, profileURL,
+		_, err = s.db.ExecContext(ctx, query, user.Name, email, avatarURL, profileURL,
 			user.IsVerified, rolesJSON, user.ReputationScore, user.LastSeen, now, user.SiteID, user.ID)
 		if err != nil {
 			return fmt.Errorf("failed to update user: %w", err)
@@ -210,7 +211,7 @@ func (s *UserStore) CreateOrUpdate(user *User) error {
 			profileURL.Valid = true
 		}
 
-		_, err = s.db.Exec(query, user.ID, user.SiteID, user.Name, email, avatarURL, profileURL,
+		_, err = s.db.ExecContext(ctx, query, user.ID, user.SiteID, user.Name, email, avatarURL, profileURL,
 			user.IsVerified, rolesJSON, user.ReputationScore, user.FirstSeen, user.LastSeen, user.CreatedAt, user.UpdatedAt)
 		if err != nil {
 			return fmt.Errorf("failed to create user: %w", err)
@@ -221,7 +222,7 @@ func (s *UserStore) CreateOrUpdate(user *User) error {
 }
 
 // UpdateLastSeen updates the last_seen timestamp for a user
-func (s *UserStore) UpdateLastSeen(siteID, userID string) error {
+func (s *UserStore) UpdateLastSeen(ctx context.Context, siteID, userID string) error {
 	query := `
 		UPDATE users
 		SET last_seen = ?, updated_at = ?
@@ -229,7 +230,7 @@ func (s *UserStore) UpdateLastSeen(siteID, userID string) error {
 	`
 
 	now := time.Now()
-	_, err := s.db.Exec(query, now, now, siteID, userID)
+	_, err := s.db.ExecContext(ctx, query, now, now, siteID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to update last_seen: %w", err)
 	}
@@ -238,14 +239,14 @@ func (s *UserStore) UpdateLastSeen(siteID, userID string) error {
 }
 
 // Delete removes a user and all their comments/reactions
-func (s *UserStore) Delete(siteID, userID string) error {
+func (s *UserStore) Delete(ctx context.Context, siteID, userID string) error {
 	// Note: Foreign key constraints will cascade delete comments and reactions
 	query := `
 		DELETE FROM users
 		WHERE site_id = ? AND id = ?
 	`
 
-	_, err := s.db.Exec(query, siteID, userID)
+	_, err := s.db.ExecContext(ctx, query, siteID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to delete user: %w", err)
 	}
@@ -254,7 +255,7 @@ func (s *UserStore) Delete(siteID, userID string) error {
 }
 
 // UpdateReputationScore updates the reputation score for a user
-func (s *UserStore) UpdateReputationScore(siteID, userID string, score int) error {
+func (s *UserStore) UpdateReputationScore(ctx context.Context, siteID, userID string, score int) error {
 	query := `
 		UPDATE users
 		SET reputation_score = ?, updated_at = ?
@@ -262,7 +263,7 @@ func (s *UserStore) UpdateReputationScore(siteID, userID string, score int) erro
 	`
 
 	now := time.Now()
-	_, err := s.db.Exec(query, score, now, siteID, userID)
+	_, err := s.db.ExecContext(ctx, query, score, now, siteID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to update reputation score: %w", err)
 	}
@@ -272,7 +273,7 @@ func (s *UserStore) UpdateReputationScore(siteID, userID string, score int) erro
 
 // CalculateReputationScore calculates basic reputation score based on user activity
 // Phase 3 foundation: Simple calculation based on approved comments
-func (s *UserStore) CalculateReputationScore(siteID, userID string) (int, error) {
+func (s *UserStore) CalculateReputationScore(ctx context.Context, siteID, userID string) (int, error) {
 	query := `
 		SELECT COUNT(*) as approved_comments
 		FROM comments
@@ -280,7 +281,7 @@ func (s *UserStore) CalculateReputationScore(siteID, userID string) (int, error)
 	`
 
 	var approvedComments int
-	err := s.db.QueryRow(query, siteID, userID).Scan(&approvedComments)
+	err := s.db.QueryRowContext(ctx, query, siteID, userID).Scan(&approvedComments)
 	if err != nil {
 		return 0, fmt.Errorf("failed to calculate reputation: %w", err)
 	}

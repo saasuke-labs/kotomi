@@ -51,7 +51,7 @@ func (h *CommentsHandler) ListComments(w http.ResponseWriter, r *http.Request) {
 
 	// Verify ownership
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -65,7 +65,7 @@ func (h *CommentsHandler) ListComments(w http.ResponseWriter, r *http.Request) {
 	// Get status filter from query params
 	status := r.URL.Query().Get("status")
 
-	comments, err := h.commentStore.GetCommentsBySite(siteID, status)
+	comments, err := h.commentStore.GetCommentsBySite(r.Context(), siteID, status)
 	if err != nil {
 		http.Error(w, "Failed to fetch comments", http.StatusInternalServerError)
 		return
@@ -105,13 +105,13 @@ func (h *CommentsHandler) ListPageComments(w http.ResponseWriter, r *http.Reques
 
 	// Verify ownership
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
-	comments, err := h.commentStore.GetPageComments(siteID, pageID)
+	comments, err := h.commentStore.GetPageComments(r.Context(), siteID, pageID)
 	if err != nil {
 		http.Error(w, "Failed to fetch comments", http.StatusInternalServerError)
 		return
@@ -134,27 +134,27 @@ func (h *CommentsHandler) ApproveComment(w http.ResponseWriter, r *http.Request)
 	commentID := vars["commentId"]
 
 	// Get comment to verify ownership of site
-	comment, err := h.commentStore.GetCommentByID(commentID)
+	comment, err := h.commentStore.GetCommentByID(r.Context(), commentID)
 	if err != nil {
 		http.Error(w, "Comment not found", http.StatusNotFound)
 		return
 	}
 
 	// Get site ID for the comment and verify ownership
-	siteID, err := h.commentStore.GetCommentSiteID(commentID)
+	siteID, err := h.commentStore.GetCommentSiteID(r.Context(), commentID)
 	if err != nil {
 		http.Error(w, "Failed to verify comment ownership", http.StatusInternalServerError)
 		return
 	}
 
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
-	err = h.commentStore.UpdateCommentStatus(commentID, "approved", userID)
+	err = h.commentStore.UpdateCommentStatus(r.Context(), commentID, "approved", userID)
 	if err != nil {
 		http.Error(w, "Failed to approve comment", http.StatusInternalServerError)
 		return
@@ -167,11 +167,11 @@ func (h *CommentsHandler) ApproveComment(w http.ResponseWriter, r *http.Request)
 		if err == nil && settings != nil && settings.Enabled && settings.NotifyModeration {
 			// Get page_id for this comment
 			var pageID string
-			err = h.db.QueryRow("SELECT page_id FROM comments WHERE id = ?", commentID).Scan(&pageID)
+			err = h.db.QueryRowContext(r.Context(), "SELECT page_id FROM comments WHERE id = ?", commentID).Scan(&pageID)
 			if err == nil {
 				// Get page info for notification
 				pageStore := models.NewPageStore(h.db)
-				page, err := pageStore.GetByID(pageID)
+				page, err := pageStore.GetByID(r.Context(), pageID)
 				if err == nil && page != nil {
 					commentURL := fmt.Sprintf("%s?comment=%s", page.Path, comment.ID)
 					unsubscribeURL := fmt.Sprintf("/unsubscribe?site=%s", siteID)
@@ -222,27 +222,27 @@ func (h *CommentsHandler) RejectComment(w http.ResponseWriter, r *http.Request) 
 	commentID := vars["commentId"]
 
 	// Get comment to verify ownership
-	comment, err := h.commentStore.GetCommentByID(commentID)
+	comment, err := h.commentStore.GetCommentByID(r.Context(), commentID)
 	if err != nil {
 		http.Error(w, "Comment not found", http.StatusNotFound)
 		return
 	}
 
 	// Get site ID for the comment and verify ownership
-	siteID, err := h.commentStore.GetCommentSiteID(commentID)
+	siteID, err := h.commentStore.GetCommentSiteID(r.Context(), commentID)
 	if err != nil {
 		http.Error(w, "Failed to verify comment ownership", http.StatusInternalServerError)
 		return
 	}
 
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
-	err = h.commentStore.UpdateCommentStatus(commentID, "rejected", userID)
+	err = h.commentStore.UpdateCommentStatus(r.Context(), commentID, "rejected", userID)
 	if err != nil {
 		http.Error(w, "Failed to reject comment", http.StatusInternalServerError)
 		return
@@ -255,11 +255,11 @@ func (h *CommentsHandler) RejectComment(w http.ResponseWriter, r *http.Request) 
 		if err == nil && settings != nil && settings.Enabled && settings.NotifyModeration {
 			// Get page_id for this comment
 			var pageID string
-			err = h.db.QueryRow("SELECT page_id FROM comments WHERE id = ?", commentID).Scan(&pageID)
+			err = h.db.QueryRowContext(r.Context(), "SELECT page_id FROM comments WHERE id = ?", commentID).Scan(&pageID)
 			if err == nil {
 				// Get page info for notification
 				pageStore := models.NewPageStore(h.db)
-				page, err := pageStore.GetByID(pageID)
+				page, err := pageStore.GetByID(r.Context(), pageID)
 				if err == nil && page != nil {
 					commentURL := fmt.Sprintf("%s?comment=%s", page.Path, comment.ID)
 					unsubscribeURL := fmt.Sprintf("/unsubscribe?site=%s", siteID)
@@ -310,27 +310,27 @@ func (h *CommentsHandler) DeleteComment(w http.ResponseWriter, r *http.Request) 
 	commentID := vars["commentId"]
 
 	// Get comment to verify ownership
-	_, err := h.commentStore.GetCommentByID(commentID)
+	_, err := h.commentStore.GetCommentByID(r.Context(), commentID)
 	if err != nil {
 		http.Error(w, "Comment not found", http.StatusNotFound)
 		return
 	}
 
 	// Get site ID for the comment and verify ownership
-	siteID, err := h.commentStore.GetCommentSiteID(commentID)
+	siteID, err := h.commentStore.GetCommentSiteID(r.Context(), commentID)
 	if err != nil {
 		http.Error(w, "Failed to verify comment ownership", http.StatusInternalServerError)
 		return
 	}
 
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
-	err = h.commentStore.DeleteComment(commentID)
+	err = h.commentStore.DeleteComment(r.Context(), commentID)
 	if err != nil {
 		http.Error(w, "Failed to delete comment", http.StatusInternalServerError)
 		return

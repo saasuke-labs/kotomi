@@ -315,7 +315,7 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 }
 
 // AddPageComment adds a comment to a specific page on a site
-func (s *SQLiteStore) AddPageComment(site, page string, comment Comment) error {
+func (s *SQLiteStore) AddPageComment(ctx context.Context, site, page string, comment Comment) error {
 	// Set timestamps if not already set
 	if comment.CreatedAt.IsZero() {
 		comment.CreatedAt = time.Now()
@@ -333,7 +333,7 @@ func (s *SQLiteStore) AddPageComment(site, page string, comment Comment) error {
 	
 	// First, ensure a system admin user exists (for auto-created sites)
 	systemUserID := "system"
-	_, err := s.db.Exec(`
+	_, err := s.db.ExecContext(ctx, `
 		INSERT OR IGNORE INTO admin_users (id, email, name, auth0_sub, created_at, updated_at)
 		VALUES (?, 'system@kotomi.local', 'System', 'system', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 	`, systemUserID)
@@ -343,13 +343,13 @@ func (s *SQLiteStore) AddPageComment(site, page string, comment Comment) error {
 
 	// Check if site exists, create if not
 	var siteExists bool
-	err = s.db.QueryRow("SELECT EXISTS(SELECT 1 FROM sites WHERE id = ?)", site).Scan(&siteExists)
+	err = s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM sites WHERE id = ?)", site).Scan(&siteExists)
 	if err != nil {
 		return fmt.Errorf("failed to check site existence: %w", err)
 	}
 	if !siteExists {
 		// Create a placeholder site owned by system user
-		_, err = s.db.Exec(`
+		_, err = s.db.ExecContext(ctx, `
 			INSERT OR IGNORE INTO sites (id, owner_id, name, created_at, updated_at)
 			VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		`, site, systemUserID, site)
@@ -360,13 +360,13 @@ func (s *SQLiteStore) AddPageComment(site, page string, comment Comment) error {
 
 	// Check if page exists, create if not
 	var pageExists bool
-	err = s.db.QueryRow("SELECT EXISTS(SELECT 1 FROM pages WHERE site_id = ? AND id = ?)", site, page).Scan(&pageExists)
+	err = s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM pages WHERE site_id = ? AND id = ?)", site, page).Scan(&pageExists)
 	if err != nil {
 		return fmt.Errorf("failed to check page existence: %w", err)
 	}
 	if !pageExists {
 		// Create a placeholder page
-		_, err = s.db.Exec(`
+		_, err = s.db.ExecContext(ctx, `
 			INSERT OR IGNORE INTO pages (id, site_id, path, created_at, updated_at)
 			VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		`, page, site, page)
@@ -408,7 +408,7 @@ func (s *SQLiteStore) AddPageComment(site, page string, comment Comment) error {
 		authorEmail.Valid = true
 	}
 
-	_, err = s.db.Exec(query,
+	_, err = s.db.ExecContext(ctx, query,
 		comment.ID,
 		site,
 		page,
@@ -432,7 +432,7 @@ func (s *SQLiteStore) AddPageComment(site, page string, comment Comment) error {
 }
 
 // GetPageComments retrieves all comments for a specific page on a site
-func (s *SQLiteStore) GetPageComments(site, page string) ([]Comment, error) {
+func (s *SQLiteStore) GetPageComments(ctx context.Context, site, page string) ([]Comment, error) {
 	query := `
 		SELECT c.id, c.author, c.author_id, c.author_email, c.text, c.parent_id, c.status, 
 		       c.moderated_by, c.moderated_at, c.created_at, c.updated_at,
@@ -444,7 +444,7 @@ func (s *SQLiteStore) GetPageComments(site, page string) ([]Comment, error) {
 		ORDER BY c.created_at ASC
 	`
 
-	rows, err := s.db.Query(query, site, page)
+	rows, err := s.db.QueryContext(ctx, query, site, page)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query comments: %w", err)
 	}
@@ -506,7 +506,7 @@ func (s *SQLiteStore) GetDB() *sql.DB {
 }
 
 // GetCommentsBySite retrieves all comments for a specific site
-func (s *SQLiteStore) GetCommentsBySite(siteID string, status string) ([]Comment, error) {
+func (s *SQLiteStore) GetCommentsBySite(ctx context.Context, siteID string, status string) ([]Comment, error) {
 	query := `
 		SELECT c.id, c.site_id, c.page_id, c.author, c.author_id, c.author_email, c.text, c.parent_id, 
 		       c.status, c.moderated_by, c.moderated_at, c.created_at, c.updated_at,
@@ -525,7 +525,7 @@ func (s *SQLiteStore) GetCommentsBySite(siteID string, status string) ([]Comment
 
 	query += " ORDER BY c.created_at DESC"
 
-	rows, err := s.db.Query(query, args...)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query comments: %w", err)
 	}
@@ -574,7 +574,7 @@ func (s *SQLiteStore) GetCommentsBySite(siteID string, status string) ([]Comment
 }
 
 // GetCommentByID retrieves a comment by its ID
-func (s *SQLiteStore) GetCommentByID(commentID string) (*Comment, error) {
+func (s *SQLiteStore) GetCommentByID(ctx context.Context, commentID string) (*Comment, error) {
 	query := `
 		SELECT id, site_id, page_id, author, author_id, author_email, text, parent_id, status, moderated_by, moderated_at, created_at, updated_at
 		FROM comments
@@ -588,7 +588,7 @@ func (s *SQLiteStore) GetCommentByID(commentID string) (*Comment, error) {
 	var moderatedBy sql.NullString
 	var moderatedAt sql.NullTime
 
-	err := s.db.QueryRow(query, commentID).Scan(
+	err := s.db.QueryRowContext(ctx, query, commentID).Scan(
 		&c.ID, &c.SiteID, &pageID, &c.Author, &c.AuthorID, &authorEmail, &c.Text, &parentID, &c.Status, &moderatedBy, &moderatedAt, &c.CreatedAt, &c.UpdatedAt,
 	)
 	if err != nil {
@@ -615,7 +615,7 @@ func (s *SQLiteStore) GetCommentByID(commentID string) (*Comment, error) {
 }
 
 // UpdateCommentStatus updates the status of a comment
-func (s *SQLiteStore) UpdateCommentStatus(commentID, status, moderatorID string) error {
+func (s *SQLiteStore) UpdateCommentStatus(ctx context.Context, commentID, status, moderatorID string) error {
 	query := `
 		UPDATE comments
 		SET status = ?, moderated_by = ?, moderated_at = ?, updated_at = ?
@@ -623,7 +623,7 @@ func (s *SQLiteStore) UpdateCommentStatus(commentID, status, moderatorID string)
 	`
 
 	now := time.Now()
-	_, err := s.db.Exec(query, status, moderatorID, now, now, commentID)
+	_, err := s.db.ExecContext(ctx, query, status, moderatorID, now, now, commentID)
 	if err != nil {
 		return fmt.Errorf("failed to update comment status: %w", err)
 	}
@@ -632,7 +632,7 @@ func (s *SQLiteStore) UpdateCommentStatus(commentID, status, moderatorID string)
 }
 
 // UpdateCommentText updates the text content of a comment
-func (s *SQLiteStore) UpdateCommentText(commentID, text string) error {
+func (s *SQLiteStore) UpdateCommentText(ctx context.Context, commentID, text string) error {
 	query := `
 		UPDATE comments
 		SET text = ?, updated_at = ?
@@ -640,7 +640,7 @@ func (s *SQLiteStore) UpdateCommentText(commentID, text string) error {
 	`
 
 	now := time.Now()
-	result, err := s.db.Exec(query, text, now, commentID)
+	result, err := s.db.ExecContext(ctx, query, text, now, commentID)
 	if err != nil {
 		return fmt.Errorf("failed to update comment text: %w", err)
 	}
@@ -658,10 +658,10 @@ func (s *SQLiteStore) UpdateCommentText(commentID, text string) error {
 }
 
 // DeleteComment deletes a comment by its ID
-func (s *SQLiteStore) DeleteComment(commentID string) error {
+func (s *SQLiteStore) DeleteComment(ctx context.Context, commentID string) error {
 	query := `DELETE FROM comments WHERE id = ?`
 
-	_, err := s.db.Exec(query, commentID)
+	_, err := s.db.ExecContext(ctx, query, commentID)
 	if err != nil {
 		return fmt.Errorf("failed to delete comment: %w", err)
 	}
@@ -670,11 +670,11 @@ func (s *SQLiteStore) DeleteComment(commentID string) error {
 }
 
 // GetCommentSiteID retrieves the site ID for a comment
-func (s *SQLiteStore) GetCommentSiteID(commentID string) (string, error) {
+func (s *SQLiteStore) GetCommentSiteID(ctx context.Context, commentID string) (string, error) {
 	query := `SELECT site_id FROM comments WHERE id = ?`
 
 	var siteID string
-	err := s.db.QueryRow(query, commentID).Scan(&siteID)
+	err := s.db.QueryRowContext(ctx, query, commentID).Scan(&siteID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", fmt.Errorf("comment not found")

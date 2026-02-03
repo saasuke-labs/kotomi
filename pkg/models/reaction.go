@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -58,7 +59,7 @@ func NewAllowedReactionStore(db *sql.DB) *AllowedReactionStore {
 }
 
 // GetBySite retrieves all allowed reactions for a site
-func (s *AllowedReactionStore) GetBySite(siteID string) ([]AllowedReaction, error) {
+func (s *AllowedReactionStore) GetBySite(ctx context.Context, siteID string) ([]AllowedReaction, error) {
 	query := `
 		SELECT id, site_id, name, emoji, reaction_type, created_at, updated_at
 		FROM allowed_reactions
@@ -66,7 +67,7 @@ func (s *AllowedReactionStore) GetBySite(siteID string) ([]AllowedReaction, erro
 		ORDER BY reaction_type, created_at ASC
 	`
 
-	rows, err := s.db.Query(query, siteID)
+	rows, err := s.db.QueryContext(ctx, query, siteID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query allowed reactions: %w", err)
 	}
@@ -97,7 +98,7 @@ func (s *AllowedReactionStore) GetBySite(siteID string) ([]AllowedReaction, erro
 }
 
 // GetBySiteAndType retrieves allowed reactions for a site filtered by type
-func (s *AllowedReactionStore) GetBySiteAndType(siteID, reactionType string) ([]AllowedReaction, error) {
+func (s *AllowedReactionStore) GetBySiteAndType(ctx context.Context, siteID, reactionType string) ([]AllowedReaction, error) {
 	query := `
 		SELECT id, site_id, name, emoji, reaction_type, created_at, updated_at
 		FROM allowed_reactions
@@ -105,7 +106,7 @@ func (s *AllowedReactionStore) GetBySiteAndType(siteID, reactionType string) ([]
 		ORDER BY created_at ASC
 	`
 
-	rows, err := s.db.Query(query, siteID, reactionType)
+	rows, err := s.db.QueryContext(ctx, query, siteID, reactionType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query allowed reactions: %w", err)
 	}
@@ -136,7 +137,7 @@ func (s *AllowedReactionStore) GetBySiteAndType(siteID, reactionType string) ([]
 }
 
 // GetByID retrieves an allowed reaction by its ID
-func (s *AllowedReactionStore) GetByID(id string) (*AllowedReaction, error) {
+func (s *AllowedReactionStore) GetByID(ctx context.Context, id string) (*AllowedReaction, error) {
 	query := `
 		SELECT id, site_id, name, emoji, reaction_type, created_at, updated_at
 		FROM allowed_reactions
@@ -144,7 +145,7 @@ func (s *AllowedReactionStore) GetByID(id string) (*AllowedReaction, error) {
 	`
 
 	var reaction AllowedReaction
-	err := s.db.QueryRow(query, id).Scan(
+	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&reaction.ID, &reaction.SiteID, &reaction.Name, &reaction.Emoji,
 		&reaction.ReactionType, &reaction.CreatedAt, &reaction.UpdatedAt,
 	)
@@ -159,7 +160,7 @@ func (s *AllowedReactionStore) GetByID(id string) (*AllowedReaction, error) {
 }
 
 // Create creates a new allowed reaction for a site
-func (s *AllowedReactionStore) Create(siteID, name, emoji, reactionType string) (*AllowedReaction, error) {
+func (s *AllowedReactionStore) Create(ctx context.Context, siteID, name, emoji, reactionType string) (*AllowedReaction, error) {
 	// Default to 'comment' if not specified
 	if reactionType == "" {
 		reactionType = "comment"
@@ -181,7 +182,7 @@ func (s *AllowedReactionStore) Create(siteID, name, emoji, reactionType string) 
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`
 
-	_, err := s.db.Exec(query, reaction.ID, reaction.SiteID, reaction.Name, reaction.Emoji,
+	_, err := s.db.ExecContext(ctx, query, reaction.ID, reaction.SiteID, reaction.Name, reaction.Emoji,
 		reaction.ReactionType, reaction.CreatedAt, reaction.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create allowed reaction: %w", err)
@@ -191,14 +192,14 @@ func (s *AllowedReactionStore) Create(siteID, name, emoji, reactionType string) 
 }
 
 // Update updates an allowed reaction
-func (s *AllowedReactionStore) Update(id, name, emoji, reactionType string) error {
+func (s *AllowedReactionStore) Update(ctx context.Context, id, name, emoji, reactionType string) error {
 	query := `
 		UPDATE allowed_reactions
 		SET name = ?, emoji = ?, reaction_type = ?, updated_at = ?
 		WHERE id = ?
 	`
 
-	_, err := s.db.Exec(query, name, emoji, reactionType, time.Now(), id)
+	_, err := s.db.ExecContext(ctx, query, name, emoji, reactionType, time.Now(), id)
 	if err != nil {
 		return fmt.Errorf("failed to update allowed reaction: %w", err)
 	}
@@ -207,10 +208,10 @@ func (s *AllowedReactionStore) Update(id, name, emoji, reactionType string) erro
 }
 
 // Delete deletes an allowed reaction
-func (s *AllowedReactionStore) Delete(id string) error {
+func (s *AllowedReactionStore) Delete(ctx context.Context, id string) error {
 	query := `DELETE FROM allowed_reactions WHERE id = ?`
 
-	_, err := s.db.Exec(query, id)
+	_, err := s.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete allowed reaction: %w", err)
 	}
@@ -229,12 +230,12 @@ func NewReactionStore(db *sql.DB) *ReactionStore {
 }
 
 // AddReaction adds a reaction to a comment (or toggles it off if already exists)
-func (s *ReactionStore) AddReaction(commentID, allowedReactionID, userID string) (*Reaction, error) {
+func (s *ReactionStore) AddReaction(ctx context.Context, commentID, allowedReactionID, userID string) (*Reaction, error) {
 	// Check if user already reacted with this reaction type
-	existing, err := s.GetUserCommentReaction(commentID, allowedReactionID, userID)
+	existing, err := s.GetUserCommentReaction(ctx, commentID, allowedReactionID, userID)
 	if err == nil && existing != nil {
 		// User already reacted with this type - toggle it off (remove it)
-		if err := s.RemoveReaction(existing.ID); err != nil {
+		if err := s.RemoveReaction(ctx, existing.ID); err != nil {
 			return nil, fmt.Errorf("failed to remove existing reaction: %w", err)
 		}
 		return nil, nil // Return nil to indicate removal
@@ -255,7 +256,7 @@ func (s *ReactionStore) AddReaction(commentID, allowedReactionID, userID string)
 		VALUES (?, NULL, ?, ?, ?, ?)
 	`
 
-	_, err = s.db.Exec(query, reaction.ID, reaction.CommentID, reaction.AllowedReactionID,
+	_, err = s.db.ExecContext(ctx, query, reaction.ID, reaction.CommentID, reaction.AllowedReactionID,
 		reaction.UserID, reaction.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add reaction: %w", err)
@@ -265,12 +266,12 @@ func (s *ReactionStore) AddReaction(commentID, allowedReactionID, userID string)
 }
 
 // AddPageReaction adds a reaction to a page (or toggles it off if already exists)
-func (s *ReactionStore) AddPageReaction(pageID, allowedReactionID, userID string) (*Reaction, error) {
+func (s *ReactionStore) AddPageReaction(ctx context.Context, pageID, allowedReactionID, userID string) (*Reaction, error) {
 	// Check if user already reacted with this reaction type
-	existing, err := s.GetUserPageReaction(pageID, allowedReactionID, userID)
+	existing, err := s.GetUserPageReaction(ctx, pageID, allowedReactionID, userID)
 	if err == nil && existing != nil {
 		// User already reacted with this type - toggle it off (remove it)
-		if err := s.RemoveReaction(existing.ID); err != nil {
+		if err := s.RemoveReaction(ctx, existing.ID); err != nil {
 			return nil, fmt.Errorf("failed to remove existing reaction: %w", err)
 		}
 		return nil, nil // Return nil to indicate removal
@@ -291,7 +292,7 @@ func (s *ReactionStore) AddPageReaction(pageID, allowedReactionID, userID string
 		VALUES (?, ?, NULL, ?, ?, ?)
 	`
 
-	_, err = s.db.Exec(query, reaction.ID, reaction.PageID, reaction.AllowedReactionID,
+	_, err = s.db.ExecContext(ctx, query, reaction.ID, reaction.PageID, reaction.AllowedReactionID,
 		reaction.UserID, reaction.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add page reaction: %w", err)
@@ -301,7 +302,7 @@ func (s *ReactionStore) AddPageReaction(pageID, allowedReactionID, userID string
 }
 
 // GetUserCommentReaction checks if a user has already reacted to a comment with a specific reaction type
-func (s *ReactionStore) GetUserCommentReaction(commentID, allowedReactionID, userID string) (*Reaction, error) {
+func (s *ReactionStore) GetUserCommentReaction(ctx context.Context, commentID, allowedReactionID, userID string) (*Reaction, error) {
 	query := `
 		SELECT id, page_id, comment_id, allowed_reaction_id, user_id, created_at
 		FROM reactions
@@ -310,7 +311,7 @@ func (s *ReactionStore) GetUserCommentReaction(commentID, allowedReactionID, use
 
 	var reaction Reaction
 	var pageID sql.NullString
-	err := s.db.QueryRow(query, commentID, allowedReactionID, userID).Scan(
+	err := s.db.QueryRowContext(ctx, query, commentID, allowedReactionID, userID).Scan(
 		&reaction.ID, &pageID, &reaction.CommentID, &reaction.AllowedReactionID,
 		&reaction.UserID, &reaction.CreatedAt,
 	)
@@ -329,7 +330,7 @@ func (s *ReactionStore) GetUserCommentReaction(commentID, allowedReactionID, use
 }
 
 // GetUserPageReaction checks if a user has already reacted to a page with a specific reaction type
-func (s *ReactionStore) GetUserPageReaction(pageID, allowedReactionID, userID string) (*Reaction, error) {
+func (s *ReactionStore) GetUserPageReaction(ctx context.Context, pageID, allowedReactionID, userID string) (*Reaction, error) {
 	query := `
 		SELECT id, page_id, comment_id, allowed_reaction_id, user_id, created_at
 		FROM reactions
@@ -338,7 +339,7 @@ func (s *ReactionStore) GetUserPageReaction(pageID, allowedReactionID, userID st
 
 	var reaction Reaction
 	var commentID sql.NullString
-	err := s.db.QueryRow(query, pageID, allowedReactionID, userID).Scan(
+	err := s.db.QueryRowContext(ctx, query, pageID, allowedReactionID, userID).Scan(
 		&reaction.ID, &reaction.PageID, &commentID, &reaction.AllowedReactionID,
 		&reaction.UserID, &reaction.CreatedAt,
 	)
@@ -357,15 +358,15 @@ func (s *ReactionStore) GetUserPageReaction(pageID, allowedReactionID, userID st
 }
 
 // GetUserReaction checks if a user has already reacted with a specific reaction type (deprecated, use GetUserCommentReaction)
-func (s *ReactionStore) GetUserReaction(commentID, allowedReactionID, userID string) (*Reaction, error) {
-	return s.GetUserCommentReaction(commentID, allowedReactionID, userID)
+func (s *ReactionStore) GetUserReaction(ctx context.Context, commentID, allowedReactionID, userID string) (*Reaction, error) {
+	return s.GetUserCommentReaction(ctx, commentID, allowedReactionID, userID)
 }
 
 // RemoveReaction removes a reaction by its ID
-func (s *ReactionStore) RemoveReaction(reactionID string) error {
+func (s *ReactionStore) RemoveReaction(ctx context.Context, reactionID string) error {
 	query := `DELETE FROM reactions WHERE id = ?`
 
-	result, err := s.db.Exec(query, reactionID)
+	result, err := s.db.ExecContext(ctx, query, reactionID)
 	if err != nil {
 		return fmt.Errorf("failed to remove reaction: %w", err)
 	}
@@ -383,7 +384,7 @@ func (s *ReactionStore) RemoveReaction(reactionID string) error {
 }
 
 // GetReactionsByComment retrieves all reactions for a comment with details
-func (s *ReactionStore) GetReactionsByComment(commentID string) ([]ReactionWithDetails, error) {
+func (s *ReactionStore) GetReactionsByComment(ctx context.Context, commentID string) ([]ReactionWithDetails, error) {
 	query := `
 		SELECT r.id, r.page_id, r.comment_id, ar.name, ar.emoji, r.user_id, r.created_at
 		FROM reactions r
@@ -392,7 +393,7 @@ func (s *ReactionStore) GetReactionsByComment(commentID string) ([]ReactionWithD
 		ORDER BY r.created_at ASC
 	`
 
-	rows, err := s.db.Query(query, commentID)
+	rows, err := s.db.QueryContext(ctx, query, commentID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query reactions: %w", err)
 	}
@@ -427,7 +428,7 @@ func (s *ReactionStore) GetReactionsByComment(commentID string) ([]ReactionWithD
 }
 
 // GetReactionsByPage retrieves all reactions for a page with details
-func (s *ReactionStore) GetReactionsByPage(pageID string) ([]ReactionWithDetails, error) {
+func (s *ReactionStore) GetReactionsByPage(ctx context.Context, pageID string) ([]ReactionWithDetails, error) {
 	query := `
 		SELECT r.id, r.page_id, r.comment_id, ar.name, ar.emoji, r.user_id, r.created_at
 		FROM reactions r
@@ -436,7 +437,7 @@ func (s *ReactionStore) GetReactionsByPage(pageID string) ([]ReactionWithDetails
 		ORDER BY r.created_at ASC
 	`
 
-	rows, err := s.db.Query(query, pageID)
+	rows, err := s.db.QueryContext(ctx, query, pageID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query reactions: %w", err)
 	}
@@ -471,7 +472,7 @@ func (s *ReactionStore) GetReactionsByPage(pageID string) ([]ReactionWithDetails
 }
 
 // GetReactionCounts retrieves aggregated reaction counts for a comment
-func (s *ReactionStore) GetReactionCounts(commentID string) ([]ReactionCount, error) {
+func (s *ReactionStore) GetReactionCounts(ctx context.Context, commentID string) ([]ReactionCount, error) {
 	query := `
 		SELECT ar.name, ar.emoji, COUNT(*) as count
 		FROM reactions r
@@ -481,7 +482,7 @@ func (s *ReactionStore) GetReactionCounts(commentID string) ([]ReactionCount, er
 		ORDER BY count DESC, ar.name ASC
 	`
 
-	rows, err := s.db.Query(query, commentID)
+	rows, err := s.db.QueryContext(ctx, query, commentID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query reaction counts: %w", err)
 	}
@@ -509,7 +510,7 @@ func (s *ReactionStore) GetReactionCounts(commentID string) ([]ReactionCount, er
 }
 
 // GetPageReactionCounts retrieves aggregated reaction counts for a page
-func (s *ReactionStore) GetPageReactionCounts(pageID string) ([]ReactionCount, error) {
+func (s *ReactionStore) GetPageReactionCounts(ctx context.Context, pageID string) ([]ReactionCount, error) {
 	query := `
 		SELECT ar.name, ar.emoji, COUNT(*) as count
 		FROM reactions r
@@ -519,7 +520,7 @@ func (s *ReactionStore) GetPageReactionCounts(pageID string) ([]ReactionCount, e
 		ORDER BY count DESC, ar.name ASC
 	`
 
-	rows, err := s.db.Query(query, pageID)
+	rows, err := s.db.QueryContext(ctx, query, pageID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query reaction counts: %w", err)
 	}

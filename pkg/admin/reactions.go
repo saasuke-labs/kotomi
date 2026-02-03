@@ -281,7 +281,7 @@ func (h *ReactionsHandler) GetReactionStats(w http.ResponseWriter, r *http.Reque
 		ORDER BY count DESC, ar.name ASC
 	`
 
-	rows, err := h.db.Query(query, siteID)
+	rows, err := h.db.QueryContext(r.Context(), query, siteID)
 	if err != nil {
 		log.Printf("Error querying reaction stats: %v", err)
 		http.Error(w, "Failed to get reaction stats", http.StatusInternalServerError)

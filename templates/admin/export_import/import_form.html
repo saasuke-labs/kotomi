@@ -1,0 +1,291 @@
+{{define "admin/export_import/import_form.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import Data - {{.Site.Name}} - Kotomi Admin</title>
+    <link rel="stylesheet" href="/static/admin.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Import Data</h1>
+            <nav>
+                <a href="/admin/dashboard">Dashboard</a> |
+                <a href="/admin/sites">Sites</a> |
+                <a href="/admin/sites/{{.Site.ID}}">{{.Site.Name}}</a> |
+                <a href="/logout">Logout</a>
+            </nav>
+        </header>
+
+        <main>
+            <div class="import-section">
+                <h2>Import Data to: {{.Site.Name}}</h2>
+                <p>Import comments and reactions from a previously exported file.</p>
+
+                <form id="import-form" action="/admin/sites/{{.Site.ID}}/import" method="post" 
+                      enctype="multipart/form-data" onsubmit="return handleImport(event)">
+                    
+                    <div class="form-group">
+                        <label for="file">Select File</label>
+                        <input type="file" id="file" name="file" accept=".json,.csv" required>
+                        <small>Supported formats: JSON (.json) or CSV (.csv)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="strategy">Duplicate Handling</label>
+                        <select id="strategy" name="strategy" required>
+                            <option value="skip">Skip duplicates (recommended)</option>
+                            <option value="update">Update existing records</option>
+                        </select>
+                        <small>How to handle comments that already exist in the database</small>
+                    </div>
+
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">Import Data</button>
+                        <a href="/admin/sites/{{.Site.ID}}" class="btn">Cancel</a>
+                    </div>
+                </form>
+
+                <div id="import-result" style="display: none;">
+                    <h3>Import Results</h3>
+                    <div id="result-content"></div>
+                    <div class="action-buttons">
+                        <a href="/admin/sites/{{.Site.ID}}/comments" class="btn btn-primary">View Comments</a>
+                        <button onclick="resetForm()" class="btn">Import Another File</button>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    <h3>⚠️ Important Notes</h3>
+                    <ul>
+                        <li><strong>Backup first</strong>: Export your current data before importing</li>
+                        <li><strong>Site must match</strong>: Import file must be for this site</li>
+                        <li><strong>Skip duplicates</strong>: Recommended for most cases</li>
+                        <li><strong>Update existing</strong>: Will overwrite existing comments</li>
+                        <li>Import is transactional - either all data imports or none</li>
+                        <li>Large imports may take a few seconds to complete</li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <h3>📋 Supported Formats</h3>
+                    <ul>
+                        <li><strong>JSON (.json)</strong>: Complete export files from Kotomi</li>
+                        <li><strong>CSV (.csv)</strong>: Comments or reactions CSV exports</li>
+                    </ul>
+                </div>
+
+                <div class="action-buttons">
+                    <a href="/admin/sites/{{.Site.ID}}" class="btn">← Back to Site</a>
+                    <a href="/admin/sites/{{.Site.ID}}/export" class="btn btn-link">Export Data →</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <style>
+        .import-section {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .form-group input[type="file"],
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .warning-box h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+
+        .warning-box ul {
+            margin-bottom: 0;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border: 1px solid #90caf9;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .info-box h3 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+
+        .info-box ul {
+            margin-bottom: 0;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-link {
+            background: transparent;
+            color: #007bff;
+            border: 1px solid #007bff;
+        }
+
+        .btn-link:hover {
+            background: #007bff;
+            color: white;
+        }
+
+        #import-result {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        #result-content {
+            margin: 15px 0;
+        }
+
+        .result-stat {
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+
+        .loading {
+            display: inline-block;
+            margin-left: 10px;
+        }
+    </style>
+
+    <script>
+        async function handleImport(event) {
+            event.preventDefault();
+            
+            const form = document.getElementById('import-form');
+            const formData = new FormData(form);
+            const submitBtn = form.querySelector('button[type="submit"]');
+            
+            // Disable submit button and show loading
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Importing... <span class="loading">⏳</span>';
+            
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(text || 'Import failed');
+                }
+                
+                const result = await response.json();
+                showResult(result);
+            } catch (error) {
+                alert('Import failed: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Import Data';
+            }
+            
+            return false;
+        }
+        
+        function showResult(result) {
+            const form = document.getElementById('import-form');
+            const resultDiv = document.getElementById('import-result');
+            const contentDiv = document.getElementById('result-content');
+            
+            form.style.display = 'none';
+            resultDiv.style.display = 'block';
+            
+            let html = '<div class="result-stats">';
+            html += `<div class="result-stat"><strong>Comments Imported:</strong> ${result.result.comments_imported}</div>`;
+            html += `<div class="result-stat"><strong>Comments Skipped:</strong> ${result.result.comments_skipped}</div>`;
+            html += `<div class="result-stat"><strong>Comments Updated:</strong> ${result.result.comments_updated}</div>`;
+            html += `<div class="result-stat"><strong>Reactions Imported:</strong> ${result.result.reactions_imported}</div>`;
+            html += `<div class="result-stat"><strong>Reactions Skipped:</strong> ${result.result.reactions_skipped}</div>`;
+            html += `<div class="result-stat"><strong>Pages Created:</strong> ${result.result.pages_created}</div>`;
+            html += `<div class="result-stat"><strong>Pages Skipped:</strong> ${result.result.pages_skipped}</div>`;
+            
+            if (result.result.errors && result.result.errors.length > 0) {
+                html += '<div class="result-stat" style="background: #f8d7da; color: #721c24;"><strong>Errors:</strong><ul>';
+                result.result.errors.forEach(error => {
+                    html += `<li>${error}</li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            html += '</div>';
+            contentDiv.innerHTML = html;
+        }
+        
+        function resetForm() {
+            document.getElementById('import-form').style.display = 'block';
+            document.getElementById('import-result').style.display = 'none';
+            document.getElementById('import-form').reset();
+            const submitBtn = document.querySelector('button[type="submit"]');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Import Data';
+        }
+    </script>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,288 @@
+{{template "base.html" .}}
+
+{{define "title"}}Analytics - {{.Site.Name}} - Kotomi Admin{{end}}
+
+{{define "content"}}
+<hgroup>
+    <h1>Analytics Dashboard</h1>
+    <h2>{{.Site.Name}}</h2>
+</hgroup>
+
+<nav aria-label="breadcrumb">
+    <ul>
+        <li><a href="/admin/sites">Sites</a></li>
+        <li><a href="/admin/sites/{{.Site.ID}}">{{.Site.Name}}</a></li>
+        <li>Analytics</li>
+    </ul>
+</nav>
+
+<!-- Date Range Filter -->
+<article>
+    <form method="get" action="/admin/sites/{{.Site.ID}}/analytics">
+        <div class="grid">
+            <label>
+                From:
+                <input type="date" name="from" value="{{.DateFrom}}">
+            </label>
+            <label>
+                To:
+                <input type="date" name="to" value="{{.DateTo}}">
+            </label>
+            <button type="submit">Update</button>
+            <a href="/admin/sites/{{.Site.ID}}/analytics/export?from={{.DateFrom}}&to={{.DateTo}}" role="button" class="secondary">Export CSV</a>
+        </div>
+    </form>
+</article>
+
+<!-- Comment Metrics -->
+<article>
+    <header><h3>📝 Comment Metrics</h3></header>
+    <div class="grid">
+        <div>
+            <small>Total Comments</small>
+            <h2>{{.Dashboard.Comments.Total}}</h2>
+        </div>
+        <div>
+            <small>Pending</small>
+            <h2>{{.Dashboard.Comments.Pending}}</h2>
+        </div>
+        <div>
+            <small>Approved</small>
+            <h2>{{.Dashboard.Comments.Approved}}</h2>
+        </div>
+        <div>
+            <small>Rejected</small>
+            <h2>{{.Dashboard.Comments.Rejected}}</h2>
+        </div>
+    </div>
+    <div class="grid">
+        <div>
+            <small>Approval Rate</small>
+            <h3>{{printf "%.1f" .Dashboard.Comments.ApprovalRate}}%</h3>
+        </div>
+        <div>
+            <small>Today</small>
+            <h3>{{.Dashboard.Comments.TotalToday}}</h3>
+        </div>
+        <div>
+            <small>This Week</small>
+            <h3>{{.Dashboard.Comments.TotalThisWeek}}</h3>
+        </div>
+        <div>
+            <small>This Month</small>
+            <h3>{{.Dashboard.Comments.TotalThisMonth}}</h3>
+        </div>
+    </div>
+</article>
+
+<!-- Comments Trend Chart -->
+<article>
+    <header><h3>📈 Comments Trend</h3></header>
+    <canvas id="commentsTrendChart" style="max-height: 300px;"></canvas>
+</article>
+
+<!-- User Metrics -->
+<article>
+    <header><h3>👥 User Metrics</h3></header>
+    <div class="grid">
+        <div>
+            <small>Total Users</small>
+            <h2>{{.Dashboard.Users.TotalUsers}}</h2>
+        </div>
+        <div>
+            <small>Active Today</small>
+            <h2>{{.Dashboard.Users.ActiveUsersToday}}</h2>
+        </div>
+        <div>
+            <small>Active This Week</small>
+            <h2>{{.Dashboard.Users.ActiveUsersWeek}}</h2>
+        </div>
+        <div>
+            <small>Active This Month</small>
+            <h2>{{.Dashboard.Users.ActiveUsersMonth}}</h2>
+        </div>
+    </div>
+</article>
+
+<!-- Top Contributors -->
+{{if .Dashboard.Users.TopContributors}}
+<article>
+    <header><h3>🏆 Top Contributors</h3></header>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Comments</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Dashboard.Users.TopContributors}}
+            <tr>
+                <td>{{.Name}}</td>
+                <td>{{.Email}}</td>
+                <td>{{.CommentCount}}</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</article>
+{{end}}
+
+<!-- Reaction Metrics -->
+<article>
+    <header><h3>👍 Reaction Metrics</h3></header>
+    <div class="grid">
+        <div>
+            <small>Total Reactions</small>
+            <h2>{{.Dashboard.Reactions.Total}}</h2>
+        </div>
+        <div>
+            <small>Today</small>
+            <h2>{{.Dashboard.Reactions.TotalToday}}</h2>
+        </div>
+        <div>
+            <small>This Week</small>
+            <h2>{{.Dashboard.Reactions.TotalThisWeek}}</h2>
+        </div>
+        <div>
+            <small>This Month</small>
+            <h2>{{.Dashboard.Reactions.TotalThisMonth}}</h2>
+        </div>
+    </div>
+</article>
+
+<!-- Reactions by Type Chart -->
+{{if .Dashboard.Reactions.ByType}}
+<article>
+    <header><h3>📊 Reactions by Type</h3></header>
+    <div class="grid">
+        <div>
+            <canvas id="reactionsPieChart" style="max-height: 300px;"></canvas>
+        </div>
+        <div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Reaction</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Dashboard.Reactions.ByType}}
+                    <tr>
+                        <td>{{.Emoji}} {{.Name}}</td>
+                        <td>{{.Count}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</article>
+{{end}}
+
+<!-- Reactions Trend Chart -->
+<article>
+    <header><h3>📈 Reactions Trend</h3></header>
+    <canvas id="reactionsTrendChart" style="max-height: 300px;"></canvas>
+</article>
+
+<!-- Most Reacted Items -->
+{{if .Dashboard.Reactions.MostReacted}}
+<article>
+    <header><h3>⭐ Most Reacted Items</h3></header>
+    <table>
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Content</th>
+                <th>Reactions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Dashboard.Reactions.MostReacted}}
+            <tr>
+                <td>{{.Type}}</td>
+                <td>
+                    {{if eq .Type "page"}}
+                        {{.PagePath}}
+                    {{else}}
+                        {{.CommentText}}
+                    {{end}}
+                </td>
+                <td>{{.ReactionCount}}</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</article>
+{{end}}
+
+<!-- Moderation Metrics -->
+<article>
+    <header><h3>🔍 Moderation Metrics</h3></header>
+    <div class="grid">
+        <div>
+            <small>Total Moderated</small>
+            <h2>{{.Dashboard.Moderation.TotalModerated}}</h2>
+        </div>
+        <div>
+            <small>Auto Rejected</small>
+            <h2>{{.Dashboard.Moderation.AutoRejected}}</h2>
+        </div>
+        <div>
+            <small>Auto Approved</small>
+            <h2>{{.Dashboard.Moderation.AutoApproved}}</h2>
+        </div>
+        <div>
+            <small>Manual Reviews</small>
+            <h2>{{.Dashboard.Moderation.ManualReviews}}</h2>
+        </div>
+    </div>
+    <div class="grid">
+        <div>
+            <small>Avg Moderation Time</small>
+            <h3>{{printf "%.1f" .Dashboard.Moderation.AverageModerationSec}}s</h3>
+        </div>
+        <div>
+            <small>Spam Detection Rate</small>
+            <h3>{{printf "%.1f" .Dashboard.Moderation.SpamDetectionRate}}%</h3>
+        </div>
+    </div>
+</article>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+<script src="/static/js/charts.js"></script>
+<script>
+    // Initialize charts with data from backend
+    const commentsTrendData = {
+        labels: [{{range $i, $label := .Dashboard.CommentsTrend.Labels}}{{if $i}},{{end}}"{{$label}}"{{end}}],
+        values: [{{range $i, $value := .Dashboard.CommentsTrend.Values}}{{if $i}},{{end}}{{$value}}{{end}}]
+    };
+    
+    const reactionsTrendData = {
+        labels: [{{range $i, $label := .Dashboard.ReactionsTrend.Labels}}{{if $i}},{{end}}"{{$label}}"{{end}}],
+        values: [{{range $i, $value := .Dashboard.ReactionsTrend.Values}}{{if $i}},{{end}}{{$value}}{{end}}]
+    };
+    
+    const reactionsByType = {
+        labels: [{{range $i, $reaction := .Dashboard.Reactions.ByType}}{{if $i}},{{end}}"{{$reaction.Emoji}} {{$reaction.Name}}"{{end}}],
+        values: [{{range $i, $reaction := .Dashboard.Reactions.ByType}}{{if $i}},{{end}}{{$reaction.Count}}{{end}}]
+    };
+    
+    // Create charts
+    if (commentsTrendData.labels.length > 0) {
+        createLineChart('commentsTrendChart', 'Comments Over Time', commentsTrendData);
+    }
+    
+    if (reactionsTrendData.labels.length > 0) {
+        createLineChart('reactionsTrendChart', 'Reactions Over Time', reactionsTrendData);
+    }
+    
+    if (reactionsByType.labels.length > 0) {
+        createPieChart('reactionsPieChart', 'Reactions Distribution', reactionsByType);
+    }
+</script>
+{{end}}

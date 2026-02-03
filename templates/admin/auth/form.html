@@ -1,0 +1,237 @@
+{{define "auth/form.html"}}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Authentication Configuration</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Authentication Configuration</h1>
+        <p>Configure how users authenticate to comment and react on your site.</p>
+
+        <form id="auth-config-form" class="auth-form">
+            
+            <div class="form-group">
+                <label for="auth_mode">Authentication Mode</label>
+                <select id="auth_mode" name="auth_mode" required onchange="toggleAuthMode()">
+                    <option value="external" {{if eq .Config.AuthMode "external"}}selected{{end}}>External JWT (Bring Your Own Auth)</option>
+                    <option value="kotomi" {{if eq .Config.AuthMode "kotomi"}}selected{{end}}>Kotomi-Provided Auth (Easy Setup)</option>
+                </select>
+                <p class="help-text">Choose between using your own authentication system or Kotomi's built-in auth</p>
+            </div>
+
+            <!-- External JWT Configuration (only shown when auth_mode = "external") -->
+            <div id="external-jwt-config" style="{{if eq .Config.AuthMode "kotomi"}}display: none;{{end}}">
+                <h3>External JWT Configuration</h3>
+                
+                <div class="form-group">
+                    <label for="jwt_validation_type">JWT Validation Type</label>
+                    <select id="jwt_validation_type" name="jwt_validation_type" onchange="toggleValidationType()">
+                        <option value="hmac" {{if eq .Config.JWTValidationType "hmac"}}selected{{end}}>HMAC (Symmetric Key)</option>
+                        <option value="rsa" {{if eq .Config.JWTValidationType "rsa"}}selected{{end}}>RSA (Asymmetric)</option>
+                        <option value="ecdsa" {{if eq .Config.JWTValidationType "ecdsa"}}selected{{end}}>ECDSA (Asymmetric)</option>
+                        <option value="jwks" {{if eq .Config.JWTValidationType "jwks"}}selected{{end}}>JWKS (JSON Web Key Set)</option>
+                    </select>
+                    <p class="help-text">Select the method used to validate JWT tokens from your authentication system</p>
+                </div>
+
+                <!-- HMAC Secret (only for HMAC) -->
+                <div id="hmac-config" class="form-group" style="{{if ne .Config.JWTValidationType "hmac"}}display: none;{{end}}">
+                    <label for="jwt_secret">JWT Secret Key</label>
+                    <input type="password" 
+                           id="jwt_secret" 
+                           name="jwt_secret" 
+                           placeholder="Enter your HMAC secret key (min 32 characters)"
+                           value="{{.Config.JWTSecret}}">
+                    <p class="help-text">The shared secret key used to sign JWT tokens (keep this secure!)</p>
+                </div>
+
+                <!-- RSA/ECDSA Public Key (only for RSA/ECDSA) -->
+                <div id="publickey-config" class="form-group" style="{{if and (ne .Config.JWTValidationType "rsa") (ne .Config.JWTValidationType "ecdsa")}}display: none;{{end}}">
+                    <label for="jwt_public_key">JWT Public Key</label>
+                    <textarea id="jwt_public_key" 
+                              name="jwt_public_key" 
+                              rows="8"
+                              placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----">{{.Config.JWTPublicKey}}</textarea>
+                    <p class="help-text">The public key used to verify JWT token signatures (PEM format)</p>
+                </div>
+
+                <!-- JWKS Endpoint (only for JWKS) -->
+                <div id="jwks-config" class="form-group" style="{{if ne .Config.JWTValidationType "jwks"}}display: none;{{end}}">
+                    <label for="jwks_endpoint">JWKS Endpoint URL</label>
+                    <input type="url" 
+                           id="jwks_endpoint" 
+                           name="jwks_endpoint" 
+                           placeholder="https://your-auth-provider.com/.well-known/jwks.json"
+                           value="{{.Config.JWKSEndpoint}}">
+                    <p class="help-text">The URL where Kotomi can fetch your public keys (e.g., Auth0, Okta JWKS endpoint)</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="jwt_issuer">JWT Issuer (Optional)</label>
+                    <input type="text" 
+                           id="jwt_issuer" 
+                           name="jwt_issuer" 
+                           placeholder="https://your-domain.com"
+                           value="{{.Config.JWTIssuer}}">
+                    <p class="help-text">Expected 'iss' claim in JWT tokens (leave empty to skip validation)</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="jwt_audience">JWT Audience (Optional)</label>
+                    <input type="text" 
+                           id="jwt_audience" 
+                           name="jwt_audience" 
+                           placeholder="kotomi"
+                           value="{{.Config.JWTAudience}}">
+                    <p class="help-text">Expected 'aud' claim in JWT tokens (leave empty to skip validation)</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="token_expiration_buffer">Token Expiration Buffer (seconds)</label>
+                    <input type="number" 
+                           id="token_expiration_buffer" 
+                           name="token_expiration_buffer" 
+                           min="0" 
+                           max="300"
+                           value="{{if .Config.TokenExpirationBuffer}}{{.Config.TokenExpirationBuffer}}{{else}}30{{end}}">
+                    <p class="help-text">Grace period for expired tokens to account for clock skew (default: 30 seconds)</p>
+                </div>
+            </div>
+
+            <!-- Kotomi Auth Configuration (only shown when auth_mode = "kotomi") -->
+            <div id="kotomi-auth-config" style="{{if eq .Config.AuthMode "external"}}display: none;{{end}}">
+                <h3>Kotomi Authentication Setup</h3>
+                <article>
+                    <p><strong>Coming Soon!</strong> Kotomi-provided authentication is currently under development.</p>
+                    <p>For now, please use External JWT mode with your own authentication system.</p>
+                    <p>Features in development:</p>
+                    <ul>
+                        <li>Email/password authentication</li>
+                        <li>Social login (Google, GitHub, Twitter)</li>
+                        <li>Magic link (passwordless)</li>
+                        <li>User profile management</li>
+                        <li>Embeddable login widgets</li>
+                    </ul>
+                    <p>See <a href="https://github.com/saasuke-labs/kotomi/blob/main/docs/adr/001-user-authentication-for-comments-and-reactions.md" target="_blank">ADR 001</a> for details.</p>
+                </article>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" onclick="saveAuthConfig()" class="btn btn-primary">Save Configuration</button>
+                <a href="/admin/sites/{{.SiteID}}" class="btn btn-secondary">Back to Site</a>
+            </div>
+
+            <div id="form-response"></div>
+        </form>
+
+        <div class="info-box">
+            <h3>Authentication Modes</h3>
+            <ul>
+                <li><strong>External JWT:</strong> Use your own authentication system (Auth0, Firebase, custom OAuth, etc.). You generate JWT tokens, Kotomi validates them.</li>
+                <li><strong>Kotomi Auth:</strong> Use Kotomi's built-in authentication service. Perfect for static sites without existing auth infrastructure. (Coming soon)</li>
+            </ul>
+            <h3>JWT Token Format</h3>
+            <p>Your JWT tokens must include a <code>kotomi_user</code> claim with user information:</p>
+            <pre><code>{
+  "iss": "https://example.com",
+  "sub": "user-12345",
+  "aud": "kotomi",
+  "exp": 1738368515,
+  "kotomi_user": {
+    "id": "user-12345",
+    "name": "Jane Doe",
+    "email": "jane@example.com"
+  }
+}</code></pre>
+        </div>
+    </div>
+
+    <script>
+        function toggleAuthMode() {
+            const authMode = document.getElementById('auth_mode').value;
+            const externalConfig = document.getElementById('external-jwt-config');
+            const kotomiConfig = document.getElementById('kotomi-auth-config');
+            
+            if (authMode === 'external') {
+                externalConfig.style.display = 'block';
+                kotomiConfig.style.display = 'none';
+            } else {
+                externalConfig.style.display = 'none';
+                kotomiConfig.style.display = 'block';
+            }
+        }
+
+        function toggleValidationType() {
+            const validationType = document.getElementById('jwt_validation_type').value;
+            const hmacConfig = document.getElementById('hmac-config');
+            const publickeyConfig = document.getElementById('publickey-config');
+            const jwksConfig = document.getElementById('jwks-config');
+            
+            // Hide all first
+            hmacConfig.style.display = 'none';
+            publickeyConfig.style.display = 'none';
+            jwksConfig.style.display = 'none';
+            
+            // Show the appropriate one
+            if (validationType === 'hmac') {
+                hmacConfig.style.display = 'block';
+            } else if (validationType === 'rsa' || validationType === 'ecdsa') {
+                publickeyConfig.style.display = 'block';
+            } else if (validationType === 'jwks') {
+                jwksConfig.style.display = 'block';
+            }
+        }
+
+        function saveAuthConfig() {
+            const form = document.getElementById('auth-config-form');
+            const formData = new FormData(form);
+            const data = {
+                auth_mode: formData.get('auth_mode'),
+                jwt_validation_type: formData.get('jwt_validation_type') || '',
+                jwt_secret: formData.get('jwt_secret') || '',
+                jwt_public_key: formData.get('jwt_public_key') || '',
+                jwks_endpoint: formData.get('jwks_endpoint') || '',
+                jwt_issuer: formData.get('jwt_issuer') || '',
+                jwt_audience: formData.get('jwt_audience') || '',
+                token_expiration_buffer: parseInt(formData.get('token_expiration_buffer')) || 30
+            };
+
+            // Determine if we're creating or updating
+            const siteId = '{{.SiteID}}';
+            const configExists = {{if .Config.ID}}true{{else}}false{{end}};
+            const method = configExists ? 'PUT' : 'POST';
+
+            fetch(`/admin/sites/${siteId}/auth/config`, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(text || 'Failed to save configuration');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                const responseDiv = document.getElementById('form-response');
+                responseDiv.innerHTML = '<article style="background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; padding: 1rem; margin-top: 1rem;">✓ Authentication configuration saved successfully!</article>';
+                setTimeout(() => {
+                    window.location.href = '/admin/sites/' + siteId;
+                }, 1500);
+            })
+            .catch(error => {
+                const responseDiv = document.getElementById('form-response');
+                responseDiv.innerHTML = `<article style="background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 1rem; margin-top: 1rem;">✗ Error: ${error.message}</article>`;
+            });
+        }
+    </script>
+</body>
+</html>
+{{end}}

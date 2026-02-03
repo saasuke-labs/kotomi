@@ -1071,7 +1071,8 @@ func main() {
 		adminRouter.HandleFunc("/sites/{siteId}/notifications/test", notificationsHandler.HandleTestEmail).Methods("POST")
 
 		// Auth configuration handlers
-		authConfigHandler := admin.NewAuthConfigHandler(db)
+		authConfigHandler := admin.NewAuthConfigHandler(db, templates)
+		adminRouter.HandleFunc("/sites/{siteId}/auth", authConfigHandler.HandleAuthConfigForm).Methods("GET")
 		adminRouter.HandleFunc("/sites/{siteId}/auth/config", authConfigHandler.GetAuthConfig).Methods("GET")
 		adminRouter.HandleFunc("/sites/{siteId}/auth/config", authConfigHandler.CreateAuthConfig).Methods("POST")
 		adminRouter.HandleFunc("/sites/{siteId}/auth/config", authConfigHandler.UpdateAuthConfig).Methods("PUT")

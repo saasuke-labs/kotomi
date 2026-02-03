@@ -315,6 +315,46 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Testing:** Comprehensive unit tests for all moderation components
 - **Cost Estimate:** ~$0.75-$1.00 per 1000 comments with GPT-3.5-turbo
 
+#### 11. **Frontend Widget / JavaScript Embed** ✅
+- **Status:** Fully Implemented
+- **Date:** February 3, 2026
+- **Description:** JavaScript widget for easy integration into static sites
+- **Details:**
+  - Complete JavaScript SDK with zero dependencies
+  - Vanilla JavaScript implementation (no framework required)
+  - API client module for all Kotomi endpoints
+  - UI components for comments, reactions, and replies
+  - Responsive design with light/dark theme support
+  - Simple HTML integration snippet
+  - Build system for generating distributable files
+  - Comprehensive documentation and examples
+- **Key Features:**
+  - **Comment Display:** Show all comments with threading support
+  - **Comment Submission:** Post new comments with JWT authentication
+  - **Reactions:** Display and interact with emoji reactions
+  - **Threaded Replies:** Support for nested comment conversations
+  - **Themes:** Built-in light and dark themes
+  - **Responsive:** Mobile-friendly design
+  - **Security:** XSS protection with automatic HTML escaping
+  - **Authentication:** JWT token support for authenticated operations
+- **Location:** 
+  - Source: `frontend/src/` (api.js, ui.js, kotomi.js, styles.css)
+  - Build: `frontend/build.sh`
+  - Distribution: `frontend/dist/` and `static/` (served by Kotomi server)
+  - Examples: `frontend/examples/index.html`
+- **Files Served:** 
+  - `/static/kotomi.js` and `/static/kotomi.min.js`
+  - `/static/kotomi.css` and `/static/kotomi.min.css`
+- **Documentation:** 
+  - `frontend/README.md` - Complete widget documentation
+  - `README.md` - Integration guide in main documentation
+  - `frontend/examples/index.html` - Live example with configuration
+- **Browser Support:** Chrome/Edge 90+, Firefox 88+, Safari 14+, Opera 76+
+- **API Integration:**
+  - Comments: GET/POST comments with parent_id for threading
+  - Reactions: GET allowed reactions, POST to toggle reactions, GET reaction counts
+  - Authentication: Bearer token in Authorization header
+
 ---
 
 ### ❌ Not Implemented Features
@@ -355,17 +395,6 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Location:** `pkg/middleware/ratelimit.go`, `cmd/main.go`
 - **Testing:** Comprehensive unit tests with 63% coverage
 - **Applied To:** All API routes (`/api/*`)
-
-#### 3. **Frontend Widget / JavaScript Embed** ❌
-- **Status:** Not Implemented
-- **Description:** JavaScript widget for easy integration into static sites
-- **What's Missing:**
-  - No JavaScript SDK/library for embedding comments
-  - No HTML snippet for easy integration
-  - No UI components for displaying comments on static sites
-  - Site owners must build their own frontend integration
-- **Priority:** High (needed for end-users to integrate Kotomi)
-- **Estimated Work:** Large (requires JavaScript development, styling, documentation)
 
 #### 4. **User Authentication for Comments and Reactions** ✅ PARTIALLY IMPLEMENTED (65%)
 - **Status:** External JWT Complete (100%), Kotomi-Provided Auth Infrastructure (30%)
@@ -442,7 +471,7 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 1. ✅ **CORS Configuration** - COMPLETED
 2. ✅ **Rate Limiting** - COMPLETED
 3. ✅ **Security Audit** - COMPLETED
-4. **Frontend Widget Missing** - No easy way for site owners to integrate Kotomi
+4. ✅ **Frontend Widget** - COMPLETED
 
 ### 🟡 Important Issues (Should Fix Before Production)
 
@@ -514,7 +543,7 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 3. ✅ **Implement Reactions System** - COMPLETED
 4. ✅ **Security Audit** - COMPLETED
 5. ✅ **Add API Versioning** - COMPLETED
-6. **Create Frontend Widget** - Make it easy for site owners to integrate
+6. ✅ **Create Frontend Widget** - COMPLETED
 7. **Improve Error Handling** - Consistent error responses
 8. **Add Logging** - Structured logging for production debugging
 
@@ -633,12 +662,12 @@ Kotomi has a **solid foundation** with authentication, admin panel, comments sto
 - **Minimal viable version:** Ready now (with proper production configuration)
 
 ### Recommendation
-**All blocking features are now complete!** The core platform including comments, reactions, CORS, rate limiting, security audit, and AI moderation are all implemented. Kotomi is ready for production deployment once the production security recommendations from the security audit are implemented (HTTPS, restricted CORS origins, strong secrets, etc.). 
+**All core features are now complete!** The core platform including comments, reactions, CORS, rate limiting, security audit, AI moderation, API versioning, and frontend widget are all implemented. Kotomi is ready for production deployment once the production security recommendations from the security audit are implemented (HTTPS, restricted CORS origins, strong secrets, etc.). 
 
-The remaining items (Frontend Widget, API Versioning, Error Handling) are important enhancements but not blockers for deployment if you build a custom frontend integration.
+The remaining items (Error Handling improvements, Logging enhancements, Email Notifications, Analytics) are nice-to-have features that can be added post-launch.
 
 ---
 
-**Document Version:** 1.0  
+**Document Version:** 1.1  
 **Author:** Kotomi Development Team  
-**Last Reviewed:** January 31, 2026
+**Last Reviewed:** February 3, 2026

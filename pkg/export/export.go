@@ -1,6 +1,7 @@
 package export
 
 import (
+	"context"
 	"database/sql"
 	"encoding/csv"
 	"encoding/json"
@@ -23,24 +24,24 @@ func NewExporter(db *sql.DB) *Exporter {
 }
 
 // ExportToJSON exports site data to JSON format
-func (e *Exporter) ExportToJSON(siteID string) (*models.ExportData, error) {
+func (e *Exporter) ExportToJSON(ctx context.Context, siteID string) (*models.ExportData, error) {
 	// Get site information
 	siteStore := models.NewSiteStore(e.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(ctx, siteID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get site: %w", err)
 	}
 
 	// Get pages for the site
 	pageStore := models.NewPageStore(e.db)
-	pages, err := pageStore.GetBySite(siteID)
+	pages, err := pageStore.GetBySite(ctx, siteID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pages: %w", err)
 	}
 
 	// Get allowed reactions for the site
 	reactionStore := models.NewAllowedReactionStore(e.db)
-	allowedReactions, err := reactionStore.GetBySite(siteID)
+	allowedReactions, err := reactionStore.GetBySite(ctx, siteID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get allowed reactions: %w", err)
 	}
@@ -235,7 +236,7 @@ func (e *Exporter) WriteJSON(w io.Writer, data *models.ExportData) error {
 }
 
 // ExportToCSV exports comments to CSV format
-func (e *Exporter) ExportToCSV(w io.Writer, siteID string) error {
+func (e *Exporter) ExportToCSV(ctx context.Context, w io.Writer, siteID string) error {
 	writer := csv.NewWriter(w)
 	defer writer.Flush()
 
@@ -251,7 +252,7 @@ func (e *Exporter) ExportToCSV(w io.Writer, siteID string) error {
 
 	// Get pages for the site
 	pageStore := models.NewPageStore(e.db)
-	pages, err := pageStore.GetBySite(siteID)
+	pages, err := pageStore.GetBySite(ctx, siteID)
 	if err != nil {
 		return fmt.Errorf("failed to get pages: %w", err)
 	}

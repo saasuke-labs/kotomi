@@ -1,6 +1,7 @@
 package comments
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -34,7 +35,7 @@ func BenchmarkConcurrentReads(b *testing.B) {
 			Text:     fmt.Sprintf("This is test comment number %d", i),
 			Status:   "approved",
 		}
-		if err := store.AddPageComment(siteID, pageID, comment); err != nil {
+		if err := store.AddPageComment(context.Background(), siteID, pageID, comment); err != nil {
 			b.Fatalf("Failed to add comment: %v", err)
 		}
 	}
@@ -42,7 +43,7 @@ func BenchmarkConcurrentReads(b *testing.B) {
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_, err := store.GetPageComments(siteID, pageID)
+			_, err := store.GetPageComments(context.Background(), siteID, pageID)
 			if err != nil {
 				b.Fatalf("Failed to get comments: %v", err)
 			}
@@ -77,7 +78,7 @@ func BenchmarkConcurrentWrites(b *testing.B) {
 				Text:     fmt.Sprintf("This is benchmark comment number %d", i),
 				Status:   "approved",
 			}
-			if err := store.AddPageComment(siteID, pageID, comment); err != nil {
+			if err := store.AddPageComment(context.Background(), siteID, pageID, comment); err != nil {
 				b.Fatalf("Failed to add comment: %v", err)
 			}
 			i++
@@ -110,7 +111,7 @@ func BenchmarkMixedReadWrite(b *testing.B) {
 			Text:     fmt.Sprintf("This is initial comment number %d", i),
 			Status:   "approved",
 		}
-		if err := store.AddPageComment(siteID, pageID, comment); err != nil {
+		if err := store.AddPageComment(context.Background(), siteID, pageID, comment); err != nil {
 			b.Fatalf("Failed to add comment: %v", err)
 		}
 	}
@@ -126,7 +127,7 @@ func BenchmarkMixedReadWrite(b *testing.B) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < b.N/8; j++ {
-				_, err := store.GetPageComments(siteID, pageID)
+				_, err := store.GetPageComments(context.Background(), siteID, pageID)
 				if err != nil {
 					b.Errorf("Failed to get comments: %v", err)
 					return
@@ -148,7 +149,7 @@ func BenchmarkMixedReadWrite(b *testing.B) {
 					Text:     fmt.Sprintf("Benchmark write %d-%d", writerID, j),
 					Status:   "approved",
 				}
-				if err := store.AddPageComment(siteID, pageID, comment); err != nil {
+				if err := store.AddPageComment(context.Background(), siteID, pageID, comment); err != nil {
 					b.Errorf("Failed to add comment: %v", err)
 					return
 				}
@@ -186,7 +187,7 @@ func BenchmarkUpdateOperations(b *testing.B) {
 			Text:     fmt.Sprintf("Original text %d", i),
 			Status:   "pending",
 		}
-		if err := store.AddPageComment(siteID, pageID, comment); err != nil {
+		if err := store.AddPageComment(context.Background(), siteID, pageID, comment); err != nil {
 			b.Fatalf("Failed to add comment: %v", err)
 		}
 	}
@@ -196,7 +197,7 @@ func BenchmarkUpdateOperations(b *testing.B) {
 		i := 0
 		for pb.Next() {
 			commentID := commentIDs[i%len(commentIDs)]
-			if err := store.UpdateCommentStatus(commentID, "approved", "moderator-1"); err != nil {
+			if err := store.UpdateCommentStatus(context.Background(), commentID, "approved", "moderator-1"); err != nil {
 				b.Fatalf("Failed to update comment: %v", err)
 			}
 			i++
@@ -229,7 +230,7 @@ func BenchmarkConnectionPoolEfficiency(b *testing.B) {
 			Text:     fmt.Sprintf("Test comment %d", i),
 			Status:   "approved",
 		}
-		if err := store.AddPageComment(siteID, pageID, comment); err != nil {
+		if err := store.AddPageComment(context.Background(), siteID, pageID, comment); err != nil {
 			b.Fatalf("Failed to add comment: %v", err)
 		}
 	}
@@ -245,7 +246,7 @@ func BenchmarkConnectionPoolEfficiency(b *testing.B) {
 		go func(id int) {
 			defer wg.Done()
 			for j := 0; j < b.N/concurrentRequests; j++ {
-				_, err := store.GetPageComments(siteID, pageID)
+				_, err := store.GetPageComments(context.Background(), siteID, pageID)
 				if err != nil {
 					b.Errorf("Failed to get comments: %v", err)
 					return
@@ -293,7 +294,7 @@ func TestConcurrencyStress(t *testing.T) {
 					Text:     fmt.Sprintf("Stress test comment %d-%d", writerID, j),
 					Status:   "approved",
 				}
-				if err := store.AddPageComment(siteID, pageID, comment); err != nil {
+				if err := store.AddPageComment(context.Background(), siteID, pageID, comment); err != nil {
 					errors <- fmt.Errorf("writer %d failed: %w", writerID, err)
 					return
 				}
@@ -308,7 +309,7 @@ func TestConcurrencyStress(t *testing.T) {
 		go func(readerID int) {
 			defer wg.Done()
 			for j := 0; j < 50; j++ {
-				_, err := store.GetPageComments(siteID, pageID)
+				_, err := store.GetPageComments(context.Background(), siteID, pageID)
 				if err != nil {
 					errors <- fmt.Errorf("reader %d failed: %w", readerID, err)
 					return
@@ -332,7 +333,7 @@ func TestConcurrencyStress(t *testing.T) {
 	}
 
 	// Verify final data integrity
-	comments, err := store.GetPageComments(siteID, pageID)
+	comments, err := store.GetPageComments(context.Background(), siteID, pageID)
 	if err != nil {
 		t.Fatalf("Failed to get final comments: %v", err)
 	}

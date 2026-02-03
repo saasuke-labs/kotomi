@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -36,7 +37,7 @@ func NewSiteAuthConfigStore(db *sql.DB) *SiteAuthConfigStore {
 }
 
 // GetBySiteID retrieves auth config for a specific site
-func (s *SiteAuthConfigStore) GetBySiteID(siteID string) (*SiteAuthConfig, error) {
+func (s *SiteAuthConfigStore) GetBySiteID(ctx context.Context, siteID string) (*SiteAuthConfig, error) {
 	query := `
 		SELECT id, site_id, auth_mode, jwt_validation_type, jwt_secret, jwt_public_key,
 		       jwks_endpoint, jwt_issuer, jwt_audience, token_expiration_buffer,
@@ -46,7 +47,7 @@ func (s *SiteAuthConfigStore) GetBySiteID(siteID string) (*SiteAuthConfig, error
 	`
 
 	var config SiteAuthConfig
-	err := s.db.QueryRow(query, siteID).Scan(
+	err := s.db.QueryRowContext(ctx, query, siteID).Scan(
 		&config.ID, &config.SiteID, &config.AuthMode, &config.JWTValidationType,
 		&config.JWTSecret, &config.JWTPublicKey, &config.JWKSEndpoint,
 		&config.JWTIssuer, &config.JWTAudience, &config.TokenExpirationBuffer,
@@ -63,7 +64,7 @@ func (s *SiteAuthConfigStore) GetBySiteID(siteID string) (*SiteAuthConfig, error
 }
 
 // Create creates a new site auth configuration
-func (s *SiteAuthConfigStore) Create(config *SiteAuthConfig) error {
+func (s *SiteAuthConfigStore) Create(ctx context.Context, config *SiteAuthConfig) error {
 	if config.ID == "" {
 		config.ID = uuid.NewString()
 	}
@@ -85,7 +86,7 @@ func (s *SiteAuthConfigStore) Create(config *SiteAuthConfig) error {
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
-	_, err := s.db.Exec(query,
+	_, err := s.db.ExecContext(ctx, query,
 		config.ID, config.SiteID, config.AuthMode, config.JWTValidationType,
 		config.JWTSecret, config.JWTPublicKey, config.JWKSEndpoint,
 		config.JWTIssuer, config.JWTAudience, config.TokenExpirationBuffer,
@@ -99,7 +100,7 @@ func (s *SiteAuthConfigStore) Create(config *SiteAuthConfig) error {
 }
 
 // Update updates an existing site auth configuration
-func (s *SiteAuthConfigStore) Update(config *SiteAuthConfig) error {
+func (s *SiteAuthConfigStore) Update(ctx context.Context, config *SiteAuthConfig) error {
 	config.UpdatedAt = time.Now()
 
 	query := `
@@ -110,7 +111,7 @@ func (s *SiteAuthConfigStore) Update(config *SiteAuthConfig) error {
 		WHERE id = ?
 	`
 
-	result, err := s.db.Exec(query,
+	result, err := s.db.ExecContext(ctx, query,
 		config.AuthMode, config.JWTValidationType, config.JWTSecret, config.JWTPublicKey,
 		config.JWKSEndpoint, config.JWTIssuer, config.JWTAudience, config.TokenExpirationBuffer,
 		config.UpdatedAt, config.ID,
@@ -131,10 +132,10 @@ func (s *SiteAuthConfigStore) Update(config *SiteAuthConfig) error {
 }
 
 // Delete deletes a site auth configuration
-func (s *SiteAuthConfigStore) Delete(id string) error {
+func (s *SiteAuthConfigStore) Delete(ctx context.Context, id string) error {
 	query := `DELETE FROM site_auth_configs WHERE id = ?`
 
-	result, err := s.db.Exec(query, id)
+	result, err := s.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete site auth config: %w", err)
 	}

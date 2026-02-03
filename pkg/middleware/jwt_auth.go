@@ -39,7 +39,7 @@ func JWTAuthMiddleware(db *sql.DB) mux.MiddlewareFunc {
 
 			// Get site auth configuration
 			authConfigStore := models.NewSiteAuthConfigStore(db)
-			authConfig, err := authConfigStore.GetBySiteID(siteID)
+			authConfig, err := authConfigStore.GetBySiteID(r.Context(), siteID)
 			if err != nil {
 				writeJSONError(w, "Authentication not configured for this site", http.StatusUnauthorized)
 				return
@@ -83,7 +83,7 @@ func JWTAuthMiddleware(db *sql.DB) mux.MiddlewareFunc {
 				Roles:      kotomiUser.Roles,
 			}
 			
-			if err := userStore.CreateOrUpdate(user); err != nil {
+			if err := userStore.CreateOrUpdate(r.Context(), user); err != nil {
 				// Log error but don't fail the request
 				// User data will still be available from JWT
 				fmt.Printf("Warning: failed to persist user: %v\n", err)
@@ -138,7 +138,7 @@ func OptionalAuth(db *sql.DB) mux.MiddlewareFunc {
 
 			// Try to authenticate, but don't fail if it doesn't work
 			authConfigStore := models.NewSiteAuthConfigStore(db)
-			authConfig, err := authConfigStore.GetBySiteID(siteID)
+			authConfig, err := authConfigStore.GetBySiteID(r.Context(), siteID)
 			if err != nil {
 				// No auth config, continue without user
 				next.ServeHTTP(w, r)
@@ -163,7 +163,7 @@ func OptionalAuth(db *sql.DB) mux.MiddlewareFunc {
 						Roles:      kotomiUser.Roles,
 					}
 					
-					if err := userStore.CreateOrUpdate(user); err != nil {
+					if err := userStore.CreateOrUpdate(r.Context(), user); err != nil {
 						// Log error but don't fail the request
 						fmt.Printf("Warning: failed to persist user: %v\n", err)
 					}

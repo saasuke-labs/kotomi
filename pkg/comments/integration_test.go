@@ -1,6 +1,7 @@
 package comments
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 	"time"
@@ -25,13 +26,13 @@ func TestIntegration_AddRetrieveComments(t *testing.T) {
 	}
 
 	for _, c := range comments {
-		if err := store.AddPageComment("mysite", "mypage", c); err != nil {
+		if err := store.AddPageComment(context.Background(), "mysite", "mypage", c); err != nil {
 			t.Fatalf("failed to add comment: %v", err)
 		}
 	}
 
 	// Retrieve and verify
-	retrieved, err := store.GetPageComments("mysite", "mypage")
+	retrieved, err := store.GetPageComments(context.Background(), "mysite", "mypage")
 	if err != nil {
 		t.Fatalf("failed to retrieve comments: %v", err)
 	}
@@ -83,7 +84,7 @@ func TestIntegration_PersistenceAcrossRestarts(t *testing.T) {
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
-		if err := store1.AddPageComment("site1", "page1", comment); err != nil {
+		if err := store1.AddPageComment(context.Background(), "site1", "page1", comment); err != nil {
 			t.Fatalf("failed to add comment in first session: %v", err)
 		}
 	}
@@ -98,7 +99,7 @@ func TestIntegration_PersistenceAcrossRestarts(t *testing.T) {
 		t.Fatalf("failed to create second store: %v", err)
 	}
 
-	comments, err := store2.GetPageComments("site1", "page1")
+	comments, err := store2.GetPageComments(context.Background(), "site1", "page1")
 	if err != nil {
 		t.Fatalf("failed to retrieve comments in second session: %v", err)
 	}
@@ -116,7 +117,7 @@ func TestIntegration_PersistenceAcrossRestarts(t *testing.T) {
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
-		if err := store2.AddPageComment("site1", "page1", comment); err != nil {
+		if err := store2.AddPageComment(context.Background(), "site1", "page1", comment); err != nil {
 			t.Fatalf("failed to add comment in second session: %v", err)
 		}
 	}
@@ -132,7 +133,7 @@ func TestIntegration_PersistenceAcrossRestarts(t *testing.T) {
 	}
 	defer store3.Close()
 
-	comments, err = store3.GetPageComments("site1", "page1")
+	comments, err = store3.GetPageComments(context.Background(), "site1", "page1")
 	if err != nil {
 		t.Fatalf("failed to retrieve comments in third session: %v", err)
 	}
@@ -161,7 +162,7 @@ func TestIntegration_ErrorRecovery(t *testing.T) {
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	if err := store.AddPageComment("site1", "page1", comment1); err != nil {
+	if err := store.AddPageComment(context.Background(), "site1", "page1", comment1); err != nil {
 		t.Fatalf("failed to add first comment: %v", err)
 	}
 
@@ -173,13 +174,13 @@ func TestIntegration_ErrorRecovery(t *testing.T) {
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	err = store.AddPageComment("site1", "page1", duplicate)
+	err = store.AddPageComment(context.Background(), "site1", "page1", duplicate)
 	if err == nil {
 		t.Error("expected error for duplicate ID, got nil")
 	}
 
 	// Verify original comment is still there and unchanged
-	comments, err := store.GetPageComments("site1", "page1")
+	comments, err := store.GetPageComments(context.Background(), "site1", "page1")
 	if err != nil {
 		t.Fatalf("failed to retrieve comments: %v", err)
 	}
@@ -200,12 +201,12 @@ func TestIntegration_ErrorRecovery(t *testing.T) {
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	if err := store.AddPageComment("site1", "page1", comment2); err != nil {
+	if err := store.AddPageComment(context.Background(), "site1", "page1", comment2); err != nil {
 		t.Fatalf("failed to add comment after error: %v", err)
 	}
 
 	// Verify both comments exist
-	comments, err = store.GetPageComments("site1", "page1")
+	comments, err = store.GetPageComments(context.Background(), "site1", "page1")
 	if err != nil {
 		t.Fatalf("failed to retrieve comments after recovery: %v", err)
 	}
@@ -247,7 +248,7 @@ func TestIntegration_MultipleSitesAndPages(t *testing.T) {
 					CreatedAt: time.Now(),
 					UpdatedAt: time.Now(),
 				}
-				if err := store.AddPageComment(site, page, comment); err != nil {
+				if err := store.AddPageComment(context.Background(), site, page, comment); err != nil {
 					t.Fatalf("failed to add comment to %s/%s: %v", site, page, err)
 				}
 			}
@@ -257,7 +258,7 @@ func TestIntegration_MultipleSitesAndPages(t *testing.T) {
 	// Verify each site/page has correct number of comments
 	for _, site := range sites {
 		for _, page := range pages {
-			comments, err := store.GetPageComments(site, page)
+			comments, err := store.GetPageComments(context.Background(), site, page)
 			if err != nil {
 				t.Fatalf("failed to get comments for %s/%s: %v", site, page, err)
 			}

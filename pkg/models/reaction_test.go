@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 
@@ -103,7 +104,7 @@ func TestAllowedReactionStore_Create(t *testing.T) {
 	store := NewAllowedReactionStore(db)
 
 	// Test creating an allowed reaction
-	reaction, err := store.Create("site-1", "thumbs_up", "👍", "comment")
+	reaction, err := store.Create(context.Background(), "site-1", "thumbs_up", "👍", "comment")
 	if err != nil {
 		t.Fatalf("Failed to create allowed reaction: %v", err)
 	}
@@ -136,11 +137,11 @@ func TestAllowedReactionStore_GetBySite(t *testing.T) {
 	store := NewAllowedReactionStore(db)
 
 	// Create some reactions
-	store.Create("site-1", "thumbs_up", "👍", "comment")
-	store.Create("site-1", "heart", "❤️", "comment")
+	store.Create(context.Background(), "site-1", "thumbs_up", "👍", "comment")
+	store.Create(context.Background(), "site-1", "heart", "❤️", "comment")
 
 	// Get reactions for site
-	reactions, err := store.GetBySite("site-1")
+	reactions, err := store.GetBySite(context.Background(), "site-1")
 	if err != nil {
 		t.Fatalf("Failed to get reactions: %v", err)
 	}
@@ -164,16 +165,16 @@ func TestAllowedReactionStore_Update(t *testing.T) {
 	store := NewAllowedReactionStore(db)
 
 	// Create a reaction
-	reaction, _ := store.Create("site-1", "thumbs_up", "👍", "comment")
+	reaction, _ := store.Create(context.Background(), "site-1", "thumbs_up", "👍", "comment")
 
 	// Update it
-	err = store.Update(reaction.ID, "like", "👍", "comment")
+	err = store.Update(context.Background(), reaction.ID, "like", "👍", "comment")
 	if err != nil {
 		t.Fatalf("Failed to update reaction: %v", err)
 	}
 
 	// Verify update
-	updated, err := store.GetByID(reaction.ID)
+	updated, err := store.GetByID(context.Background(), reaction.ID)
 	if err != nil {
 		t.Fatalf("Failed to get updated reaction: %v", err)
 	}
@@ -196,16 +197,16 @@ func TestAllowedReactionStore_Delete(t *testing.T) {
 	store := NewAllowedReactionStore(db)
 
 	// Create a reaction
-	reaction, _ := store.Create("site-1", "thumbs_up", "👍", "comment")
+	reaction, _ := store.Create(context.Background(), "site-1", "thumbs_up", "👍", "comment")
 
 	// Delete it
-	err = store.Delete(reaction.ID)
+	err = store.Delete(context.Background(), reaction.ID)
 	if err != nil {
 		t.Fatalf("Failed to delete reaction: %v", err)
 	}
 
 	// Verify deletion
-	_, err = store.GetByID(reaction.ID)
+	_, err = store.GetByID(context.Background(), reaction.ID)
 	if err == nil {
 		t.Error("Expected error when getting deleted reaction")
 	}
@@ -229,12 +230,12 @@ func TestReactionStore_AddReaction(t *testing.T) {
 	}
 
 	allowedStore := NewAllowedReactionStore(db)
-	allowed, _ := allowedStore.Create("site-1", "thumbs_up", "👍", "comment")
+	allowed, _ := allowedStore.Create(context.Background(), "site-1", "thumbs_up", "👍", "comment")
 
 	reactionStore := NewReactionStore(db)
 
 	// Add a reaction
-	reaction, err := reactionStore.AddReaction("comment-1", allowed.ID, "user-123")
+	reaction, err := reactionStore.AddReaction(context.Background(), "comment-1", allowed.ID, "user-123")
 	if err != nil {
 		t.Fatalf("Failed to add reaction: %v", err)
 	}
@@ -268,12 +269,12 @@ func TestReactionStore_AddReaction_Toggle(t *testing.T) {
 	}
 
 	allowedStore := NewAllowedReactionStore(db)
-	allowed, _ := allowedStore.Create("site-1", "thumbs_up", "👍", "comment")
+	allowed, _ := allowedStore.Create(context.Background(), "site-1", "thumbs_up", "👍", "comment")
 
 	reactionStore := NewReactionStore(db)
 
 	// Add a reaction
-	reaction1, err := reactionStore.AddReaction("comment-1", allowed.ID, "user-123")
+	reaction1, err := reactionStore.AddReaction(context.Background(), "comment-1", allowed.ID, "user-123")
 	if err != nil {
 		t.Fatalf("Failed to add reaction: %v", err)
 	}
@@ -282,7 +283,7 @@ func TestReactionStore_AddReaction_Toggle(t *testing.T) {
 	}
 
 	// Add same reaction again (should toggle it off)
-	reaction2, err := reactionStore.AddReaction("comment-1", allowed.ID, "user-123")
+	reaction2, err := reactionStore.AddReaction(context.Background(), "comment-1", allowed.ID, "user-123")
 	if err != nil {
 		t.Fatalf("Failed to toggle reaction: %v", err)
 	}
@@ -291,7 +292,7 @@ func TestReactionStore_AddReaction_Toggle(t *testing.T) {
 	}
 
 	// Verify reaction was removed
-	reactions, _ := reactionStore.GetReactionsByComment("comment-1")
+	reactions, _ := reactionStore.GetReactionsByComment(context.Background(), "comment-1")
 	if len(reactions) != 0 {
 		t.Errorf("Expected 0 reactions after toggle, got %d", len(reactions))
 	}
@@ -315,19 +316,19 @@ func TestReactionStore_GetReactionCounts(t *testing.T) {
 	}
 
 	allowedStore := NewAllowedReactionStore(db)
-	thumbsUp, _ := allowedStore.Create("site-1", "thumbs_up", "👍", "comment")
-	heart, _ := allowedStore.Create("site-1", "heart", "❤️", "comment")
+	thumbsUp, _ := allowedStore.Create(context.Background(), "site-1", "thumbs_up", "👍", "comment")
+	heart, _ := allowedStore.Create(context.Background(), "site-1", "heart", "❤️", "comment")
 
 	reactionStore := NewReactionStore(db)
 
 	// Add multiple reactions
-	reactionStore.AddReaction("comment-1", thumbsUp.ID, "user-1")
-	reactionStore.AddReaction("comment-1", thumbsUp.ID, "user-2")
-	reactionStore.AddReaction("comment-1", thumbsUp.ID, "user-3")
-	reactionStore.AddReaction("comment-1", heart.ID, "user-1")
+	reactionStore.AddReaction(context.Background(), "comment-1", thumbsUp.ID, "user-1")
+	reactionStore.AddReaction(context.Background(), "comment-1", thumbsUp.ID, "user-2")
+	reactionStore.AddReaction(context.Background(), "comment-1", thumbsUp.ID, "user-3")
+	reactionStore.AddReaction(context.Background(), "comment-1", heart.ID, "user-1")
 
 	// Get counts
-	counts, err := reactionStore.GetReactionCounts("comment-1")
+	counts, err := reactionStore.GetReactionCounts(context.Background(), "comment-1")
 	if err != nil {
 		t.Fatalf("Failed to get reaction counts: %v", err)
 	}
@@ -371,10 +372,10 @@ func TestReactionStore_CascadeDelete(t *testing.T) {
 	}
 
 	allowedStore := NewAllowedReactionStore(db)
-	allowed, _ := allowedStore.Create("site-1", "thumbs_up", "👍", "comment")
+	allowed, _ := allowedStore.Create(context.Background(), "site-1", "thumbs_up", "👍", "comment")
 
 	reactionStore := NewReactionStore(db)
-	reactionStore.AddReaction("comment-1", allowed.ID, "user-1")
+	reactionStore.AddReaction(context.Background(), "comment-1", allowed.ID, "user-1")
 
 	// Delete the comment - reactions should cascade delete
 	_, err = db.Exec("DELETE FROM comments WHERE id = ?", "comment-1")
@@ -383,7 +384,7 @@ func TestReactionStore_CascadeDelete(t *testing.T) {
 	}
 
 	// Verify reactions were deleted
-	reactions, _ := reactionStore.GetReactionsByComment("comment-1")
+	reactions, _ := reactionStore.GetReactionsByComment(context.Background(), "comment-1")
 	if len(reactions) != 0 {
 		t.Errorf("Expected reactions to be cascade deleted, found %d", len(reactions))
 	}
@@ -407,12 +408,12 @@ t.Fatalf("Failed to create test page: %v", err)
 }
 
 allowedStore := NewAllowedReactionStore(db)
-allowed, _ := allowedStore.Create("site-1", "thumbs_up", "👍", "page")
+allowed, _ := allowedStore.Create(context.Background(), "site-1", "thumbs_up", "👍", "page")
 
 reactionStore := NewReactionStore(db)
 
 // Add a page reaction
-reaction, err := reactionStore.AddPageReaction("page-1", allowed.ID, "user-123")
+reaction, err := reactionStore.AddPageReaction(context.Background(), "page-1", allowed.ID, "user-123")
 if err != nil {
 t.Fatalf("Failed to add page reaction: %v", err)
 }
@@ -442,12 +443,12 @@ t.Fatalf("Failed to create test site: %v", err)
 store := NewAllowedReactionStore(db)
 
 // Create reactions with different types
-store.Create("site-1", "thumbs_up", "👍", "page")
-store.Create("site-1", "heart", "❤️", "comment")
-store.Create("site-1", "celebrate", "🎉", "both")
+store.Create(context.Background(), "site-1", "thumbs_up", "👍", "page")
+store.Create(context.Background(), "site-1", "heart", "❤️", "comment")
+store.Create(context.Background(), "site-1", "celebrate", "🎉", "both")
 
 // Get page reactions
-pageReactions, err := store.GetBySiteAndType("site-1", "page")
+pageReactions, err := store.GetBySiteAndType(context.Background(), "site-1", "page")
 if err != nil {
 t.Fatalf("Failed to get page reactions: %v", err)
 }
@@ -458,7 +459,7 @@ t.Errorf("Expected 2 page reactions, got %d", len(pageReactions))
 }
 
 // Get comment reactions
-commentReactions, err := store.GetBySiteAndType("site-1", "comment")
+commentReactions, err := store.GetBySiteAndType(context.Background(), "site-1", "comment")
 if err != nil {
 t.Fatalf("Failed to get comment reactions: %v", err)
 }
@@ -487,12 +488,12 @@ t.Fatalf("Failed to create test page: %v", err)
 }
 
 allowedStore := NewAllowedReactionStore(db)
-allowed, _ := allowedStore.Create("site-1", "thumbs_up", "👍", "page")
+allowed, _ := allowedStore.Create(context.Background(), "site-1", "thumbs_up", "👍", "page")
 
 reactionStore := NewReactionStore(db)
 
 // Add a page reaction
-reaction1, err := reactionStore.AddPageReaction("page-1", allowed.ID, "user-123")
+reaction1, err := reactionStore.AddPageReaction(context.Background(), "page-1", allowed.ID, "user-123")
 if err != nil {
 t.Fatalf("Failed to add page reaction: %v", err)
 }
@@ -501,7 +502,7 @@ t.Fatal("Expected reaction to be created")
 }
 
 // Add same reaction again (should toggle it off)
-reaction2, err := reactionStore.AddPageReaction("page-1", allowed.ID, "user-123")
+reaction2, err := reactionStore.AddPageReaction(context.Background(), "page-1", allowed.ID, "user-123")
 if err != nil {
 t.Fatalf("Failed to toggle page reaction: %v", err)
 }
@@ -510,7 +511,7 @@ t.Error("Expected reaction to be nil (toggled off)")
 }
 
 // Verify reaction was removed
-reactions, _ := reactionStore.GetReactionsByPage("page-1")
+reactions, _ := reactionStore.GetReactionsByPage(context.Background(), "page-1")
 if len(reactions) != 0 {
 t.Errorf("Expected 0 reactions after toggle, got %d", len(reactions))
 }
@@ -534,19 +535,19 @@ t.Fatalf("Failed to create test page: %v", err)
 }
 
 allowedStore := NewAllowedReactionStore(db)
-thumbsUp, _ := allowedStore.Create("site-1", "thumbs_up", "👍", "page")
-heart, _ := allowedStore.Create("site-1", "heart", "❤️", "page")
+thumbsUp, _ := allowedStore.Create(context.Background(), "site-1", "thumbs_up", "👍", "page")
+heart, _ := allowedStore.Create(context.Background(), "site-1", "heart", "❤️", "page")
 
 reactionStore := NewReactionStore(db)
 
 // Add multiple reactions
-reactionStore.AddPageReaction("page-1", thumbsUp.ID, "user-1")
-reactionStore.AddPageReaction("page-1", thumbsUp.ID, "user-2")
-reactionStore.AddPageReaction("page-1", thumbsUp.ID, "user-3")
-reactionStore.AddPageReaction("page-1", heart.ID, "user-1")
+reactionStore.AddPageReaction(context.Background(), "page-1", thumbsUp.ID, "user-1")
+reactionStore.AddPageReaction(context.Background(), "page-1", thumbsUp.ID, "user-2")
+reactionStore.AddPageReaction(context.Background(), "page-1", thumbsUp.ID, "user-3")
+reactionStore.AddPageReaction(context.Background(), "page-1", heart.ID, "user-1")
 
 // Get counts
-counts, err := reactionStore.GetPageReactionCounts("page-1")
+counts, err := reactionStore.GetPageReactionCounts(context.Background(), "page-1")
 if err != nil {
 t.Fatalf("Failed to get page reaction counts: %v", err)
 }

@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -39,13 +40,13 @@ func (h *AuthConfigHandler) HandleAuthConfigForm(w http.ResponseWriter, r *http.
 	siteID := vars["siteId"]
 
 	// Verify site ownership
-	if !h.verifySiteOwnership(siteID, userID, w) {
+	if !h.verifySiteOwnership(r.Context(), siteID, userID, w) {
 		return
 	}
 
 	// Get auth configuration or use defaults
 	authConfigStore := models.NewSiteAuthConfigStore(h.db)
-	config, err := authConfigStore.GetBySiteID(siteID)
+	config, err := authConfigStore.GetBySiteID(r.Context(), siteID)
 	if err != nil {
 		// Config doesn't exist yet, use defaults
 		config = &models.SiteAuthConfig{
@@ -79,13 +80,13 @@ func (h *AuthConfigHandler) GetAuthConfig(w http.ResponseWriter, r *http.Request
 	siteID := vars["siteId"]
 
 	// Verify site ownership
-	if !h.verifySiteOwnership(siteID, userID, w) {
+	if !h.verifySiteOwnership(r.Context(), siteID, userID, w) {
 		return
 	}
 
 	// Get auth configuration
 	authConfigStore := models.NewSiteAuthConfigStore(h.db)
-	config, err := authConfigStore.GetBySiteID(siteID)
+	config, err := authConfigStore.GetBySiteID(r.Context(), siteID)
 	if err != nil {
 		// If not found, return a default configuration
 		if err.Error() == "site auth config not found" {
@@ -120,7 +121,7 @@ func (h *AuthConfigHandler) CreateAuthConfig(w http.ResponseWriter, r *http.Requ
 	siteID := vars["siteId"]
 
 	// Verify site ownership
-	if !h.verifySiteOwnership(siteID, userID, w) {
+	if !h.verifySiteOwnership(r.Context(), siteID, userID, w) {
 		return
 	}
 
@@ -142,7 +143,7 @@ func (h *AuthConfigHandler) CreateAuthConfig(w http.ResponseWriter, r *http.Requ
 
 	// Create configuration
 	authConfigStore := models.NewSiteAuthConfigStore(h.db)
-	if err := authConfigStore.Create(&config); err != nil {
+	if err := authConfigStore.Create(r.Context(), &config); err != nil {
 		http.Error(w, "Failed to create auth configuration", http.StatusInternalServerError)
 		return
 	}
@@ -167,13 +168,13 @@ func (h *AuthConfigHandler) UpdateAuthConfig(w http.ResponseWriter, r *http.Requ
 	siteID := vars["siteId"]
 
 	// Verify site ownership
-	if !h.verifySiteOwnership(siteID, userID, w) {
+	if !h.verifySiteOwnership(r.Context(), siteID, userID, w) {
 		return
 	}
 
 	// Get existing config
 	authConfigStore := models.NewSiteAuthConfigStore(h.db)
-	existingConfig, err := authConfigStore.GetBySiteID(siteID)
+	existingConfig, err := authConfigStore.GetBySiteID(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Auth configuration not found", http.StatusNotFound)
 		return
@@ -211,7 +212,7 @@ func (h *AuthConfigHandler) UpdateAuthConfig(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Update configuration
-	if err := authConfigStore.Update(existingConfig); err != nil {
+	if err := authConfigStore.Update(r.Context(), existingConfig); err != nil {
 		http.Error(w, "Failed to update auth configuration", http.StatusInternalServerError)
 		return
 	}
@@ -235,20 +236,20 @@ func (h *AuthConfigHandler) DeleteAuthConfig(w http.ResponseWriter, r *http.Requ
 	siteID := vars["siteId"]
 
 	// Verify site ownership
-	if !h.verifySiteOwnership(siteID, userID, w) {
+	if !h.verifySiteOwnership(r.Context(), siteID, userID, w) {
 		return
 	}
 
 	// Get existing config to get its ID
 	authConfigStore := models.NewSiteAuthConfigStore(h.db)
-	config, err := authConfigStore.GetBySiteID(siteID)
+	config, err := authConfigStore.GetBySiteID(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Auth configuration not found", http.StatusNotFound)
 		return
 	}
 
 	// Delete configuration
-	if err := authConfigStore.Delete(config.ID); err != nil {
+	if err := authConfigStore.Delete(r.Context(), config.ID); err != nil {
 		http.Error(w, "Failed to delete auth configuration", http.StatusInternalServerError)
 		return
 	}
@@ -257,9 +258,9 @@ func (h *AuthConfigHandler) DeleteAuthConfig(w http.ResponseWriter, r *http.Requ
 }
 
 // verifySiteOwnership verifies that the user owns the specified site
-func (h *AuthConfigHandler) verifySiteOwnership(siteID, userID string, w http.ResponseWriter) bool {
+func (h *AuthConfigHandler) verifySiteOwnership(ctx context.Context, siteID, userID string, w http.ResponseWriter) bool {
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(ctx, siteID)
 	if err != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return false

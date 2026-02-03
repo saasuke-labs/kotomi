@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -30,7 +31,7 @@ func NewSiteStore(db *sql.DB) *SiteStore {
 }
 
 // GetByID retrieves a site by its ID
-func (s *SiteStore) GetByID(id string) (*Site, error) {
+func (s *SiteStore) GetByID(ctx context.Context, id string) (*Site, error) {
 	query := `
 		SELECT id, owner_id, name, domain, description, created_at, updated_at
 		FROM sites
@@ -40,7 +41,7 @@ func (s *SiteStore) GetByID(id string) (*Site, error) {
 	var site Site
 	var domain, description sql.NullString
 
-	err := s.db.QueryRow(query, id).Scan(
+	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&site.ID, &site.OwnerID, &site.Name, &domain, &description, &site.CreatedAt, &site.UpdatedAt,
 	)
 	if err != nil {
@@ -61,7 +62,7 @@ func (s *SiteStore) GetByID(id string) (*Site, error) {
 }
 
 // GetByOwner retrieves all sites owned by a user
-func (s *SiteStore) GetByOwner(ownerID string) ([]Site, error) {
+func (s *SiteStore) GetByOwner(ctx context.Context, ownerID string) ([]Site, error) {
 	query := `
 		SELECT id, owner_id, name, domain, description, created_at, updated_at
 		FROM sites
@@ -69,7 +70,7 @@ func (s *SiteStore) GetByOwner(ownerID string) ([]Site, error) {
 		ORDER BY created_at DESC
 	`
 
-	rows, err := s.db.Query(query, ownerID)
+	rows, err := s.db.QueryContext(ctx, query, ownerID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query sites: %w", err)
 	}
@@ -109,7 +110,7 @@ func (s *SiteStore) GetByOwner(ownerID string) ([]Site, error) {
 }
 
 // Create creates a new site
-func (s *SiteStore) Create(ownerID, name, domain, description string) (*Site, error) {
+func (s *SiteStore) Create(ctx context.Context, ownerID, name, domain, description string) (*Site, error) {
 	now := time.Now()
 	site := &Site{
 		ID:          uuid.NewString(),
@@ -136,7 +137,7 @@ func (s *SiteStore) Create(ownerID, name, domain, description string) (*Site, er
 		descVal.Valid = true
 	}
 
-	_, err := s.db.Exec(query, site.ID, site.OwnerID, site.Name, domainVal, descVal, site.CreatedAt, site.UpdatedAt)
+	_, err := s.db.ExecContext(ctx, query, site.ID, site.OwnerID, site.Name, domainVal, descVal, site.CreatedAt, site.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create site: %w", err)
 	}
@@ -145,7 +146,7 @@ func (s *SiteStore) Create(ownerID, name, domain, description string) (*Site, er
 }
 
 // Update updates a site's information
-func (s *SiteStore) Update(id, name, domain, description string) error {
+func (s *SiteStore) Update(ctx context.Context, id, name, domain, description string) error {
 	query := `
 		UPDATE sites
 		SET name = ?, domain = ?, description = ?, updated_at = ?
@@ -162,7 +163,7 @@ func (s *SiteStore) Update(id, name, domain, description string) error {
 		descVal.Valid = true
 	}
 
-	_, err := s.db.Exec(query, name, domainVal, descVal, time.Now(), id)
+	_, err := s.db.ExecContext(ctx, query, name, domainVal, descVal, time.Now(), id)
 	if err != nil {
 		return fmt.Errorf("failed to update site: %w", err)
 	}
@@ -171,10 +172,10 @@ func (s *SiteStore) Update(id, name, domain, description string) error {
 }
 
 // Delete deletes a site
-func (s *SiteStore) Delete(id string) error {
+func (s *SiteStore) Delete(ctx context.Context, id string) error {
 	query := `DELETE FROM sites WHERE id = ?`
 
-	_, err := s.db.Exec(query, id)
+	_, err := s.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete site: %w", err)
 	}

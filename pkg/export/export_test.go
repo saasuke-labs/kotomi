@@ -2,6 +2,7 @@ package export
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"path/filepath"
 	"testing"
@@ -33,7 +34,7 @@ func createTestData(t *testing.T, store *comments.SQLiteStore) (siteID, pageID, 
 
 	// Create site
 	siteStore := models.NewSiteStore(db)
-	site, err := siteStore.Create("admin-1", "Test Site", "test.example.com", "Test site for export")
+	site, err := siteStore.Create(context.Background(), "admin-1", "Test Site", "test.example.com", "Test site for export")
 	if err != nil {
 		t.Fatalf("Failed to create site: %v", err)
 	}
@@ -41,7 +42,7 @@ func createTestData(t *testing.T, store *comments.SQLiteStore) (siteID, pageID, 
 
 	// Create page
 	pageStore := models.NewPageStore(db)
-	page, err := pageStore.Create(siteID, "/test-page", "Test Page")
+	page, err := pageStore.Create(context.Background(), siteID, "/test-page", "Test Page")
 	if err != nil {
 		t.Fatalf("Failed to create page: %v", err)
 	}
@@ -55,7 +56,7 @@ func createTestData(t *testing.T, store *comments.SQLiteStore) (siteID, pageID, 
 		Name:   "Test User",
 		Email:  "user@example.com",
 	}
-	if err := userStore.CreateOrUpdate(user); err != nil {
+	if err := userStore.CreateOrUpdate(context.Background(), user); err != nil {
 		t.Fatalf("Failed to create user: %v", err)
 	}
 
@@ -72,7 +73,7 @@ func createTestData(t *testing.T, store *comments.SQLiteStore) (siteID, pageID, 
 
 	// Create allowed reaction
 	reactionStore := models.NewAllowedReactionStore(db)
-	allowedReaction, err := reactionStore.Create(siteID, "thumbs_up", "👍", "both")
+	allowedReaction, err := reactionStore.Create(context.Background(), siteID, "thumbs_up", "👍", "both")
 	if err != nil {
 		t.Fatalf("Failed to create allowed reaction: %v", err)
 	}
@@ -96,7 +97,7 @@ func TestExporter_ExportToJSON(t *testing.T) {
 	siteID, pageID, commentID := createTestData(t, store)
 
 	exporter := NewExporter(store.GetDB())
-	exportData, err := exporter.ExportToJSON(siteID)
+	exportData, err := exporter.ExportToJSON(context.Background(), siteID)
 	if err != nil {
 		t.Fatalf("ExportToJSON failed: %v", err)
 	}
@@ -167,7 +168,7 @@ func TestExporter_WriteJSON(t *testing.T) {
 	siteID, _, _ := createTestData(t, store)
 
 	exporter := NewExporter(store.GetDB())
-	exportData, err := exporter.ExportToJSON(siteID)
+	exportData, err := exporter.ExportToJSON(context.Background(), siteID)
 	if err != nil {
 		t.Fatalf("ExportToJSON failed: %v", err)
 	}
@@ -196,7 +197,7 @@ func TestExporter_ExportToCSV(t *testing.T) {
 
 	exporter := NewExporter(store.GetDB())
 	var buf bytes.Buffer
-	if err := exporter.ExportToCSV(&buf, siteID); err != nil {
+	if err := exporter.ExportToCSV(context.Background(), &buf, siteID); err != nil {
 		t.Fatalf("ExportToCSV failed: %v", err)
 	}
 
@@ -280,13 +281,13 @@ func TestExporter_ExportToJSON_NoData(t *testing.T) {
 	}
 
 	siteStore := models.NewSiteStore(db)
-	site, err := siteStore.Create("admin-1", "Empty Site", "empty.example.com", "")
+	site, err := siteStore.Create(context.Background(), "admin-1", "Empty Site", "empty.example.com", "")
 	if err != nil {
 		t.Fatalf("Failed to create site: %v", err)
 	}
 
 	exporter := NewExporter(db)
-	exportData, err := exporter.ExportToJSON(site.ID)
+	exportData, err := exporter.ExportToJSON(context.Background(), site.ID)
 	if err != nil {
 		t.Fatalf("ExportToJSON failed: %v", err)
 	}
@@ -307,7 +308,7 @@ func TestExporter_ExportToJSON_InvalidSite(t *testing.T) {
 	defer store.Close()
 
 	exporter := NewExporter(store.GetDB())
-	_, err := exporter.ExportToJSON("non-existent-site")
+	_, err := exporter.ExportToJSON(context.Background(), "non-existent-site")
 	if err == nil {
 		t.Error("Expected error for non-existent site, got nil")
 	}

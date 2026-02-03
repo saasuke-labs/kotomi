@@ -39,7 +39,7 @@ func (h *ExportImportHandler) ShowExportForm(w http.ResponseWriter, r *http.Requ
 
 	// Verify ownership
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -70,7 +70,7 @@ func (h *ExportImportHandler) ExportData(w http.ResponseWriter, r *http.Request)
 
 	// Verify ownership
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -91,7 +91,7 @@ func (h *ExportImportHandler) ExportData(w http.ResponseWriter, r *http.Request)
 
 	switch format {
 	case "json":
-		exportData, err := exporter.ExportToJSON(siteID)
+		exportData, err := exporter.ExportToJSON(r.Context(), siteID)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Export failed: %v", err), http.StatusInternalServerError)
 			return
@@ -108,7 +108,7 @@ func (h *ExportImportHandler) ExportData(w http.ResponseWriter, r *http.Request)
 
 	case "csv-comments":
 		var buf bytes.Buffer
-		if err := exporter.ExportToCSV(&buf, siteID); err != nil {
+		if err := exporter.ExportToCSV(r.Context(), &buf, siteID); err != nil {
 			http.Error(w, fmt.Sprintf("Export failed: %v", err), http.StatusInternalServerError)
 			return
 		}
@@ -146,7 +146,7 @@ func (h *ExportImportHandler) ShowImportForm(w http.ResponseWriter, r *http.Requ
 
 	// Verify ownership
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -177,7 +177,7 @@ func (h *ExportImportHandler) ImportData(w http.ResponseWriter, r *http.Request)
 
 	// Verify ownership
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -262,7 +262,7 @@ func (h *ExportImportHandler) ExportDataAPI(w http.ResponseWriter, r *http.Reque
 
 	// Verify ownership
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -274,7 +274,7 @@ func (h *ExportImportHandler) ExportDataAPI(w http.ResponseWriter, r *http.Reque
 	}
 
 	exporter := export.NewExporter(h.db)
-	exportData, err := exporter.ExportToJSON(siteID)
+	exportData, err := exporter.ExportToJSON(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Export failed: %v", err), http.StatusInternalServerError)
 		return
@@ -294,7 +294,7 @@ func (h *ExportImportHandler) ImportDataAPI(w http.ResponseWriter, r *http.Reque
 
 	// Verify ownership
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return

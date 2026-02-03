@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -29,7 +30,7 @@ func NewAdminUserStore(db *sql.DB) *AdminUserStore {
 }
 
 // GetByAuth0Sub retrieves an admin user by their Auth0 subject identifier
-func (s *AdminUserStore) GetByAuth0Sub(auth0Sub string) (*AdminUser, error) {
+func (s *AdminUserStore) GetByAuth0Sub(ctx context.Context, auth0Sub string) (*AdminUser, error) {
 	query := `
 		SELECT id, email, name, auth0_sub, created_at, updated_at
 		FROM admin_users
@@ -39,7 +40,7 @@ func (s *AdminUserStore) GetByAuth0Sub(auth0Sub string) (*AdminUser, error) {
 	var u AdminUser
 	var name sql.NullString
 
-	err := s.db.QueryRow(query, auth0Sub).Scan(
+	err := s.db.QueryRowContext(ctx, query, auth0Sub).Scan(
 		&u.ID, &u.Email, &name, &u.Auth0Sub, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
@@ -57,7 +58,7 @@ func (s *AdminUserStore) GetByAuth0Sub(auth0Sub string) (*AdminUser, error) {
 }
 
 // GetByID retrieves an admin user by their ID
-func (s *AdminUserStore) GetByID(id string) (*AdminUser, error) {
+func (s *AdminUserStore) GetByID(ctx context.Context, id string) (*AdminUser, error) {
 	query := `
 		SELECT id, email, name, auth0_sub, created_at, updated_at
 		FROM admin_users
@@ -67,7 +68,7 @@ func (s *AdminUserStore) GetByID(id string) (*AdminUser, error) {
 	var u AdminUser
 	var name sql.NullString
 
-	err := s.db.QueryRow(query, id).Scan(
+	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&u.ID, &u.Email, &name, &u.Auth0Sub, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
@@ -85,7 +86,7 @@ func (s *AdminUserStore) GetByID(id string) (*AdminUser, error) {
 }
 
 // Create creates a new admin user
-func (s *AdminUserStore) Create(email, name, auth0Sub string) (*AdminUser, error) {
+func (s *AdminUserStore) Create(ctx context.Context, email, name, auth0Sub string) (*AdminUser, error) {
 	now := time.Now()
 	user := &AdminUser{
 		ID:        uuid.NewString(),
@@ -107,7 +108,7 @@ func (s *AdminUserStore) Create(email, name, auth0Sub string) (*AdminUser, error
 		nameVal.Valid = true
 	}
 
-	_, err := s.db.Exec(query, user.ID, user.Email, nameVal, user.Auth0Sub, user.CreatedAt, user.UpdatedAt)
+	_, err := s.db.ExecContext(ctx, query, user.ID, user.Email, nameVal, user.Auth0Sub, user.CreatedAt, user.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create admin user: %w", err)
 	}
@@ -116,7 +117,7 @@ func (s *AdminUserStore) Create(email, name, auth0Sub string) (*AdminUser, error
 }
 
 // Update updates an admin user's information
-func (s *AdminUserStore) Update(id, email, name string) error {
+func (s *AdminUserStore) Update(ctx context.Context, id, email, name string) error {
 	query := `
 		UPDATE admin_users
 		SET email = ?, name = ?, updated_at = ?
@@ -129,7 +130,7 @@ func (s *AdminUserStore) Update(id, email, name string) error {
 		nameVal.Valid = true
 	}
 
-	_, err := s.db.Exec(query, email, nameVal, time.Now(), id)
+	_, err := s.db.ExecContext(ctx, query, email, nameVal, time.Now(), id)
 	if err != nil {
 		return fmt.Errorf("failed to update admin user: %w", err)
 	}

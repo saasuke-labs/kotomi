@@ -1,6 +1,7 @@
 package moderation
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"testing"
@@ -72,13 +73,13 @@ func TestModerationConfigStore(t *testing.T) {
 		}
 
 		// Create config
-		err := store.Create("site1", config)
+		err := store.Create(context.Background(), "site1", config)
 		if err != nil {
 			t.Fatalf("Failed to create config: %v", err)
 		}
 
 		// Retrieve config
-		retrieved, err := store.GetBySiteID("site1")
+		retrieved, err := store.GetBySiteID(context.Background(), "site1")
 		if err != nil {
 			t.Fatalf("Failed to get config: %v", err)
 		}
@@ -118,13 +119,13 @@ func TestModerationConfigStore(t *testing.T) {
 		}
 
 		// Update config
-		err := store.Update("site1", config)
+		err := store.Update(context.Background(), "site1", config)
 		if err != nil {
 			t.Fatalf("Failed to update config: %v", err)
 		}
 
 		// Retrieve updated config
-		retrieved, err := store.GetBySiteID("site1")
+		retrieved, err := store.GetBySiteID(context.Background(), "site1")
 		if err != nil {
 			t.Fatalf("Failed to get config: %v", err)
 		}
@@ -144,20 +145,20 @@ func TestModerationConfigStore(t *testing.T) {
 	})
 
 	t.Run("GetNonExistentConfig", func(t *testing.T) {
-		_, err := store.GetBySiteID("nonexistent")
+		_, err := store.GetBySiteID(context.Background(), "nonexistent")
 		if err == nil {
 			t.Error("Expected error for non-existent site")
 		}
 	})
 
 	t.Run("DeleteConfig", func(t *testing.T) {
-		err := store.Delete("site1")
+		err := store.Delete(context.Background(), "site1")
 		if err != nil {
 			t.Fatalf("Failed to delete config: %v", err)
 		}
 
 		// Verify deletion
-		_, err = store.GetBySiteID("site1")
+		_, err = store.GetBySiteID(context.Background(), "site1")
 		if err == nil {
 			t.Error("Expected error after deletion")
 		}

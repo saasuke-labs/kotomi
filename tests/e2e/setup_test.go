@@ -249,7 +249,7 @@ func seedAuthConfigurations(dbPath string) {
 		}
 		
 		// Try to create, ignore errors if already exists
-		if err := authConfigStore.Create(authConfig); err != nil {
+		if err := authConfigStore.Create(context.Background(), authConfig); err != nil {
 			// Config might already exist, that's OK
 			log.Printf("Debug: Could not create auth config for %s (might already exist): %v", site.id, err)
 		} else {
@@ -274,7 +274,7 @@ func seedAuthConfigurations(dbPath string) {
 	
 	for _, site := range testSites {
 		for _, reaction := range defaultReactions {
-			_, err := allowedReactionStore.Create(site.id, reaction.name, reaction.emoji, reaction.reactionType)
+			_, err := allowedReactionStore.Create(context.Background(), site.id, reaction.name, reaction.emoji, reaction.reactionType)
 			if err != nil {
 				// Reaction might already exist, that's OK
 				log.Printf("Debug: Could not create reaction %s for %s (might already exist): %v", reaction.name, site.id, err)
@@ -313,9 +313,9 @@ func SeedTestData(t *testing.T, dbPath string) {
 		}
 		
 		// Check if auth config already exists before creating
-		existing, _ := authConfigStore.GetBySiteID(siteID)
+		existing, _ := authConfigStore.GetBySiteID(context.Background(), siteID)
 		if existing == nil {
-			if err := authConfigStore.Create(authConfig); err != nil {
+			if err := authConfigStore.Create(context.Background(), authConfig); err != nil {
 				// Ignore errors if auth config already exists
 				log.Printf("Warning: failed to create auth config for %s: %v", siteID, err)
 			}
@@ -356,7 +356,7 @@ func SeedTestData(t *testing.T, dbPath string) {
 	}
 
 	for _, tc := range testComments {
-		if err := store.AddPageComment(tc.siteID, tc.pageID, tc.comment); err != nil {
+		if err := store.AddPageComment(context.Background(), tc.siteID, tc.pageID, tc.comment); err != nil {
 			t.Fatalf("failed to seed test data: %v", err)
 		}
 	}

@@ -1,6 +1,7 @@
 package importpkg
 
 import (
+	"context"
 	"bytes"
 	"encoding/json"
 	"path/filepath"
@@ -34,7 +35,7 @@ func createTestSite(t *testing.T, store *comments.SQLiteStore) (siteID, pageID s
 
 	// Create site
 	siteStore := models.NewSiteStore(db)
-	site, err := siteStore.Create("admin-1", "Test Site", "test.example.com", "Test site for import")
+	site, err := siteStore.Create(context.Background(), "admin-1", "Test Site", "test.example.com", "Test site for import")
 	if err != nil {
 		t.Fatalf("Failed to create site: %v", err)
 	}
@@ -42,7 +43,7 @@ func createTestSite(t *testing.T, store *comments.SQLiteStore) (siteID, pageID s
 
 	// Create page
 	pageStore := models.NewPageStore(db)
-	page, err := pageStore.Create(siteID, "/test-page", "Test Page")
+	page, err := pageStore.Create(context.Background(), siteID, "/test-page", "Test Page")
 	if err != nil {
 		t.Fatalf("Failed to create page: %v", err)
 	}
@@ -50,7 +51,7 @@ func createTestSite(t *testing.T, store *comments.SQLiteStore) (siteID, pageID s
 
 	// Create allowed reaction
 	reactionStore := models.NewAllowedReactionStore(db)
-	_, err = reactionStore.Create(siteID, "thumbs_up", "👍", "both")
+	_, err = reactionStore.Create(context.Background(), siteID, "thumbs_up", "👍", "both")
 	if err != nil {
 		t.Fatalf("Failed to create allowed reaction: %v", err)
 	}

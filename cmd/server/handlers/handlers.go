@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"strings"
 
@@ -57,7 +58,8 @@ func WriteJsonResponse(w http.ResponseWriter, data interface{}) {
 	}
 	
 	if err := json.NewEncoder(w).Encode(data); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		// Note: WriteHeader was already called, so we can't change status code
+		log.Printf("Failed to encode response: %v", err)
 	}
 }
 

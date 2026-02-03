@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -29,7 +30,7 @@ func NewPageStore(db *sql.DB) *PageStore {
 }
 
 // GetByID retrieves a page by its ID
-func (s *PageStore) GetByID(id string) (*Page, error) {
+func (s *PageStore) GetByID(ctx context.Context, id string) (*Page, error) {
 	query := `
 		SELECT id, site_id, path, title, created_at, updated_at
 		FROM pages
@@ -39,7 +40,7 @@ func (s *PageStore) GetByID(id string) (*Page, error) {
 	var page Page
 	var title sql.NullString
 
-	err := s.db.QueryRow(query, id).Scan(
+	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&page.ID, &page.SiteID, &page.Path, &title, &page.CreatedAt, &page.UpdatedAt,
 	)
 	if err != nil {
@@ -57,7 +58,7 @@ func (s *PageStore) GetByID(id string) (*Page, error) {
 }
 
 // GetBySite retrieves all pages for a site
-func (s *PageStore) GetBySite(siteID string) ([]Page, error) {
+func (s *PageStore) GetBySite(ctx context.Context, siteID string) ([]Page, error) {
 	query := `
 		SELECT id, site_id, path, title, created_at, updated_at
 		FROM pages
@@ -65,7 +66,7 @@ func (s *PageStore) GetBySite(siteID string) ([]Page, error) {
 		ORDER BY path ASC
 	`
 
-	rows, err := s.db.Query(query, siteID)
+	rows, err := s.db.QueryContext(ctx, query, siteID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query pages: %w", err)
 	}
@@ -102,7 +103,7 @@ func (s *PageStore) GetBySite(siteID string) ([]Page, error) {
 }
 
 // GetBySitePath retrieves a page by site ID and path
-func (s *PageStore) GetBySitePath(siteID, path string) (*Page, error) {
+func (s *PageStore) GetBySitePath(ctx context.Context, siteID, path string) (*Page, error) {
 	query := `
 		SELECT id, site_id, path, title, created_at, updated_at
 		FROM pages
@@ -112,7 +113,7 @@ func (s *PageStore) GetBySitePath(siteID, path string) (*Page, error) {
 	var page Page
 	var title sql.NullString
 
-	err := s.db.QueryRow(query, siteID, path).Scan(
+	err := s.db.QueryRowContext(ctx, query, siteID, path).Scan(
 		&page.ID, &page.SiteID, &page.Path, &title, &page.CreatedAt, &page.UpdatedAt,
 	)
 	if err != nil {
@@ -130,7 +131,7 @@ func (s *PageStore) GetBySitePath(siteID, path string) (*Page, error) {
 }
 
 // Create creates a new page
-func (s *PageStore) Create(siteID, path, title string) (*Page, error) {
+func (s *PageStore) Create(ctx context.Context, siteID, path, title string) (*Page, error) {
 	now := time.Now()
 	page := &Page{
 		ID:        uuid.NewString(),
@@ -152,7 +153,7 @@ func (s *PageStore) Create(siteID, path, title string) (*Page, error) {
 		titleVal.Valid = true
 	}
 
-	_, err := s.db.Exec(query, page.ID, page.SiteID, page.Path, titleVal, page.CreatedAt, page.UpdatedAt)
+	_, err := s.db.ExecContext(ctx, query, page.ID, page.SiteID, page.Path, titleVal, page.CreatedAt, page.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create page: %w", err)
 	}
@@ -161,7 +162,7 @@ func (s *PageStore) Create(siteID, path, title string) (*Page, error) {
 }
 
 // Update updates a page's information
-func (s *PageStore) Update(id, path, title string) error {
+func (s *PageStore) Update(ctx context.Context, id, path, title string) error {
 	query := `
 		UPDATE pages
 		SET path = ?, title = ?, updated_at = ?
@@ -174,7 +175,7 @@ func (s *PageStore) Update(id, path, title string) error {
 		titleVal.Valid = true
 	}
 
-	_, err := s.db.Exec(query, path, titleVal, time.Now(), id)
+	_, err := s.db.ExecContext(ctx, query, path, titleVal, time.Now(), id)
 	if err != nil {
 		return fmt.Errorf("failed to update page: %w", err)
 	}
@@ -183,10 +184,10 @@ func (s *PageStore) Update(id, path, title string) error {
 }
 
 // Delete deletes a page
-func (s *PageStore) Delete(id string) error {
+func (s *PageStore) Delete(ctx context.Context, id string) error {
 	query := `DELETE FROM pages WHERE id = ?`
 
-	_, err := s.db.Exec(query, id)
+	_, err := s.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete page: %w", err)
 	}

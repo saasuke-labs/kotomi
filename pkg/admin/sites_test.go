@@ -76,13 +76,13 @@ func TestSitesHandler_ListSites_Success(t *testing.T) {
 
 	// Create a test user and site
 	adminUserStore := models.NewAdminUserStore(db)
-	user, err := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
+	user, err := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|123")
 	if err != nil {
 		t.Fatalf("Failed to create user: %v", err)
 	}
 
 	siteStore := models.NewSiteStore(db)
-	_, err = siteStore.Create(user.ID, "Test Site", "example.com", "Test description")
+	_, err = siteStore.Create(context.Background(), user.ID, "Test Site", "example.com", "Test description")
 	if err != nil {
 		t.Fatalf("Failed to create site: %v", err)
 	}
@@ -156,12 +156,12 @@ func TestSitesHandler_GetSite_Forbidden(t *testing.T) {
 
 	// Create two users
 	adminUserStore := models.NewAdminUserStore(db)
-	user1, _ := adminUserStore.Create("user1@example.com", "User 1", "auth0|1")
-	user2, _ := adminUserStore.Create("user2@example.com", "User 2", "auth0|2")
+	user1, _ := adminUserStore.Create(context.Background(), "user1@example.com", "User 1", "auth0|1")
+	user2, _ := adminUserStore.Create(context.Background(), "user2@example.com", "User 2", "auth0|2")
 
 	// User1 creates a site
 	siteStore := models.NewSiteStore(db)
-	site, _ := siteStore.Create(user1.ID, "User1 Site", "example.com", "User1 description")
+	site, _ := siteStore.Create(context.Background(), user1.ID, "User1 Site", "example.com", "User1 description")
 
 	// Create a router with the proper route
 	router := mux.NewRouter()
@@ -188,10 +188,10 @@ func TestSitesHandler_GetSite_Success(t *testing.T) {
 
 	// Create a user and site
 	adminUserStore := models.NewAdminUserStore(db)
-	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
+	user, _ := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|123")
 
 	siteStore := models.NewSiteStore(db)
-	site, _ := siteStore.Create(user.ID, "Test Site", "example.com", "Test description")
+	site, _ := siteStore.Create(context.Background(), user.ID, "Test Site", "example.com", "Test description")
 
 	// Create a router with the proper route
 	router := mux.NewRouter()
@@ -247,7 +247,7 @@ func TestSitesHandler_CreateSite_Success(t *testing.T) {
 
 	// Create a user
 	adminUserStore := models.NewAdminUserStore(db)
-	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
+	user, _ := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|123")
 
 	body := bytes.NewBufferString("name=New Site&domain=newsite.com&description=Test description")
 	req := httptest.NewRequest("POST", "/admin/sites", body)
@@ -284,7 +284,7 @@ func TestSitesHandler_CreateSite_InvalidJSON(t *testing.T) {
 
 	// Create a user
 	adminUserStore := models.NewAdminUserStore(db)
-	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
+	user, _ := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|123")
 
 	body := bytes.NewBufferString("")  // Empty name
 	req := httptest.NewRequest("POST", "/admin/sites", body)
@@ -327,10 +327,10 @@ func TestSitesHandler_UpdateSite_Success(t *testing.T) {
 
 	// Create a user and site
 	adminUserStore := models.NewAdminUserStore(db)
-	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
+	user, _ := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|123")
 
 	siteStore := models.NewSiteStore(db)
-	site, _ := siteStore.Create(user.ID, "Original Site", "original.com", "Original description")
+	site, _ := siteStore.Create(context.Background(), user.ID, "Original Site", "original.com", "Original description")
 
 	// Create a router with the proper route
 	router := mux.NewRouter()
@@ -349,7 +349,7 @@ func TestSitesHandler_UpdateSite_Success(t *testing.T) {
 	}
 
 	// Verify update in database
-	updated, _ := siteStore.GetByID(site.ID)
+	updated, _ := siteStore.GetByID(context.Background(), site.ID)
 	if updated.Name != "Updated Site" {
 		t.Errorf("Expected site name 'Updated Site', got '%s'", updated.Name)
 	}
@@ -381,10 +381,10 @@ func TestSitesHandler_DeleteSite_Success(t *testing.T) {
 
 	// Create a user and site
 	adminUserStore := models.NewAdminUserStore(db)
-	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
+	user, _ := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|123")
 
 	siteStore := models.NewSiteStore(db)
-	site, _ := siteStore.Create(user.ID, "Site to Delete", "delete.com", "Delete description")
+	site, _ := siteStore.Create(context.Background(), user.ID, "Site to Delete", "delete.com", "Delete description")
 
 	// Create a router with the proper route
 	router := mux.NewRouter()
@@ -401,7 +401,7 @@ func TestSitesHandler_DeleteSite_Success(t *testing.T) {
 	}
 
 	// Verify site is deleted
-	_, err := siteStore.GetByID(site.ID)
+	_, err := siteStore.GetByID(context.Background(), site.ID)
 	if err == nil {
 		t.Error("Expected error when getting deleted site, got nil")
 	}
@@ -434,10 +434,10 @@ func TestSitesHandler_HTMX_Requests(t *testing.T) {
 
 	// Create a user and site
 	adminUserStore := models.NewAdminUserStore(db)
-	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
+	user, _ := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|123")
 
 	siteStore := models.NewSiteStore(db)
-	_, _ = siteStore.Create(user.ID, "Test Site", "example.com", "Test description")
+	_, _ = siteStore.Create(context.Background(), user.ID, "Test Site", "example.com", "Test description")
 
 	// Test HTMX request without templates (should return without error)
 	req := httptest.NewRequest("GET", "/admin/sites", nil)
@@ -462,7 +462,7 @@ func TestSitesHandler_CreateSite_FormEncoded(t *testing.T) {
 
 	// Create a user
 	adminUserStore := models.NewAdminUserStore(db)
-	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|123")
+	user, _ := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|123")
 
 	body := bytes.NewBufferString("name=Form Site&domain=form.com")
 	req := httptest.NewRequest("POST", "/admin/sites", body)
@@ -478,7 +478,7 @@ func TestSitesHandler_CreateSite_FormEncoded(t *testing.T) {
 
 	// Verify site was created
 	siteStore := models.NewSiteStore(db)
-	sites, _ := siteStore.GetByOwner(user.ID)
+	sites, _ := siteStore.GetByOwner(context.Background(), user.ID)
 	found := false
 	for _, s := range sites {
 		if s.Name == "Form Site" {

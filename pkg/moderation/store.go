@@ -1,6 +1,7 @@
 package moderation
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -19,7 +20,7 @@ func NewConfigStore(db *sql.DB) *ConfigStore {
 }
 
 // GetBySiteID retrieves moderation configuration for a site
-func (s *ConfigStore) GetBySiteID(siteID string) (*ModerationConfig, error) {
+func (s *ConfigStore) GetBySiteID(ctx context.Context, siteID string) (*ModerationConfig, error) {
 	query := `
 		SELECT enabled, auto_reject_threshold, auto_approve_threshold,
 		       check_spam, check_offensive, check_aggressive, check_off_topic
@@ -30,7 +31,7 @@ func (s *ConfigStore) GetBySiteID(siteID string) (*ModerationConfig, error) {
 	var config ModerationConfig
 	var enabled, checkSpam, checkOffensive, checkAggressive, checkOffTopic int
 
-	err := s.db.QueryRow(query, siteID).Scan(
+	err := s.db.QueryRowContext(ctx, query, siteID).Scan(
 		&enabled, &config.AutoRejectThreshold, &config.AutoApproveThreshold,
 		&checkSpam, &checkOffensive, &checkAggressive, &checkOffTopic,
 	)
@@ -53,7 +54,7 @@ func (s *ConfigStore) GetBySiteID(siteID string) (*ModerationConfig, error) {
 }
 
 // Create creates moderation configuration for a site
-func (s *ConfigStore) Create(siteID string, config ModerationConfig) error {
+func (s *ConfigStore) Create(ctx context.Context, siteID string, config ModerationConfig) error {
 	now := time.Now()
 	id := uuid.NewString()
 
@@ -87,7 +88,7 @@ func (s *ConfigStore) Create(siteID string, config ModerationConfig) error {
 		checkOffTopic = 1
 	}
 
-	_, err := s.db.Exec(query, id, siteID, enabled, config.AutoRejectThreshold, config.AutoApproveThreshold,
+	_, err := s.db.ExecContext(ctx, query, id, siteID, enabled, config.AutoRejectThreshold, config.AutoApproveThreshold,
 		checkSpam, checkOffensive, checkAggressive, checkOffTopic, now, now)
 	if err != nil {
 		return fmt.Errorf("failed to create moderation config: %w", err)
@@ -97,7 +98,7 @@ func (s *ConfigStore) Create(siteID string, config ModerationConfig) error {
 }
 
 // Update updates moderation configuration for a site
-func (s *ConfigStore) Update(siteID string, config ModerationConfig) error {
+func (s *ConfigStore) Update(ctx context.Context, siteID string, config ModerationConfig) error {
 	query := `
 		UPDATE moderation_config
 		SET enabled = ?, auto_reject_threshold = ?, auto_approve_threshold = ?,
@@ -128,7 +129,7 @@ func (s *ConfigStore) Update(siteID string, config ModerationConfig) error {
 		checkOffTopic = 1
 	}
 
-	result, err := s.db.Exec(query, enabled, config.AutoRejectThreshold, config.AutoApproveThreshold,
+	result, err := s.db.ExecContext(ctx, query, enabled, config.AutoRejectThreshold, config.AutoApproveThreshold,
 		checkSpam, checkOffensive, checkAggressive, checkOffTopic, time.Now(), siteID)
 	if err != nil {
 		return fmt.Errorf("failed to update moderation config: %w", err)
@@ -146,10 +147,10 @@ func (s *ConfigStore) Update(siteID string, config ModerationConfig) error {
 }
 
 // Delete deletes moderation configuration for a site
-func (s *ConfigStore) Delete(siteID string) error {
+func (s *ConfigStore) Delete(ctx context.Context, siteID string) error {
 	query := `DELETE FROM moderation_config WHERE site_id = ?`
 
-	_, err := s.db.Exec(query, siteID)
+	_, err := s.db.ExecContext(ctx, query, siteID)
 	if err != nil {
 		return fmt.Errorf("failed to delete moderation config: %w", err)
 	}

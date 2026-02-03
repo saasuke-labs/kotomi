@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"html/template"
 	"net/http"
@@ -10,11 +11,140 @@ import (
 	"testing"
 	"time"
 
+	"github.com/saasuke-labs/kotomi/cmd/server"
+	"github.com/saasuke-labs/kotomi/cmd/server/handlers"
+	"github.com/saasuke-labs/kotomi/pkg/auth"
 	"github.com/saasuke-labs/kotomi/pkg/comments"
 	"github.com/saasuke-labs/kotomi/pkg/middleware"
 	"github.com/saasuke-labs/kotomi/pkg/models"
 	"github.com/saasuke-labs/kotomi/pkg/moderation"
+	"github.com/saasuke-labs/kotomi/pkg/notifications"
 )
+
+// createTestServer creates a test server with in-memory dependencies
+func createTestServer() *server.Server {
+	// Create minimal SQLite store for tests that need it
+	sqliteStore, _ := comments.NewSQLiteStore(":memory:")
+	
+	// Create test templates
+	tmpl := template.New("test")
+	
+	cfg := server.Config{
+		CommentStore:          sqliteStore,
+		DB:                    nil, // Use nil for simple tests
+		Templates:             tmpl,
+		Auth0Config:           nil,
+		Moderator:             moderation.NewMockModerator(),
+		ModerationConfigStore: nil,
+		NotificationQueue:     nil,
+	}
+	
+	srv, _ := server.New(cfg)
+	return srv
+}
+
+// createTestHandlers creates test handlers with in-memory dependencies
+func createTestHandlers() *handlers.ServerHandlers {
+	// Create minimal SQLite store wrapped with adapter
+	sqliteStore, _ := comments.NewSQLiteStore(":memory:")
+	
+	// Create test templates
+	tmpl := template.New("test")
+	
+	return handlers.NewHandlers(
+		sqliteStore,
+		nil, // DB
+		tmpl,
+		nil, // Auth0Config
+		moderation.NewMockModerator(),
+		nil, // ModerationConfigStore
+		nil, // NotificationQueue
+	)
+}
+
+// Backward compatibility wrappers - these allow old tests to work without changes
+var testHandlers *handlers.ServerHandlers
+var commentStore *comments.SQLiteStore
+
+// resetTestHandlers resets the test handlers with a new comment store
+func resetTestHandlers(store *comments.SQLiteStore) {
+	tmpl := template.New("test")
+	testHandlers = handlers.NewHandlers(
+		store,
+		nil, // DB
+		tmpl,
+		nil, // Auth0Config
+		moderation.NewMockModerator(),
+		nil, // ModerationConfigStore
+		nil, // NotificationQueue
+	)
+	commentStore = store
+}
+
+func getHealthz(w http.ResponseWriter, r *http.Request) {
+	if testHandlers == nil {
+		testHandlers = createTestHandlers()
+	}
+	testHandlers.GetHealthz(w, r)
+}
+
+func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
+	if testHandlers == nil {
+		testHandlers = createTestHandlers()
+	}
+	testHandlers.PostComments(w, r)
+}
+
+func getCommentsHandler(w http.ResponseWriter, r *http.Request) {
+	if testHandlers == nil {
+		testHandlers = createTestHandlers()
+	}
+	testHandlers.GetComments(w, r)
+}
+
+func updateCommentHandler(w http.ResponseWriter, r *http.Request) {
+	if testHandlers == nil {
+		testHandlers = createTestHandlers()
+	}
+	testHandlers.UpdateComment(w, r)
+}
+
+func deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
+	if testHandlers == nil {
+		testHandlers = createTestHandlers()
+	}
+	testHandlers.DeleteComment(w, r)
+}
+
+func addReactionHandler(w http.ResponseWriter, r *http.Request) {
+	if testHandlers == nil {
+		testHandlers = createTestHandlers()
+	}
+	testHandlers.AddReaction(w, r)
+}
+
+func addPageReactionHandler(w http.ResponseWriter, r *http.Request) {
+	if testHandlers == nil {
+		testHandlers = createTestHandlers()
+	}
+	testHandlers.AddPageReaction(w, r)
+}
+
+func getUrlParams(r *http.Request) (map[string]string, error) {
+	return handlers.GetUrlParams(r)
+}
+
+func writeJsonResponse(w http.ResponseWriter, data interface{}) {
+	handlers.WriteJsonResponse(w, data)
+}
+
+func getUserIdentifier(r *http.Request) string {
+	return handlers.GetUserIdentifier(r)
+}
+
+func deprecationMiddleware(next http.Handler) http.Handler {
+	return handlers.DeprecationMiddleware(next)
+}
 
 func TestGetHealthz(t *testing.T) {
 	req := httptest.NewRequest("GET", "/healthz", nil)
@@ -140,7 +270,7 @@ func createTestUserContext(ctx context.Context) context.Context {
 
 func TestPostCommentsHandler_ValidInput(t *testing.T) {
 	// Reset comment store with in-memory adapter
-	commentStore = &InMemoryStoreAdapter{SitePagesIndex: comments.NewSitePagesIndex()}
+	testHandlers = createTestHandlers()
 
 	comment := comments.Comment{
 		Text:     "This is a test comment",
@@ -184,7 +314,7 @@ func TestPostCommentsHandler_ValidInput(t *testing.T) {
 	}
 
 	// Verify comment was stored
-	stored, err := commentStore.GetPageComments("testsite", "testpage")
+	stored, err := testHandlers.CommentStore.GetPageComments("testsite", "testpage")
 	if err != nil {
 		t.Fatalf("failed to get comments: %v", err)
 	}
@@ -194,7 +324,7 @@ func TestPostCommentsHandler_ValidInput(t *testing.T) {
 }
 
 func TestPostCommentsHandler_InvalidJSON(t *testing.T) {
-	commentStore = &InMemoryStoreAdapter{SitePagesIndex: comments.NewSitePagesIndex()}
+	testHandlers = createTestHandlers()
 
 	req := httptest.NewRequest("POST", "/api/site/testsite/page/testpage/comments", bytes.NewReader([]byte("invalid json")))
 	// Add authenticated user to context
@@ -213,7 +343,7 @@ func TestPostCommentsHandler_InvalidJSON(t *testing.T) {
 
 func TestPostCommentsHandler_InvalidURL(t *testing.T) {
 	// Reset comment store
-	commentStore = &InMemoryStoreAdapter{SitePagesIndex: comments.NewSitePagesIndex()}
+	testHandlers = createTestHandlers()
 
 	comment := comments.Comment{
 		Author: "John",
@@ -235,17 +365,17 @@ func TestPostCommentsHandler_InvalidURL(t *testing.T) {
 }
 
 func TestGetCommentsHandler_ExistingComments(t *testing.T) {
-	// Reset and populate comment store
-	inMemory := comments.NewSitePagesIndex()
-	commentStore = &InMemoryStoreAdapter{SitePagesIndex: inMemory}
-
+	// Create a fresh test handler
+	testHandlers = createTestHandlers()
+	
+	// Add test comments directly to the store
 	testComments := []comments.Comment{
 		{ID: "1", Author: "Alice", Text: "First comment", CreatedAt: time.Now(), UpdatedAt: time.Now()},
 		{ID: "2", Author: "Bob", Text: "Second comment", CreatedAt: time.Now(), UpdatedAt: time.Now()},
 	}
 
 	for _, c := range testComments {
-		inMemory.AddPageComment("site1", "page1", c)
+		_ = testHandlers.CommentStore.AddPageComment("site1", "page1", c)
 	}
 
 	req := httptest.NewRequest("GET", "/api/site/site1/page/page1/comments", nil)
@@ -281,7 +411,7 @@ func TestGetCommentsHandler_ExistingComments(t *testing.T) {
 
 func TestGetCommentsHandler_NonExistentPage(t *testing.T) {
 	// Reset comment store
-	commentStore = &InMemoryStoreAdapter{SitePagesIndex: comments.NewSitePagesIndex()}
+	testHandlers = createTestHandlers()
 
 	req := httptest.NewRequest("GET", "/api/site/nonexistent/page/missing/comments", nil)
 	w := httptest.NewRecorder()
@@ -306,7 +436,7 @@ func TestGetCommentsHandler_NonExistentPage(t *testing.T) {
 }
 
 func TestGetCommentsHandler_InvalidURL(t *testing.T) {
-	commentStore = &InMemoryStoreAdapter{SitePagesIndex: comments.NewSitePagesIndex()}
+	testHandlers = createTestHandlers()
 
 	req := httptest.NewRequest("GET", "/invalid/path", nil)
 	w := httptest.NewRecorder()
@@ -460,7 +590,7 @@ func TestDeprecationMiddleware(t *testing.T) {
 
 func TestPostCommentsHandler_Unauthenticated(t *testing.T) {
 	// Reset comment store with in-memory adapter
-	commentStore = &InMemoryStoreAdapter{SitePagesIndex: comments.NewSitePagesIndex()}
+	testHandlers = createTestHandlers()
 
 	comment := comments.Comment{
 		Text: "This is a test comment",
@@ -482,7 +612,7 @@ func TestPostCommentsHandler_Unauthenticated(t *testing.T) {
 }
 
 func TestPostCommentsHandler_EmptyText(t *testing.T) {
-	commentStore = &InMemoryStoreAdapter{SitePagesIndex: comments.NewSitePagesIndex()}
+	testHandlers = createTestHandlers()
 
 	comment := comments.Comment{
 		Text: "", // Empty text
@@ -612,8 +742,8 @@ t.Fatalf("Failed to create SQLite store: %v", err)
 }
 defer store.Close()
 
-commentStore = store
-db = store.GetDB()
+// commentStore = store
+db := store.GetDB()
 
 // Create test admin user
 adminUserStore := models.NewAdminUserStore(db)
@@ -628,19 +758,31 @@ pageStore := models.NewPageStore(db)
 page, _ := pageStore.Create(site.ID, "/test", "Test Page")
 
 // Create mock moderator and config
-moderator = &mockModerator{
+mockMod := &mockModerator{
 result: &moderation.ModerationResult{
 Decision:   "approve",
 Confidence: 0.2,
 Reason:     "Looks good",
 },
 }
-moderationConfigStore = moderation.NewConfigStore(db)
+moderationConfigStore := moderation.NewConfigStore(db)
 
 // Enable moderation for the site
 config := moderation.DefaultModerationConfig()
 config.Enabled = true
 moderationConfigStore.Create(site.ID, config)
+
+	// Create test handlers with moderation enabled
+	tmpl := template.New("test")
+	testHandlers = handlers.NewHandlers(
+		store,
+		db,
+		tmpl,
+		nil, // Auth0Config
+		mockMod,
+		moderationConfigStore,
+		nil, // NotificationQueue
+	)
 
 // Create test comment
 comment := comments.Comment{

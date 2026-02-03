@@ -77,6 +77,24 @@ docker run -p 8080:8080 -v kotomi-data:/app/data kotomi
 
 **Note:** The `-v kotomi-data:/app/data` flag creates a Docker volume to persist your comment database across container restarts.
 
+## Documentation & Guides
+
+### 🚀 Quick Starts
+
+- **[5-Minute Gengo Quick Start](docs/GENGO_QUICK_START.md)** - Get Kotomi running on your Gengo blog in 5 minutes
+- **[Complete Gengo Integration Guide](docs/GENGO_INTEGRATION_GUIDE.md)** - Comprehensive step-by-step guide for Gengo users
+
+### Integration Guides
+
+- [Frontend Widget Documentation](frontend/README.md) - Widget API reference and configuration
+- [Widget Examples](frontend/examples/) - Working examples and templates
+- [Authentication API Guide](docs/AUTHENTICATION_API.md) - JWT authentication setup and examples
+
+### Additional Documentation
+
+- [Security Guide](docs/security.md) - Security best practices and vulnerability reporting
+- [OpenAPI/Swagger Documentation](http://localhost:8080/swagger/index.html) - Interactive API documentation (development mode only)
+
 ## Running Tests
 
 ### Unit Tests
@@ -668,6 +686,7 @@ Add the widget to your HTML page:
 For complete widget documentation, examples, and integration guides, see:
 - [Frontend Widget README](frontend/README.md)
 - [Widget Examples](frontend/examples/)
+- **[Gengo Integration Guide](docs/GENGO_INTEGRATION_GUIDE.md)** - Complete guide for using Kotomi with Gengo static site generator
 
 ### Building the Widget
 

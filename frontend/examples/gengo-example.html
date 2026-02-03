@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ .Title }} - {{ .SiteName }}</title>
+  
+  <!-- Your Gengo theme CSS -->
+  <link rel="stylesheet" href="/css/style.css">
+  
+  <!-- Add Kotomi CSS -->
+  <link rel="stylesheet" href="http://localhost:8080/static/kotomi.css">
+  
+  <style>
+    /* Optional: Custom styling for comments section */
+    .comments-section {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 2px solid #e1e4e8;
+    }
+    
+    .comments-section h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #24292e;
+    }
+  </style>
+</head>
+<body>
+  <!-- Your Gengo blog post template -->
+  <article class="blog-post">
+    <header>
+      <h1>{{ .Title }}</h1>
+      <time datetime="{{ .Date }}">{{ .DateFormatted }}</time>
+      {{ if .Author }}
+      <p class="author">By {{ .Author }}</p>
+      {{ end }}
+    </header>
+    
+    <div class="content">
+      <!-- Blog post content rendered by Gengo -->
+      {{ .Content }}
+    </div>
+    
+    {{ if .Tags }}
+    <div class="tags">
+      {{ range .Tags }}
+      <span class="tag">{{ . }}</span>
+      {{ end }}
+    </div>
+    {{ end }}
+  </article>
+
+  <!-- Kotomi Comment Section -->
+  {{ if .Params.enable_comments }}
+  <section class="comments-section">
+    <h2>Comments</h2>
+    <p>Join the discussion! Share your thoughts below.</p>
+    <div id="kotomi-comments"></div>
+  </section>
+  {{ end }}
+
+  <!-- Add Kotomi JavaScript -->
+  <script src="http://localhost:8080/static/kotomi.js"></script>
+  <script>
+    // Initialize Kotomi widget
+    const kotomi = new Kotomi({
+      baseUrl: 'http://localhost:8080',           // Your Kotomi server URL
+      siteId: 'my-gengo-blog',                     // Replace with your site ID
+      pageId: '{{ .Slug }}',                       // Gengo template variable for unique page ID
+      theme: 'light',                              // 'light' or 'dark'
+      enableReactions: true,                       // Enable emoji reactions
+      enableReplies: true,                         // Enable threaded replies
+      jwtToken: null                               // Set if you have user authentication
+    });
+    
+    // Render the widget
+    kotomi.render().catch(error => {
+      console.error('Failed to load Kotomi widget:', error);
+    });
+  </script>
+</body>
+</html>

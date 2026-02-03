@@ -368,7 +368,7 @@ We will prepare Kotomi for beta release by completing the following requirements
 
 - [Status.md](../../Status.md) - Current feature implementation status
 - [README.md](../../README.md) - Project overview and quick start
-- [CI/CD Pipeline](.github/workflows/deploy_kotomi.yaml) - Deployment automation
+- [CI/CD Pipeline](../../.github/workflows/deploy_kotomi.yaml) - Deployment automation
 - [Dockerfile](../../Dockerfile) - Container configuration
 - [ADR 001](001-user-authentication-for-comments-and-reactions.md) - Authentication architecture
 - [ADR 002](002-code-structure-and-go-1.25-improvements.md) - Code quality improvements

@@ -1,6 +1,7 @@
 package comments
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -62,13 +63,13 @@ func TestSQLiteStore_AddPageComment_Success(t *testing.T) {
 		UpdatedAt: time.Now(),
 	}
 
-	err := store.AddPageComment("site1", "page1", comment)
+	err := store.AddPageComment(context.Background(), "site1", "page1", comment)
 	if err != nil {
 		t.Fatalf("AddPageComment failed: %v", err)
 	}
 
 	// Verify comment was added
-	comments, err := store.GetPageComments("site1", "page1")
+	comments, err := store.GetPageComments(context.Background(), "site1", "page1")
 	if err != nil {
 		t.Fatalf("GetPageComments failed: %v", err)
 	}
@@ -97,7 +98,7 @@ func TestSQLiteStore_AddPageComment_DuplicateID(t *testing.T) {
 		UpdatedAt: time.Now(),
 	}
 
-	err := store.AddPageComment("site1", "page1", comment)
+	err := store.AddPageComment(context.Background(), "site1", "page1", comment)
 	if err != nil {
 		t.Fatalf("first AddPageComment failed: %v", err)
 	}
@@ -111,7 +112,7 @@ func TestSQLiteStore_AddPageComment_DuplicateID(t *testing.T) {
 		UpdatedAt: time.Now(),
 	}
 
-	err = store.AddPageComment("site1", "page1", duplicate)
+	err = store.AddPageComment(context.Background(), "site1", "page1", duplicate)
 	if err == nil {
 		t.Error("expected error for duplicate ID, got nil")
 	}
@@ -128,12 +129,12 @@ func TestSQLiteStore_AddPageComment_AutoTimestamps(t *testing.T) {
 		// No timestamps set
 	}
 
-	err := store.AddPageComment("site1", "page1", comment)
+	err := store.AddPageComment(context.Background(), "site1", "page1", comment)
 	if err != nil {
 		t.Fatalf("AddPageComment failed: %v", err)
 	}
 
-	comments, err := store.GetPageComments("site1", "page1")
+	comments, err := store.GetPageComments(context.Background(), "site1", "page1")
 	if err != nil {
 		t.Fatalf("GetPageComments failed: %v", err)
 	}
@@ -154,7 +155,7 @@ func TestSQLiteStore_GetPageComments_Empty(t *testing.T) {
 	store, _ := createTestDB(t)
 	defer store.Close()
 
-	comments, err := store.GetPageComments("nonexistent", "page")
+	comments, err := store.GetPageComments(context.Background(), "nonexistent", "page")
 	if err != nil {
 		t.Fatalf("GetPageComments failed: %v", err)
 	}
@@ -179,12 +180,12 @@ func TestSQLiteStore_GetPageComments_MultipleComments(t *testing.T) {
 	}
 
 	for _, c := range comments {
-		if err := store.AddPageComment("site1", "page1", c); err != nil {
+		if err := store.AddPageComment(context.Background(), "site1", "page1", c); err != nil {
 			t.Fatalf("failed to add comment: %v", err)
 		}
 	}
 
-	retrieved, err := store.GetPageComments("site1", "page1")
+	retrieved, err := store.GetPageComments(context.Background(), "site1", "page1")
 	if err != nil {
 		t.Fatalf("GetPageComments failed: %v", err)
 	}
@@ -222,14 +223,14 @@ func TestSQLiteStore_GetPageComments_WithParentID(t *testing.T) {
 		UpdatedAt: time.Now(),
 	}
 
-	if err := store.AddPageComment("site1", "page1", parent); err != nil {
+	if err := store.AddPageComment(context.Background(), "site1", "page1", parent); err != nil {
 		t.Fatalf("failed to add parent: %v", err)
 	}
-	if err := store.AddPageComment("site1", "page1", reply); err != nil {
+	if err := store.AddPageComment(context.Background(), "site1", "page1", reply); err != nil {
 		t.Fatalf("failed to add reply: %v", err)
 	}
 
-	comments, err := store.GetPageComments("site1", "page1")
+	comments, err := store.GetPageComments(context.Background(), "site1", "page1")
 	if err != nil {
 		t.Fatalf("GetPageComments failed: %v", err)
 	}
@@ -273,7 +274,7 @@ func TestSQLiteStore_Persistence(t *testing.T) {
 		UpdatedAt: time.Now(),
 	}
 
-	if err := store1.AddPageComment("site1", "page1", comment); err != nil {
+	if err := store1.AddPageComment(context.Background(), "site1", "page1", comment); err != nil {
 		t.Fatalf("failed to add comment: %v", err)
 	}
 
@@ -290,7 +291,7 @@ func TestSQLiteStore_Persistence(t *testing.T) {
 	defer store2.Close()
 
 	// Verify comment persisted
-	comments, err := store2.GetPageComments("site1", "page1")
+	comments, err := store2.GetPageComments(context.Background(), "site1", "page1")
 	if err != nil {
 		t.Fatalf("GetPageComments failed: %v", err)
 	}
@@ -328,7 +329,7 @@ func TestSQLiteStore_ConcurrentWrites(t *testing.T) {
 					CreatedAt: time.Now(),
 					UpdatedAt: time.Now(),
 				}
-				if err := store.AddPageComment("site1", "page1", comment); err != nil {
+				if err := store.AddPageComment(context.Background(), "site1", "page1", comment); err != nil {
 					t.Errorf("failed to add comment: %v", err)
 				}
 			}
@@ -338,7 +339,7 @@ func TestSQLiteStore_ConcurrentWrites(t *testing.T) {
 	wg.Wait()
 
 	// Verify all comments were added
-	comments, err := store.GetPageComments("site1", "page1")
+	comments, err := store.GetPageComments(context.Background(), "site1", "page1")
 	if err != nil {
 		t.Fatalf("GetPageComments failed: %v", err)
 	}
@@ -362,7 +363,7 @@ func TestSQLiteStore_ConcurrentReadWrite(t *testing.T) {
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
-		if err := store.AddPageComment("site1", "page1", comment); err != nil {
+		if err := store.AddPageComment(context.Background(), "site1", "page1", comment); err != nil {
 			t.Fatalf("failed to add initial comment: %v", err)
 		}
 	}
@@ -381,7 +382,7 @@ func TestSQLiteStore_ConcurrentReadWrite(t *testing.T) {
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
 			}
-			if err := store.AddPageComment("site1", "page1", comment); err != nil {
+			if err := store.AddPageComment(context.Background(), "site1", "page1", comment); err != nil {
 				t.Errorf("failed to add comment: %v", err)
 			}
 			time.Sleep(1 * time.Millisecond)
@@ -392,7 +393,7 @@ func TestSQLiteStore_ConcurrentReadWrite(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 10; i++ {
-			comments, err := store.GetPageComments("site1", "page1")
+			comments, err := store.GetPageComments(context.Background(), "site1", "page1")
 			if err != nil {
 				t.Errorf("GetPageComments failed: %v", err)
 			}
@@ -415,7 +416,7 @@ func TestSQLiteStore_Close(t *testing.T) {
 	}
 
 	// Attempting operations after close should fail
-	err = store.AddPageComment("site1", "page1", Comment{
+	err = store.AddPageComment(context.Background(), "site1", "page1", Comment{
 		ID:     "1",
 		Author: "John",
 		Text:   "Test",
@@ -450,14 +451,14 @@ func TestSQLiteStore_MultipleSitesAndPages(t *testing.T) {
 
 	// Add all comments
 	for _, tc := range testCases {
-		if err := store.AddPageComment(tc.site, tc.page, tc.comment); err != nil {
+		if err := store.AddPageComment(context.Background(), tc.site, tc.page, tc.comment); err != nil {
 			t.Fatalf("failed to add comment for %s/%s: %v", tc.site, tc.page, err)
 		}
 	}
 
 	// Verify each site/page has exactly one comment
 	for _, tc := range testCases {
-		comments, err := store.GetPageComments(tc.site, tc.page)
+		comments, err := store.GetPageComments(context.Background(), tc.site, tc.page)
 		if err != nil {
 			t.Fatalf("GetPageComments failed for %s/%s: %v", tc.site, tc.page, err)
 		}
@@ -487,20 +488,20 @@ func TestSQLiteStore_UpdateCommentText(t *testing.T) {
 		UpdatedAt: time.Now(),
 	}
 
-	err := store.AddPageComment("site1", "page1", comment)
+	err := store.AddPageComment(context.Background(), "site1", "page1", comment)
 	if err != nil {
 		t.Fatalf("failed to add comment: %v", err)
 	}
 
 	// Update the comment text
 	newText := "Updated text content"
-	err = store.UpdateCommentText(comment.ID, newText)
+	err = store.UpdateCommentText(context.Background(), comment.ID, newText)
 	if err != nil {
 		t.Fatalf("UpdateCommentText failed: %v", err)
 	}
 
 	// Retrieve and verify the comment was updated
-	updated, err := store.GetCommentByID(comment.ID)
+	updated, err := store.GetCommentByID(context.Background(), comment.ID)
 	if err != nil {
 		t.Fatalf("failed to get updated comment: %v", err)
 	}
@@ -526,7 +527,7 @@ func TestSQLiteStore_UpdateCommentText_NotFound(t *testing.T) {
 	store, _ := createTestDB(t)
 	defer store.Close()
 
-	err := store.UpdateCommentText("nonexistent-id", "Some text")
+	err := store.UpdateCommentText(context.Background(), "nonexistent-id", "Some text")
 	if err == nil {
 		t.Error("expected error for non-existent comment, got nil")
 	}

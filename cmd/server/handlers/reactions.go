@@ -73,7 +73,7 @@ func (s *ServerHandlers) AddReaction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reactionStore := models.NewReactionStore(s.DB)
-	reaction, err := reactionStore.AddReaction(commentID, req.AllowedReactionID, user.ID)
+	reaction, err := reactionStore.AddReaction(r.Context(), commentID, req.AllowedReactionID, user.ID)
 	if err != nil {
 		log.Printf("Error adding reaction: %v", err)
 		http.Error(w, "Failed to add reaction", http.StatusInternalServerError)
@@ -148,7 +148,7 @@ func (s *ServerHandlers) AddPageReaction(w http.ResponseWriter, r *http.Request)
 	}
 
 	reactionStore := models.NewReactionStore(s.DB)
-	reaction, err := reactionStore.AddPageReaction(pageID, req.AllowedReactionID, user.ID)
+	reaction, err := reactionStore.AddPageReaction(r.Context(), pageID, req.AllowedReactionID, user.ID)
 	if err != nil {
 		log.Printf("Error adding page reaction: %v", err)
 		http.Error(w, "Failed to add reaction", http.StatusInternalServerError)

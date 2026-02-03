@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -27,14 +28,14 @@ func setupUserManagementTest(t *testing.T) (*UserManagementHandler, *comments.SQ
 
 	// Create test admin user
 	adminUserStore := models.NewAdminUserStore(db)
-	adminUser, err := adminUserStore.Create("admin@test.com", "Admin User", "auth0|test")
+	adminUser, err := adminUserStore.Create(context.Background(), "admin@test.com", "Admin User", "auth0|test")
 	if err != nil {
 		t.Fatalf("Failed to create admin user: %v", err)
 	}
 
 	// Create test site owned by admin user
 	siteStore := models.NewSiteStore(db)
-	site, err := siteStore.Create(adminUser.ID, "Test Site", "", "Test site for user management")
+	site, err := siteStore.Create(context.Background(), adminUser.ID, "Test Site", "", "Test site for user management")
 	if err != nil {
 		t.Fatalf("Failed to create site: %v", err)
 	}
@@ -51,7 +52,7 @@ func setupUserManagementTest(t *testing.T) (*UserManagementHandler, *comments.SQ
 		JWTIssuer:         "test-issuer",
 		JWTAudience:       "kotomi",
 	}
-	if err := authConfigStore.Create(authConfig); err != nil {
+	if err := authConfigStore.Create(context.Background(), authConfig); err != nil {
 		t.Fatalf("Failed to create auth config: %v", err)
 	}
 
@@ -64,7 +65,7 @@ func setupUserManagementTest(t *testing.T) (*UserManagementHandler, *comments.SQ
 		Email:      "user1@test.com",
 		IsVerified: true,
 	}
-	if err := userStore.CreateOrUpdate(user1); err != nil {
+	if err := userStore.CreateOrUpdate(context.Background(), user1); err != nil {
 		t.Fatalf("Failed to create test user 1: %v", err)
 	}
 
@@ -75,7 +76,7 @@ func setupUserManagementTest(t *testing.T) (*UserManagementHandler, *comments.SQ
 		Email:  "user2@test.com",
 		Roles:  []string{"premium"},
 	}
-	if err := userStore.CreateOrUpdate(user2); err != nil {
+	if err := userStore.CreateOrUpdate(context.Background(), user2); err != nil {
 		t.Fatalf("Failed to create test user 2: %v", err)
 	}
 
@@ -192,7 +193,7 @@ func TestUserManagementHandler_DeleteUserHandler(t *testing.T) {
 
 	// Verify user was deleted
 	userStore := models.NewUserStore(store.GetDB())
-	user, err := userStore.GetBySiteAndID(siteID, "user-1")
+	user, err := userStore.GetBySiteAndID(context.Background(), siteID, "user-1")
 	if err != nil {
 		t.Fatalf("Failed to check if user was deleted: %v", err)
 	}
@@ -227,7 +228,7 @@ func TestUserManagementHandler_ForbiddenAccess(t *testing.T) {
 
 	// Create another admin user who doesn't own the site
 	adminUserStore := models.NewAdminUserStore(store.GetDB())
-	otherAdmin, err := adminUserStore.Create("other@test.com", "Other Admin", "auth0|other")
+	otherAdmin, err := adminUserStore.Create(context.Background(), "other@test.com", "Other Admin", "auth0|other")
 	if err != nil {
 		t.Fatalf("Failed to create other admin: %v", err)
 	}

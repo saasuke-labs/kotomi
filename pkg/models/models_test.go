@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -31,7 +32,7 @@ func TestAdminUserStore_CreateAndGet(t *testing.T) {
 	adminUserStore := NewAdminUserStore(db)
 
 	// Create admin user
-	user, err := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
+	user, err := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|12345")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -44,7 +45,7 @@ func TestAdminUserStore_CreateAndGet(t *testing.T) {
 	}
 
 	// Get by Auth0 sub
-	retrieved, err := adminUserStore.GetByAuth0Sub("auth0|12345")
+	retrieved, err := adminUserStore.GetByAuth0Sub(context.Background(), "auth0|12345")
 	if err != nil {
 		t.Fatalf("GetByAuth0Sub failed: %v", err)
 	}
@@ -56,7 +57,7 @@ func TestAdminUserStore_CreateAndGet(t *testing.T) {
 	}
 
 	// Get by ID
-	retrieved2, err := adminUserStore.GetByID(user.ID)
+	retrieved2, err := adminUserStore.GetByID(context.Background(), user.ID)
 	if err != nil {
 		t.Fatalf("GetByID failed: %v", err)
 	}
@@ -73,19 +74,19 @@ func TestUserStore_Update(t *testing.T) {
 	adminUserStore := NewAdminUserStore(db)
 
 	// Create user
-	user, err := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
+	user, err := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|12345")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
 
 	// Update user
-	err = adminUserStore.Update(user.ID, "updated@example.com", "Updated Name")
+	err = adminUserStore.Update(context.Background(), user.ID, "updated@example.com", "Updated Name")
 	if err != nil {
 		t.Fatalf("Update failed: %v", err)
 	}
 
 	// Verify update
-	retrieved, err := adminUserStore.GetByID(user.ID)
+	retrieved, err := adminUserStore.GetByID(context.Background(), user.ID)
 	if err != nil {
 		t.Fatalf("GetByID failed: %v", err)
 	}
@@ -106,13 +107,13 @@ func TestSiteStore_CreateAndGet(t *testing.T) {
 	siteStore := NewSiteStore(db)
 
 	// Create user first
-	user, err := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
+	user, err := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|12345")
 	if err != nil {
 		t.Fatalf("Create user failed: %v", err)
 	}
 
 	// Create site
-	site, err := siteStore.Create(user.ID, "Test Site", "example.com", "A test site")
+	site, err := siteStore.Create(context.Background(), user.ID, "Test Site", "example.com", "A test site")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -125,7 +126,7 @@ func TestSiteStore_CreateAndGet(t *testing.T) {
 	}
 
 	// Get by ID
-	retrieved, err := siteStore.GetByID(site.ID)
+	retrieved, err := siteStore.GetByID(context.Background(), site.ID)
 	if err != nil {
 		t.Fatalf("GetByID failed: %v", err)
 	}
@@ -134,7 +135,7 @@ func TestSiteStore_CreateAndGet(t *testing.T) {
 	}
 
 	// Get by owner
-	sites, err := siteStore.GetByOwner(user.ID)
+	sites, err := siteStore.GetByOwner(context.Background(), user.ID)
 	if err != nil {
 		t.Fatalf("GetByOwner failed: %v", err)
 	}
@@ -151,17 +152,17 @@ func TestSiteStore_Update(t *testing.T) {
 	adminUserStore := NewAdminUserStore(db)
 	siteStore := NewSiteStore(db)
 
-	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
-	site, _ := siteStore.Create(user.ID, "Test Site", "example.com", "A test site")
+	user, _ := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|12345")
+	site, _ := siteStore.Create(context.Background(), user.ID, "Test Site", "example.com", "A test site")
 
 	// Update site
-	err := siteStore.Update(site.ID, "Updated Site", "newdomain.com", "Updated description")
+	err := siteStore.Update(context.Background(), site.ID, "Updated Site", "newdomain.com", "Updated description")
 	if err != nil {
 		t.Fatalf("Update failed: %v", err)
 	}
 
 	// Verify update
-	retrieved, err := siteStore.GetByID(site.ID)
+	retrieved, err := siteStore.GetByID(context.Background(), site.ID)
 	if err != nil {
 		t.Fatalf("GetByID failed: %v", err)
 	}
@@ -178,17 +179,17 @@ func TestSiteStore_Delete(t *testing.T) {
 	adminUserStore := NewAdminUserStore(db)
 	siteStore := NewSiteStore(db)
 
-	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
-	site, _ := siteStore.Create(user.ID, "Test Site", "example.com", "A test site")
+	user, _ := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|12345")
+	site, _ := siteStore.Create(context.Background(), user.ID, "Test Site", "example.com", "A test site")
 
 	// Delete site
-	err := siteStore.Delete(site.ID)
+	err := siteStore.Delete(context.Background(), site.ID)
 	if err != nil {
 		t.Fatalf("Delete failed: %v", err)
 	}
 
 	// Verify deletion
-	_, err = siteStore.GetByID(site.ID)
+	_, err = siteStore.GetByID(context.Background(), site.ID)
 	if err == nil {
 		t.Error("Expected error for deleted site, got nil")
 	}
@@ -203,11 +204,11 @@ func TestPageStore_CreateAndGet(t *testing.T) {
 	siteStore := NewSiteStore(db)
 	pageStore := NewPageStore(db)
 
-	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
-	site, _ := siteStore.Create(user.ID, "Test Site", "example.com", "A test site")
+	user, _ := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|12345")
+	site, _ := siteStore.Create(context.Background(), user.ID, "Test Site", "example.com", "A test site")
 
 	// Create page
-	page, err := pageStore.Create(site.ID, "/blog/post-1", "Post 1")
+	page, err := pageStore.Create(context.Background(), site.ID, "/blog/post-1", "Post 1")
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -220,7 +221,7 @@ func TestPageStore_CreateAndGet(t *testing.T) {
 	}
 
 	// Get by ID
-	retrieved, err := pageStore.GetByID(page.ID)
+	retrieved, err := pageStore.GetByID(context.Background(), page.ID)
 	if err != nil {
 		t.Fatalf("GetByID failed: %v", err)
 	}
@@ -229,7 +230,7 @@ func TestPageStore_CreateAndGet(t *testing.T) {
 	}
 
 	// Get by site
-	pages, err := pageStore.GetBySite(site.ID)
+	pages, err := pageStore.GetBySite(context.Background(), site.ID)
 	if err != nil {
 		t.Fatalf("GetBySite failed: %v", err)
 	}
@@ -247,12 +248,12 @@ func TestPageStore_GetBySitePath(t *testing.T) {
 	siteStore := NewSiteStore(db)
 	pageStore := NewPageStore(db)
 
-	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
-	site, _ := siteStore.Create(user.ID, "Test Site", "example.com", "A test site")
-	page, _ := pageStore.Create(site.ID, "/blog/post-1", "Post 1")
+	user, _ := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|12345")
+	site, _ := siteStore.Create(context.Background(), user.ID, "Test Site", "example.com", "A test site")
+	page, _ := pageStore.Create(context.Background(), site.ID, "/blog/post-1", "Post 1")
 
 	// Get by site and path
-	retrieved, err := pageStore.GetBySitePath(site.ID, "/blog/post-1")
+	retrieved, err := pageStore.GetBySitePath(context.Background(), site.ID, "/blog/post-1")
 	if err != nil {
 		t.Fatalf("GetBySitePath failed: %v", err)
 	}
@@ -264,7 +265,7 @@ func TestPageStore_GetBySitePath(t *testing.T) {
 	}
 
 	// Try non-existent path
-	retrieved2, err := pageStore.GetBySitePath(site.ID, "/nonexistent")
+	retrieved2, err := pageStore.GetBySitePath(context.Background(), site.ID, "/nonexistent")
 	if err != nil {
 		t.Fatalf("GetBySitePath failed: %v", err)
 	}
@@ -282,18 +283,18 @@ func TestPageStore_Update(t *testing.T) {
 	siteStore := NewSiteStore(db)
 	pageStore := NewPageStore(db)
 
-	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
-	site, _ := siteStore.Create(user.ID, "Test Site", "example.com", "A test site")
-	page, _ := pageStore.Create(site.ID, "/blog/post-1", "Post 1")
+	user, _ := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|12345")
+	site, _ := siteStore.Create(context.Background(), user.ID, "Test Site", "example.com", "A test site")
+	page, _ := pageStore.Create(context.Background(), site.ID, "/blog/post-1", "Post 1")
 
 	// Update page
-	err := pageStore.Update(page.ID, "/blog/updated-post", "Updated Post")
+	err := pageStore.Update(context.Background(), page.ID, "/blog/updated-post", "Updated Post")
 	if err != nil {
 		t.Fatalf("Update failed: %v", err)
 	}
 
 	// Verify update
-	retrieved, err := pageStore.GetByID(page.ID)
+	retrieved, err := pageStore.GetByID(context.Background(), page.ID)
 	if err != nil {
 		t.Fatalf("GetByID failed: %v", err)
 	}
@@ -314,18 +315,18 @@ func TestPageStore_Delete(t *testing.T) {
 	siteStore := NewSiteStore(db)
 	pageStore := NewPageStore(db)
 
-	user, _ := adminUserStore.Create("test@example.com", "Test User", "auth0|12345")
-	site, _ := siteStore.Create(user.ID, "Test Site", "example.com", "A test site")
-	page, _ := pageStore.Create(site.ID, "/blog/post-1", "Post 1")
+	user, _ := adminUserStore.Create(context.Background(), "test@example.com", "Test User", "auth0|12345")
+	site, _ := siteStore.Create(context.Background(), user.ID, "Test Site", "example.com", "A test site")
+	page, _ := pageStore.Create(context.Background(), site.ID, "/blog/post-1", "Post 1")
 
 	// Delete page
-	err := pageStore.Delete(page.ID)
+	err := pageStore.Delete(context.Background(), page.ID)
 	if err != nil {
 		t.Fatalf("Delete failed: %v", err)
 	}
 
 	// Verify deletion
-	_, err = pageStore.GetByID(page.ID)
+	_, err = pageStore.GetByID(context.Background(), page.ID)
 	if err == nil {
 		t.Error("Expected error for deleted page, got nil")
 	}
@@ -342,8 +343,8 @@ func TestUserStore_ReputationScore(t *testing.T) {
 	userStore := NewUserStore(db)
 
 	// Create test data
-	adminUser, _ := adminUserStore.Create("admin@example.com", "Admin", "auth0|admin")
-	site, _ := siteStore.Create(adminUser.ID, "Test Site", "example.com", "A test site")
+	adminUser, _ := adminUserStore.Create(context.Background(), "admin@example.com", "Admin", "auth0|admin")
+	site, _ := siteStore.Create(context.Background(), adminUser.ID, "Test Site", "example.com", "A test site")
 
 	// Create a user
 	user := &User{
@@ -359,20 +360,20 @@ func TestUserStore_ReputationScore(t *testing.T) {
 		UpdatedAt:       time.Now(),
 	}
 
-	err := userStore.CreateOrUpdate(user)
+	err := userStore.CreateOrUpdate(context.Background(), user)
 	if err != nil {
 		t.Fatalf("CreateOrUpdate failed: %v", err)
 	}
 
 	// Update reputation score
 	newScore := 42
-	err = userStore.UpdateReputationScore(site.ID, user.ID, newScore)
+	err = userStore.UpdateReputationScore(context.Background(), site.ID, user.ID, newScore)
 	if err != nil {
 		t.Fatalf("UpdateReputationScore failed: %v", err)
 	}
 
 	// Verify the score was updated
-	retrieved, err := userStore.GetBySiteAndID(site.ID, user.ID)
+	retrieved, err := userStore.GetBySiteAndID(context.Background(), site.ID, user.ID)
 	if err != nil {
 		t.Fatalf("GetBySiteAndID failed: %v", err)
 	}
@@ -394,9 +395,9 @@ func TestUserStore_CalculateReputationScore(t *testing.T) {
 	userStore := NewUserStore(db)
 
 	// Create test data
-	adminUser, _ := adminUserStore.Create("admin@example.com", "Admin", "auth0|admin")
-	site, _ := siteStore.Create(adminUser.ID, "Test Site", "example.com", "A test site")
-	page, _ := pageStore.Create(site.ID, "/test-page", "Test Page")
+	adminUser, _ := adminUserStore.Create(context.Background(), "admin@example.com", "Admin", "auth0|admin")
+	site, _ := siteStore.Create(context.Background(), adminUser.ID, "Test Site", "example.com", "A test site")
+	page, _ := pageStore.Create(context.Background(), site.ID, "/test-page", "Test Page")
 
 	// Create a user
 	user := &User{
@@ -412,7 +413,7 @@ func TestUserStore_CalculateReputationScore(t *testing.T) {
 		UpdatedAt:       time.Now(),
 	}
 
-	err := userStore.CreateOrUpdate(user)
+	err := userStore.CreateOrUpdate(context.Background(), user)
 	if err != nil {
 		t.Fatalf("CreateOrUpdate failed: %v", err)
 	}
@@ -430,7 +431,7 @@ func TestUserStore_CalculateReputationScore(t *testing.T) {
 	}
 
 	// Calculate reputation score
-	score, err := userStore.CalculateReputationScore(site.ID, user.ID)
+	score, err := userStore.CalculateReputationScore(context.Background(), site.ID, user.ID)
 	if err != nil {
 		t.Fatalf("CalculateReputationScore failed: %v", err)
 	}
@@ -450,7 +451,7 @@ func TestUserStore_CalculateReputationScore(t *testing.T) {
 	}
 
 	// Recalculate - should still be 3
-	score, err = userStore.CalculateReputationScore(site.ID, user.ID)
+	score, err = userStore.CalculateReputationScore(context.Background(), site.ID, user.ID)
 	if err != nil {
 		t.Fatalf("CalculateReputationScore failed: %v", err)
 	}

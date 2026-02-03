@@ -1,6 +1,7 @@
 package comments
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -19,19 +20,19 @@ func TestSQLiteStore_UpdateCommentStatus(t *testing.T) {
 		UpdatedAt: time.Now(),
 	}
 
-	err := store.AddPageComment("site1", "page1", comment)
+	err := store.AddPageComment(context.Background(), "site1", "page1", comment)
 	if err != nil {
 		t.Fatalf("AddPageComment failed: %v", err)
 	}
 
 	// Update status to approved
-	err = store.UpdateCommentStatus("1", "approved", "moderator123")
+	err = store.UpdateCommentStatus(context.Background(), "1", "approved", "moderator123")
 	if err != nil {
 		t.Fatalf("UpdateCommentStatus failed: %v", err)
 	}
 
 	// Verify status update
-	retrieved, err := store.GetCommentByID("1")
+	retrieved, err := store.GetCommentByID(context.Background(), "1")
 	if err != nil {
 		t.Fatalf("GetCommentByID failed: %v", err)
 	}
@@ -59,13 +60,13 @@ func TestSQLiteStore_GetCommentsBySite(t *testing.T) {
 	}
 
 	for _, c := range comments {
-		if err := store.AddPageComment("site1", "page1", c); err != nil {
+		if err := store.AddPageComment(context.Background(), "site1", "page1", c); err != nil {
 			t.Fatalf("AddPageComment failed: %v", err)
 		}
 	}
 
 	// Get all comments for site
-	allComments, err := store.GetCommentsBySite("site1", "")
+	allComments, err := store.GetCommentsBySite(context.Background(), "site1", "")
 	if err != nil {
 		t.Fatalf("GetCommentsBySite failed: %v", err)
 	}
@@ -74,7 +75,7 @@ func TestSQLiteStore_GetCommentsBySite(t *testing.T) {
 	}
 
 	// Get only pending comments
-	pendingComments, err := store.GetCommentsBySite("site1", "pending")
+	pendingComments, err := store.GetCommentsBySite(context.Background(), "site1", "pending")
 	if err != nil {
 		t.Fatalf("GetCommentsBySite failed: %v", err)
 	}
@@ -86,7 +87,7 @@ func TestSQLiteStore_GetCommentsBySite(t *testing.T) {
 	}
 
 	// Get only approved comments
-	approvedComments, err := store.GetCommentsBySite("site1", "approved")
+	approvedComments, err := store.GetCommentsBySite(context.Background(), "site1", "approved")
 	if err != nil {
 		t.Fatalf("GetCommentsBySite failed: %v", err)
 	}
@@ -109,25 +110,25 @@ func TestSQLiteStore_DeleteComment(t *testing.T) {
 		UpdatedAt: time.Now(),
 	}
 
-	err := store.AddPageComment("site1", "page1", comment)
+	err := store.AddPageComment(context.Background(), "site1", "page1", comment)
 	if err != nil {
 		t.Fatalf("AddPageComment failed: %v", err)
 	}
 
 	// Delete the comment
-	err = store.DeleteComment("1")
+	err = store.DeleteComment(context.Background(), "1")
 	if err != nil {
 		t.Fatalf("DeleteComment failed: %v", err)
 	}
 
 	// Verify deletion
-	_, err = store.GetCommentByID("1")
+	_, err = store.GetCommentByID(context.Background(), "1")
 	if err == nil {
 		t.Error("Expected error when getting deleted comment, got nil")
 	}
 
 	// Verify it's not in the page comments either
-	comments, err := store.GetPageComments("site1", "page1")
+	comments, err := store.GetPageComments(context.Background(), "site1", "page1")
 	if err != nil {
 		t.Fatalf("GetPageComments failed: %v", err)
 	}
@@ -150,13 +151,13 @@ func TestSQLiteStore_GetCommentByID(t *testing.T) {
 		UpdatedAt: time.Now(),
 	}
 
-	err := store.AddPageComment("site1", "page1", comment)
+	err := store.AddPageComment(context.Background(), "site1", "page1", comment)
 	if err != nil {
 		t.Fatalf("AddPageComment failed: %v", err)
 	}
 
 	// Get by ID
-	retrieved, err := store.GetCommentByID("1")
+	retrieved, err := store.GetCommentByID(context.Background(), "1")
 	if err != nil {
 		t.Fatalf("GetCommentByID failed: %v", err)
 	}
@@ -169,7 +170,7 @@ func TestSQLiteStore_GetCommentByID(t *testing.T) {
 	}
 
 	// Try non-existent ID
-	_, err = store.GetCommentByID("nonexistent")
+	_, err = store.GetCommentByID(context.Background(), "nonexistent")
 	if err == nil {
 		t.Error("Expected error for non-existent ID, got nil")
 	}
@@ -188,13 +189,13 @@ func TestSQLiteStore_CommentDefaultStatus(t *testing.T) {
 		UpdatedAt: time.Now(),
 	}
 
-	err := store.AddPageComment("site1", "page1", comment)
+	err := store.AddPageComment(context.Background(), "site1", "page1", comment)
 	if err != nil {
 		t.Fatalf("AddPageComment failed: %v", err)
 	}
 
 	// Verify default status is "pending"
-	retrieved, err := store.GetCommentByID("1")
+	retrieved, err := store.GetCommentByID(context.Background(), "1")
 	if err != nil {
 		t.Fatalf("GetCommentByID failed: %v", err)
 	}
@@ -218,19 +219,19 @@ func TestSQLiteStore_ModerationWorkflow(t *testing.T) {
 		UpdatedAt: time.Now(),
 	}
 
-	err := store.AddPageComment("site1", "page1", comment)
+	err := store.AddPageComment(context.Background(), "site1", "page1", comment)
 	if err != nil {
 		t.Fatalf("AddPageComment failed: %v", err)
 	}
 
 	// Approve it
-	err = store.UpdateCommentStatus("1", "approved", "moderator1")
+	err = store.UpdateCommentStatus(context.Background(), "1", "approved", "moderator1")
 	if err != nil {
 		t.Fatalf("UpdateCommentStatus (approve) failed: %v", err)
 	}
 
 	// Verify it's approved
-	retrieved, err := store.GetCommentByID("1")
+	retrieved, err := store.GetCommentByID(context.Background(), "1")
 	if err != nil {
 		t.Fatalf("GetCommentByID failed: %v", err)
 	}
@@ -239,13 +240,13 @@ func TestSQLiteStore_ModerationWorkflow(t *testing.T) {
 	}
 
 	// Reject it (change from approved to rejected)
-	err = store.UpdateCommentStatus("1", "rejected", "moderator2")
+	err = store.UpdateCommentStatus(context.Background(), "1", "rejected", "moderator2")
 	if err != nil {
 		t.Fatalf("UpdateCommentStatus (reject) failed: %v", err)
 	}
 
 	// Verify it's rejected
-	retrieved, err = store.GetCommentByID("1")
+	retrieved, err = store.GetCommentByID(context.Background(), "1")
 	if err != nil {
 		t.Fatalf("GetCommentByID failed: %v", err)
 	}

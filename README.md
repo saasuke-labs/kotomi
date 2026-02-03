@@ -232,6 +232,13 @@ Kotomi includes a web-based admin panel for managing sites, pages, and moderatin
 - View reaction statistics and usage
 - Delete reaction types (cascade deletes user reactions)
 
+**Export/Import:**
+- Export site data to JSON or CSV formats
+- Import previously exported data
+- Backup and restore comments and reactions
+- Duplicate handling strategies (skip or update)
+- Data portability between Kotomi instances
+
 ### Admin Panel Routes
 
 - `/admin` - Redirects to dashboard
@@ -240,6 +247,8 @@ Kotomi includes a web-based admin panel for managing sites, pages, and moderatin
 - `/admin/sites/{siteId}` - View site details and pages
 - `/admin/sites/{siteId}/reactions` - Manage allowed reactions for a site
 - `/admin/sites/{siteId}/comments` - Moderate comments for a site
+- `/admin/sites/{siteId}/export` - Export site data
+- `/admin/sites/{siteId}/import` - Import site data
 - `/login` - Auth0 login
 - `/logout` - Logout and clear session
 
@@ -826,6 +835,56 @@ export AUTH0_CLIENT_ID=your_client_id
 export AUTH0_CLIENT_SECRET=your_client_secret
 go run cmd/main.go
 ```
+
+### Export/Import Configuration
+
+Kotomi includes built-in export and import functionality for data portability and backup.
+
+**Features:**
+- Export site data to JSON or CSV formats
+- Import previously exported data
+- Duplicate handling (skip or update existing records)
+- Data validation during import
+- Transaction-based import (all or nothing)
+
+**Export Formats:**
+
+1. **JSON (Complete Export)**:
+   - Exports all comments, reactions, pages, and metadata
+   - Preserves relationships between data
+   - Can be re-imported to the same or different Kotomi instance
+   - Recommended for backups and data portability
+
+2. **CSV (Partial Export)**:
+   - Comments CSV: For analysis in spreadsheet applications
+   - Reactions CSV: Separate file for reaction data
+   - Suitable for reporting and data analysis
+   - Cannot be fully re-imported (metadata lost)
+
+**Using Export/Import:**
+
+1. **Export via Admin Panel**:
+   - Navigate to your site in the admin panel
+   - Click "Export Data"
+   - Choose your format (JSON, CSV Comments, or CSV Reactions)
+   - Download the file
+
+2. **Import via Admin Panel**:
+   - Navigate to your site in the admin panel
+   - Click "Import Data"
+   - Upload your JSON or CSV file
+   - Choose duplicate handling strategy:
+     - **Skip**: Skip existing records (recommended)
+     - **Update**: Update existing records with new data
+   - Review import results
+
+**Example Export Filename**: `kotomi_export_my_site_20260203_120000.json`
+
+**Important Notes:**
+- Always export before importing to prevent data loss
+- Import files must match the target site ID
+- Large imports may take a few seconds
+- Import is transactional - either all data imports or none
 
 ### Docker Configuration
 

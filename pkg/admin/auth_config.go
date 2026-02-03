@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -39,7 +40,7 @@ func (h *AuthConfigHandler) HandleAuthConfigForm(w http.ResponseWriter, r *http.
 	siteID := vars["siteId"]
 
 	// Verify site ownership
-	if !h.verifySiteOwnership(siteID, userID, w) {
+	if !h.verifySiteOwnership(r.Context(), siteID, userID, w) {
 		return
 	}
 
@@ -79,7 +80,7 @@ func (h *AuthConfigHandler) GetAuthConfig(w http.ResponseWriter, r *http.Request
 	siteID := vars["siteId"]
 
 	// Verify site ownership
-	if !h.verifySiteOwnership(siteID, userID, w) {
+	if !h.verifySiteOwnership(r.Context(), siteID, userID, w) {
 		return
 	}
 
@@ -120,7 +121,7 @@ func (h *AuthConfigHandler) CreateAuthConfig(w http.ResponseWriter, r *http.Requ
 	siteID := vars["siteId"]
 
 	// Verify site ownership
-	if !h.verifySiteOwnership(siteID, userID, w) {
+	if !h.verifySiteOwnership(r.Context(), siteID, userID, w) {
 		return
 	}
 
@@ -167,7 +168,7 @@ func (h *AuthConfigHandler) UpdateAuthConfig(w http.ResponseWriter, r *http.Requ
 	siteID := vars["siteId"]
 
 	// Verify site ownership
-	if !h.verifySiteOwnership(siteID, userID, w) {
+	if !h.verifySiteOwnership(r.Context(), siteID, userID, w) {
 		return
 	}
 
@@ -235,7 +236,7 @@ func (h *AuthConfigHandler) DeleteAuthConfig(w http.ResponseWriter, r *http.Requ
 	siteID := vars["siteId"]
 
 	// Verify site ownership
-	if !h.verifySiteOwnership(siteID, userID, w) {
+	if !h.verifySiteOwnership(r.Context(), siteID, userID, w) {
 		return
 	}
 
@@ -257,9 +258,9 @@ func (h *AuthConfigHandler) DeleteAuthConfig(w http.ResponseWriter, r *http.Requ
 }
 
 // verifySiteOwnership verifies that the user owns the specified site
-func (h *AuthConfigHandler) verifySiteOwnership(siteID, userID string, w http.ResponseWriter) bool {
+func (h *AuthConfigHandler) verifySiteOwnership(ctx context.Context, siteID, userID string, w http.ResponseWriter) bool {
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(r.Context(), siteID)
+	site, err := siteStore.GetByID(ctx, siteID)
 	if err != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return false

@@ -272,7 +272,7 @@ func (h *AuthHandler) GetAuthConfig(w http.ResponseWriter, r *http.Request) {
 	
 	// Get site auth config
 	authConfigStore := models.NewSiteAuthConfigStore(h.db)
-	authConfig, err := authConfigStore.GetBySiteID(siteID)
+	authConfig, err := authConfigStore.GetBySiteID(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, `{"error": "Site not found or auth not configured"}`, http.StatusNotFound)
 		return

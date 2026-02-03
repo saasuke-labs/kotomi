@@ -32,9 +32,9 @@ func (s *ServerHandlers) GetAllowedReactions(w http.ResponseWriter, r *http.Requ
 	var err error
 
 	if reactionType != "" && (reactionType == "page" || reactionType == "comment") {
-		reactions, err = allowedReactionStore.GetBySiteAndType(siteID, reactionType)
+		reactions, err = allowedReactionStore.GetBySiteAndType(r.Context(), siteID, reactionType)
 	} else {
-		reactions, err = allowedReactionStore.GetBySite(siteID)
+		reactions, err = allowedReactionStore.GetBySite(r.Context(), siteID)
 	}
 
 	if err != nil {
@@ -95,7 +95,7 @@ func (s *ServerHandlers) GetReactionsByComment(w http.ResponseWriter, r *http.Re
 	commentID := vars["commentId"]
 
 	reactionStore := models.NewReactionStore(s.DB)
-	reactions, err := reactionStore.GetReactionsByComment(commentID)
+	reactions, err := reactionStore.GetReactionsByComment(r.Context(), commentID)
 	if err != nil {
 		log.Printf("Error retrieving reactions: %v", err)
 		http.Error(w, "Failed to retrieve reactions", http.StatusInternalServerError)
@@ -111,7 +111,7 @@ func (s *ServerHandlers) GetReactionCounts(w http.ResponseWriter, r *http.Reques
 	commentID := vars["commentId"]
 
 	reactionStore := models.NewReactionStore(s.DB)
-	counts, err := reactionStore.GetReactionCounts(commentID)
+	counts, err := reactionStore.GetReactionCounts(r.Context(), commentID)
 	if err != nil {
 		log.Printf("Error retrieving reaction counts: %v", err)
 		http.Error(w, "Failed to retrieve reaction counts", http.StatusInternalServerError)
@@ -170,7 +170,7 @@ func (s *ServerHandlers) GetReactionsByPage(w http.ResponseWriter, r *http.Reque
 	pageID := vars["pageId"]
 
 	reactionStore := models.NewReactionStore(s.DB)
-	reactions, err := reactionStore.GetReactionsByPage(pageID)
+	reactions, err := reactionStore.GetReactionsByPage(r.Context(), pageID)
 	if err != nil {
 		log.Printf("Error retrieving page reactions: %v", err)
 		http.Error(w, "Failed to retrieve reactions", http.StatusInternalServerError)
@@ -186,7 +186,7 @@ func (s *ServerHandlers) GetPageReactionCounts(w http.ResponseWriter, r *http.Re
 	pageID := vars["pageId"]
 
 	reactionStore := models.NewReactionStore(s.DB)
-	counts, err := reactionStore.GetPageReactionCounts(pageID)
+	counts, err := reactionStore.GetPageReactionCounts(r.Context(), pageID)
 	if err != nil {
 		log.Printf("Error retrieving page reaction counts: %v", err)
 		http.Error(w, "Failed to retrieve reaction counts", http.StatusInternalServerError)
@@ -202,7 +202,7 @@ func (s *ServerHandlers) RemoveReaction(w http.ResponseWriter, r *http.Request) 
 	reactionID := vars["reactionId"]
 
 	reactionStore := models.NewReactionStore(s.DB)
-	if err := reactionStore.RemoveReaction(reactionID); err != nil {
+	if err := reactionStore.RemoveReaction(r.Context(), reactionID); err != nil {
 		log.Printf("Error removing reaction: %v", err)
 		http.Error(w, "Failed to remove reaction", http.StatusInternalServerError)
 		return

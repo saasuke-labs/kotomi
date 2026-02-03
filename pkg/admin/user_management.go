@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -32,7 +33,7 @@ func (h *UserManagementHandler) ListUsersHandler(w http.ResponseWriter, r *http.
 	siteID := vars["siteId"]
 
 	// Verify user owns the site
-	if !h.verifySiteOwnership(siteID, adminUserID, w) {
+	if !h.verifySiteOwnership(r.Context(), siteID, adminUserID, w) {
 		return
 	}
 
@@ -61,7 +62,7 @@ func (h *UserManagementHandler) GetUserHandler(w http.ResponseWriter, r *http.Re
 	userID := vars["userId"]
 
 	// Verify user owns the site
-	if !h.verifySiteOwnership(siteID, adminUserID, w) {
+	if !h.verifySiteOwnership(r.Context(), siteID, adminUserID, w) {
 		return
 	}
 
@@ -94,7 +95,7 @@ func (h *UserManagementHandler) DeleteUserHandler(w http.ResponseWriter, r *http
 	userID := vars["userId"]
 
 	// Verify user owns the site
-	if !h.verifySiteOwnership(siteID, adminUserID, w) {
+	if !h.verifySiteOwnership(r.Context(), siteID, adminUserID, w) {
 		return
 	}
 
@@ -109,10 +110,10 @@ func (h *UserManagementHandler) DeleteUserHandler(w http.ResponseWriter, r *http
 }
 
 // verifySiteOwnership checks if the authenticated admin user owns the specified site
-func (h *UserManagementHandler) verifySiteOwnership(siteID, adminUserID string, w http.ResponseWriter) bool {
+func (h *UserManagementHandler) verifySiteOwnership(ctx context.Context, siteID, adminUserID string, w http.ResponseWriter) bool {
 	// Check if site exists and belongs to admin user
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(r.Context(), siteID)
+	site, err := siteStore.GetByID(ctx, siteID)
 	if err != nil || site == nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return false

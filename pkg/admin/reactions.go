@@ -39,7 +39,7 @@ func (h *ReactionsHandler) ListAllowedReactions(w http.ResponseWriter, r *http.R
 	}
 
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -47,7 +47,7 @@ func (h *ReactionsHandler) ListAllowedReactions(w http.ResponseWriter, r *http.R
 
 	// Get allowed reactions
 	allowedReactionStore := models.NewAllowedReactionStore(h.db)
-	reactions, err := allowedReactionStore.GetBySite(siteID)
+	reactions, err := allowedReactionStore.GetBySite(r.Context(), siteID)
 	if err != nil {
 		log.Printf("Error fetching allowed reactions: %v", err)
 		http.Error(w, "Failed to fetch reactions", http.StatusInternalServerError)
@@ -79,7 +79,7 @@ func (h *ReactionsHandler) ShowReactionForm(w http.ResponseWriter, r *http.Reque
 	}
 
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -89,7 +89,7 @@ func (h *ReactionsHandler) ShowReactionForm(w http.ResponseWriter, r *http.Reque
 	if reactionID != "" {
 		// Edit mode
 		allowedReactionStore := models.NewAllowedReactionStore(h.db)
-		reaction, err = allowedReactionStore.GetByID(reactionID)
+		reaction, err = allowedReactionStore.GetByID(r.Context(), reactionID)
 		if err != nil {
 			http.Error(w, "Reaction not found", http.StatusNotFound)
 			return
@@ -125,7 +125,7 @@ func (h *ReactionsHandler) CreateAllowedReaction(w http.ResponseWriter, r *http.
 	}
 
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -148,7 +148,7 @@ func (h *ReactionsHandler) CreateAllowedReaction(w http.ResponseWriter, r *http.
 
 	// Create reaction
 	allowedReactionStore := models.NewAllowedReactionStore(h.db)
-	_, err = allowedReactionStore.Create(siteID, name, emoji, reactionType)
+	_, err = allowedReactionStore.Create(r.Context(), siteID, name, emoji, reactionType)
 	if err != nil {
 		log.Printf("Error creating allowed reaction: %v", err)
 		http.Error(w, "Failed to create reaction", http.StatusInternalServerError)
@@ -173,7 +173,7 @@ func (h *ReactionsHandler) UpdateAllowedReaction(w http.ResponseWriter, r *http.
 	}
 
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -181,7 +181,7 @@ func (h *ReactionsHandler) UpdateAllowedReaction(w http.ResponseWriter, r *http.
 
 	// Verify reaction belongs to site
 	allowedReactionStore := models.NewAllowedReactionStore(h.db)
-	reaction, err := allowedReactionStore.GetByID(reactionID)
+	reaction, err := allowedReactionStore.GetByID(r.Context(), reactionID)
 	if err != nil || reaction.SiteID != siteID {
 		http.Error(w, "Reaction not found", http.StatusNotFound)
 		return
@@ -203,7 +203,7 @@ func (h *ReactionsHandler) UpdateAllowedReaction(w http.ResponseWriter, r *http.
 	}
 
 	// Update reaction
-	if err := allowedReactionStore.Update(reactionID, name, emoji, reactionType); err != nil {
+	if err := allowedReactionStore.Update(r.Context(), reactionID, name, emoji, reactionType); err != nil {
 		log.Printf("Error updating allowed reaction: %v", err)
 		http.Error(w, "Failed to update reaction", http.StatusInternalServerError)
 		return
@@ -227,7 +227,7 @@ func (h *ReactionsHandler) DeleteAllowedReaction(w http.ResponseWriter, r *http.
 	}
 
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -235,14 +235,14 @@ func (h *ReactionsHandler) DeleteAllowedReaction(w http.ResponseWriter, r *http.
 
 	// Verify reaction belongs to site
 	allowedReactionStore := models.NewAllowedReactionStore(h.db)
-	reaction, err := allowedReactionStore.GetByID(reactionID)
+	reaction, err := allowedReactionStore.GetByID(r.Context(), reactionID)
 	if err != nil || reaction.SiteID != siteID {
 		http.Error(w, "Reaction not found", http.StatusNotFound)
 		return
 	}
 
 	// Delete reaction
-	if err := allowedReactionStore.Delete(reactionID); err != nil {
+	if err := allowedReactionStore.Delete(r.Context(), reactionID); err != nil {
 		log.Printf("Error deleting allowed reaction: %v", err)
 		http.Error(w, "Failed to delete reaction", http.StatusInternalServerError)
 		return
@@ -265,7 +265,7 @@ func (h *ReactionsHandler) GetReactionStats(w http.ResponseWriter, r *http.Reque
 	}
 
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return

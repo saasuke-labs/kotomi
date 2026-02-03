@@ -98,7 +98,7 @@ func (s *ServerHandlers) Callback(w http.ResponseWriter, r *http.Request) {
 
 	// Get or create admin user
 	adminUserStore := models.NewAdminUserStore(s.DB)
-	user, err := adminUserStore.GetByAuth0Sub(userInfo.Sub)
+	user, err := adminUserStore.GetByAuth0Sub(r.Context(), userInfo.Sub)
 	if err != nil {
 		log.Printf("Error checking user: %v", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
@@ -107,7 +107,7 @@ func (s *ServerHandlers) Callback(w http.ResponseWriter, r *http.Request) {
 
 	if user == nil {
 		// Create new user
-		user, err = adminUserStore.Create(userInfo.Email, userInfo.Name, userInfo.Sub)
+		user, err = adminUserStore.Create(r.Context(), userInfo.Email, userInfo.Name, userInfo.Sub)
 		if err != nil {
 			log.Printf("Failed to create user: %v", err)
 			http.Error(w, "Failed to create user", http.StatusInternalServerError)
@@ -158,7 +158,7 @@ func (s *ServerHandlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Get admin user
 	adminUserStore := models.NewAdminUserStore(s.DB)
-	user, err := adminUserStore.GetByID(userID)
+	user, err := adminUserStore.GetByID(r.Context(), userID)
 	if err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
@@ -166,7 +166,7 @@ func (s *ServerHandlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Get sites count
 	siteStore := models.NewSiteStore(s.DB)
-	sites, err := siteStore.GetByOwner(userID)
+	sites, err := siteStore.GetByOwner(r.Context(), userID)
 	if err != nil {
 		http.Error(w, "Failed to fetch sites", http.StatusInternalServerError)
 		return

@@ -1,6 +1,7 @@
 package comments
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -22,12 +23,79 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
+	// Configure connection pool for production use
+	// These settings help manage resources and prevent connection exhaustion
+	db.SetMaxOpenConns(25)                        // Limit concurrent connections (SQLite is single-writer with WAL)
+	db.SetMaxIdleConns(5)                         // Keep some connections warm for better performance
+	db.SetConnMaxLifetime(5 * time.Minute)        // Recycle connections periodically to prevent stale connections
+	db.SetConnMaxIdleTime(1 * time.Minute)        // Close idle connections to free resources
+
+	// Verify database connection with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("database not responding: %w", err)
+	}
+
 	// Enable foreign key constraints
 	_, err = db.Exec("PRAGMA foreign_keys = ON")
 	if err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
+
+	// Enable WAL (Write-Ahead Logging) mode for better concurrency
+	// WAL mode allows multiple readers and one writer to work simultaneously
+	// This is critical for handling concurrent HTTP requests
+	_, err = db.Exec("PRAGMA journal_mode = WAL")
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to enable WAL mode: %w", err)
+	}
+
+	// Set busy timeout to handle lock contention gracefully
+	// Instead of failing immediately when database is locked, retry for up to 5 seconds
+	_, err = db.Exec("PRAGMA busy_timeout = 5000")
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to set busy timeout: %w", err)
+	}
+
+	// Set synchronous to NORMAL for better write performance
+	// This is safe with WAL mode and provides good balance of performance and durability
+	_, err = db.Exec("PRAGMA synchronous = NORMAL")
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to set synchronous mode: %w", err)
+	}
+
+	// Increase cache size for better query performance (64MB)
+	// Larger cache reduces disk I/O for frequently accessed data
+	_, err = db.Exec("PRAGMA cache_size = -64000")
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to set cache size: %w", err)
+	}
+
+	// Use memory for temporary tables and indexes for better performance
+	// This reduces disk I/O for sorting and temporary data operations
+	_, err = db.Exec("PRAGMA temp_store = MEMORY")
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to set temp store: %w", err)
+	}
+
+	// Enable memory-mapped I/O for better read performance (256MB)
+	// This is optional and will be ignored on systems that don't support it
+	_, err = db.Exec("PRAGMA mmap_size = 268435456")
+	if err != nil {
+		// Log warning but don't fail - mmap not supported on all systems
+		log.Printf("Warning: Could not enable mmap: %v", err)
+	}
+
+	// Log the configuration for debugging and verification
+	log.Printf("SQLite database initialized with optimizations: WAL mode, 64MB cache, 25 max connections")
 
 	// Create table and indexes if they don't exist
 	schema := `

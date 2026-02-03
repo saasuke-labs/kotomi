@@ -13,6 +13,7 @@ Give your pages a voice
 - 👍 **Reactions System** - Allow users to react to pages and comments with configurable emoji
 - 🔐 **JWT Authentication** - Secure user authentication with external JWT support (Phase 1)
 - 🤖 **AI Moderation** - Automatic content moderation using OpenAI GPT (optional)
+- 📧 **Email Notifications** - Notify site owners and users about comments and moderation events
 - 🔐 **Admin Panel** - Web-based dashboard with Auth0 authentication
 - 🏢 **Multi-Site Management** - Manage multiple sites from a single instance
 - 📄 **Page Tracking** - Organize comments by pages within sites
@@ -885,6 +886,95 @@ Kotomi includes built-in export and import functionality for data portability an
 - Import files must match the target site ID
 - Large imports may take a few seconds
 - Import is transactional - either all data imports or none
+
+### Email Notifications Configuration
+
+Kotomi can send email notifications to site owners and users for comment events.
+
+**Features:**
+- Notify site owners when new comments are posted
+- Notify users when someone replies to their comment
+- Notify users when their comment is approved or rejected
+- Support for multiple email providers (SMTP, SendGrid)
+- Background queue processing with retry logic
+- HTML email templates with unsubscribe links
+- Per-site notification configuration via admin panel
+
+**Configuration:**
+
+Email notifications are configured per-site through the admin panel at `/admin/sites/{siteId}/notifications`.
+
+**Supported Email Providers:**
+
+1. **SMTP (Generic):**
+   - Works with any SMTP-compatible email service
+   - Supports TLS, STARTTLS, and plain connections
+   - Common providers: Gmail, Office 365, AWS SES, Mailgun
+
+2. **SendGrid:**
+   - API-based email delivery
+   - No SMTP configuration needed
+   - Requires SendGrid API key
+
+**SMTP Configuration Examples:**
+
+**Gmail (with App Password):**
+```
+Provider: SMTP
+Host: smtp.gmail.com
+Port: 587
+Encryption: STARTTLS
+Username: your-email@gmail.com
+Password: your-app-password
+```
+
+**Office 365:**
+```
+Provider: SMTP
+Host: smtp.office365.com
+Port: 587
+Encryption: STARTTLS
+Username: your-email@office365.com
+Password: your-password
+```
+
+**AWS SES:**
+```
+Provider: SMTP
+Host: email-smtp.{region}.amazonaws.com
+Port: 587
+Encryption: STARTTLS
+Username: your-smtp-username
+Password: your-smtp-password
+```
+
+**SendGrid:**
+```
+Provider: SendGrid
+API Key: your-sendgrid-api-key
+From Email: noreply@yourdomain.com
+From Name: Your Site Name
+```
+
+**Notification Types:**
+
+- **New Comments**: Sent to site owner when a comment is posted
+- **Comment Replies**: Sent to the original commenter when someone replies (requires user email)
+- **Moderation Updates**: Sent to commenter when their comment is approved or rejected
+
+**Important Notes:**
+- Users must have email addresses in their JWT tokens to receive notifications
+- Notification emails are queued and sent in the background
+- Failed sends are retried up to 3 times
+- Old processed notifications are automatically cleaned up after 7 days
+- Test email functionality available in admin panel
+
+**Gmail Users:**
+If using Gmail, you must create an App Password:
+1. Enable 2-factor authentication on your Google account
+2. Go to Google Account → Security → 2-Step Verification → App passwords
+3. Generate a new app password for "Mail"
+4. Use the generated password in Kotomi (not your regular Gmail password)
 
 ### Docker Configuration
 

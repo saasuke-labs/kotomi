@@ -1030,6 +1030,13 @@ func main() {
 		adminRouter.HandleFunc("/sites/{siteId}/users/{userId}", userMgmtHandler.GetUserHandler).Methods("GET")
 		adminRouter.HandleFunc("/sites/{siteId}/users/{userId}", userMgmtHandler.DeleteUserHandler).Methods("DELETE")
 
+		// Export/Import handlers
+		exportImportHandler := admin.NewExportImportHandler(db, templates)
+		adminRouter.HandleFunc("/sites/{siteId}/export", exportImportHandler.ShowExportForm).Methods("GET")
+		adminRouter.HandleFunc("/sites/{siteId}/export", exportImportHandler.ExportData).Methods("POST")
+		adminRouter.HandleFunc("/sites/{siteId}/import", exportImportHandler.ShowImportForm).Methods("GET")
+		adminRouter.HandleFunc("/sites/{siteId}/import", exportImportHandler.ImportData).Methods("POST")
+
 		// Redirect /admin to dashboard
 		router.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/admin/dashboard", http.StatusSeeOther)

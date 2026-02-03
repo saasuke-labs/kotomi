@@ -43,7 +43,7 @@ func (h *AnalyticsHandler) ShowDashboard(w http.ResponseWriter, r *http.Request)
 	}
 
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -94,7 +94,7 @@ func (h *AnalyticsHandler) GetAnalyticsData(w http.ResponseWriter, r *http.Reque
 	}
 
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -136,7 +136,7 @@ func (h *AnalyticsHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 	}
 
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return

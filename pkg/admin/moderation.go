@@ -34,7 +34,7 @@ func (h *ModerationHandler) HandleModerationForm(w http.ResponseWriter, r *http.
 	siteID := vars["siteId"]
 
 	// Get moderation config or use defaults
-	config, err := h.store.GetBySiteID(siteID)
+	config, err := h.store.GetBySiteID(r.Context(), siteID)
 	if err != nil {
 		// Config doesn't exist yet, use defaults
 		defaultConfig := moderation.DefaultModerationConfig()
@@ -85,17 +85,17 @@ func (h *ModerationHandler) HandleModerationUpdate(w http.ResponseWriter, r *htt
 	config.AutoApproveThreshold = autoApproveThreshold
 
 	// Check if config exists
-	_, err = h.store.GetBySiteID(siteID)
+	_, err = h.store.GetBySiteID(r.Context(), siteID)
 	if err != nil {
 		// Config doesn't exist, create it
-		if err := h.store.Create(siteID, config); err != nil {
+		if err := h.store.Create(r.Context(), siteID, config); err != nil {
 			log.Printf("Error creating moderation config: %v", err)
 			http.Error(w, "Failed to create configuration", http.StatusInternalServerError)
 			return
 		}
 	} else {
 		// Config exists, update it
-		if err := h.store.Update(siteID, config); err != nil {
+		if err := h.store.Update(r.Context(), siteID, config); err != nil {
 			log.Printf("Error updating moderation config: %v", err)
 			http.Error(w, "Failed to update configuration", http.StatusInternalServerError)
 			return

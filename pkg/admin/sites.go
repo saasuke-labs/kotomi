@@ -34,7 +34,7 @@ func (h *SitesHandler) ListSites(w http.ResponseWriter, r *http.Request) {
 	}
 
 	siteStore := models.NewSiteStore(h.db)
-	sites, err := siteStore.GetByOwner(userID)
+	sites, err := siteStore.GetByOwner(r.Context(), userID)
 	if err != nil {
 		http.Error(w, "Failed to fetch sites", http.StatusInternalServerError)
 		return
@@ -71,7 +71,7 @@ func (h *SitesHandler) GetSite(w http.ResponseWriter, r *http.Request) {
 	siteID := vars["siteId"]
 
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -85,7 +85,7 @@ func (h *SitesHandler) GetSite(w http.ResponseWriter, r *http.Request) {
 
 	// Get pages for this site
 	pageStore := models.NewPageStore(h.db)
-	pages, err := pageStore.GetBySite(siteID)
+	pages, err := pageStore.GetBySite(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Failed to fetch pages", http.StatusInternalServerError)
 		return
@@ -137,7 +137,7 @@ func (h *SitesHandler) CreateSite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.Create(userID, name, domain, description)
+	site, err := siteStore.Create(r.Context(), userID, name, domain, description)
 	if err != nil {
 		http.Error(w, "Failed to create site", http.StatusInternalServerError)
 		return
@@ -169,7 +169,7 @@ func (h *SitesHandler) UpdateSite(w http.ResponseWriter, r *http.Request) {
 
 	// Verify ownership
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -195,7 +195,7 @@ func (h *SitesHandler) UpdateSite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = siteStore.Update(siteID, name, domain, description)
+	err = siteStore.Update(r.Context(), siteID, name, domain, description)
 	if err != nil {
 		http.Error(w, "Failed to update site", http.StatusInternalServerError)
 		return
@@ -224,7 +224,7 @@ func (h *SitesHandler) DeleteSite(w http.ResponseWriter, r *http.Request) {
 
 	// Verify ownership
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -235,7 +235,7 @@ func (h *SitesHandler) DeleteSite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = siteStore.Delete(siteID)
+	err = siteStore.Delete(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Failed to delete site", http.StatusInternalServerError)
 		return
@@ -268,7 +268,7 @@ func (h *SitesHandler) ShowSiteForm(w http.ResponseWriter, r *http.Request) {
 	if siteID != "" {
 		userID := auth.GetUserIDFromContext(r.Context())
 		siteStore := models.NewSiteStore(h.db)
-		site, err := siteStore.GetByID(siteID)
+		site, err := siteStore.GetByID(r.Context(), siteID)
 		if err != nil || site.OwnerID != userID {
 			http.Error(w, "Site not found", http.StatusNotFound)
 			return

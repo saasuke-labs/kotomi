@@ -38,7 +38,7 @@ func (h *PagesHandler) ListPages(w http.ResponseWriter, r *http.Request) {
 
 	// Verify ownership
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -50,7 +50,7 @@ func (h *PagesHandler) ListPages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pageStore := models.NewPageStore(h.db)
-	pages, err := pageStore.GetBySite(siteID)
+	pages, err := pageStore.GetBySite(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, "Failed to fetch pages", http.StatusInternalServerError)
 		return
@@ -89,14 +89,14 @@ func (h *PagesHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 
 	// Verify ownership
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
 	pageStore := models.NewPageStore(h.db)
-	page, err := pageStore.GetByID(pageID)
+	page, err := pageStore.GetByID(r.Context(), pageID)
 	if err != nil || page.SiteID != siteID {
 		http.Error(w, "Page not found", http.StatusNotFound)
 		return
@@ -120,7 +120,7 @@ func (h *PagesHandler) CreatePage(w http.ResponseWriter, r *http.Request) {
 
 	// Verify ownership
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
@@ -141,7 +141,7 @@ func (h *PagesHandler) CreatePage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pageStore := models.NewPageStore(h.db)
-	page, err := pageStore.Create(siteID, path, title)
+	page, err := pageStore.Create(r.Context(), siteID, path, title)
 	if err != nil {
 		http.Error(w, "Failed to create page", http.StatusInternalServerError)
 		return
@@ -174,7 +174,7 @@ func (h *PagesHandler) UpdatePage(w http.ResponseWriter, r *http.Request) {
 
 	// Verify ownership
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
@@ -182,7 +182,7 @@ func (h *PagesHandler) UpdatePage(w http.ResponseWriter, r *http.Request) {
 
 	// Verify page belongs to site
 	pageStore := models.NewPageStore(h.db)
-	page, err := pageStore.GetByID(pageID)
+	page, err := pageStore.GetByID(r.Context(), pageID)
 	if err != nil || page.SiteID != siteID {
 		http.Error(w, "Page not found", http.StatusNotFound)
 		return
@@ -202,7 +202,7 @@ func (h *PagesHandler) UpdatePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = pageStore.Update(pageID, path, title)
+	err = pageStore.Update(r.Context(), pageID, path, title)
 	if err != nil {
 		http.Error(w, "Failed to update page", http.StatusInternalServerError)
 		return
@@ -232,7 +232,7 @@ func (h *PagesHandler) DeletePage(w http.ResponseWriter, r *http.Request) {
 
 	// Verify ownership
 	siteStore := models.NewSiteStore(h.db)
-	site, err := siteStore.GetByID(siteID)
+	site, err := siteStore.GetByID(r.Context(), siteID)
 	if err != nil || site.OwnerID != userID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
@@ -240,13 +240,13 @@ func (h *PagesHandler) DeletePage(w http.ResponseWriter, r *http.Request) {
 
 	// Verify page belongs to site
 	pageStore := models.NewPageStore(h.db)
-	page, err := pageStore.GetByID(pageID)
+	page, err := pageStore.GetByID(r.Context(), pageID)
 	if err != nil || page.SiteID != siteID {
 		http.Error(w, "Page not found", http.StatusNotFound)
 		return
 	}
 
-	err = pageStore.Delete(pageID)
+	err = pageStore.Delete(r.Context(), pageID)
 	if err != nil {
 		http.Error(w, "Failed to delete page", http.StatusInternalServerError)
 		return
@@ -283,14 +283,14 @@ func (h *PagesHandler) ShowPageForm(w http.ResponseWriter, r *http.Request) {
 		
 		// Verify site ownership
 		siteStore := models.NewSiteStore(h.db)
-		site, err := siteStore.GetByID(siteID)
+		site, err := siteStore.GetByID(r.Context(), siteID)
 		if err != nil || site.OwnerID != userID {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
 		pageStore := models.NewPageStore(h.db)
-		page, err := pageStore.GetByID(pageID)
+		page, err := pageStore.GetByID(r.Context(), pageID)
 		if err != nil || page.SiteID != siteID {
 			http.Error(w, "Page not found", http.StatusNotFound)
 			return

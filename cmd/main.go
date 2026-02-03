@@ -19,6 +19,7 @@ import (
 	"github.com/saasuke-labs/kotomi/pkg/admin"
 	"github.com/saasuke-labs/kotomi/pkg/auth"
 	"github.com/saasuke-labs/kotomi/pkg/comments"
+	apierrors "github.com/saasuke-labs/kotomi/pkg/errors"
 	"github.com/saasuke-labs/kotomi/pkg/middleware"
 	"github.com/saasuke-labs/kotomi/pkg/models"
 	"github.com/saasuke-labs/kotomi/pkg/moderation"
@@ -95,12 +96,13 @@ var moderationConfigStore *moderation.ConfigStore
 // @Router /site/{siteId}/page/{pageId}/comments [post]
 func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	requestID := middleware.GetRequestID(r)
 	
 	// Fallback to manual parsing if vars is empty (e.g., in unit tests)
 	if len(vars) == 0 {
 		parsedVars, err := getUrlParams(r)
 		if err != nil {
-			http.Error(w, "Invalid URL", http.StatusBadRequest)
+			apierrors.WriteErrorWithRequestID(w, apierrors.BadRequest("Invalid URL"), requestID)
 			return
 		}
 		vars = parsedVars
@@ -112,20 +114,20 @@ func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get authenticated user from context (set by JWT middleware)
 	user := middleware.GetUserFromContext(r.Context())
 	if user == nil {
-		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		apierrors.WriteErrorWithRequestID(w, apierrors.Unauthorized("Authentication required"), requestID)
 		return
 	}
 
 	// Decode body as a Comment
 	var comment comments.Comment
 	if err := json.NewDecoder(r.Body).Decode(&comment); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierrors.WriteErrorWithRequestID(w, apierrors.InvalidJSON("Invalid JSON format").WithDetails(err.Error()), requestID)
 		return
 	}
 	
 	// Validate required fields
 	if comment.Text == "" {
-		http.Error(w, "Text is required", http.StatusBadRequest)
+		apierrors.WriteErrorWithRequestID(w, apierrors.ValidationError("Text is required"), requestID)
 		return
 	}
 	
@@ -162,7 +164,7 @@ func postCommentsHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := commentStore.AddPageComment(siteId, pageId, comment); err != nil {
 		log.Printf("Error adding comment: %v", err)
-		http.Error(w, "Failed to add comment", http.StatusInternalServerError)
+		apierrors.WriteErrorWithRequestID(w, apierrors.DatabaseError("Failed to add comment").WithDetails(err.Error()), requestID)
 		return
 	}
 
@@ -216,12 +218,13 @@ func getUrlParams(r *http.Request) (map[string]string, error) {
 // @Router /site/{siteId}/page/{pageId}/comments [get]
 func getCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	requestID := middleware.GetRequestID(r)
 	
 	// Fallback to manual parsing if vars is empty (e.g., in unit tests)
 	if len(vars) == 0 {
 		parsedVars, err := getUrlParams(r)
 		if err != nil {
-			http.Error(w, "Invalid URL", http.StatusBadRequest)
+			apierrors.WriteErrorWithRequestID(w, apierrors.BadRequest("Invalid URL"), requestID)
 			return
 		}
 		vars = parsedVars
@@ -234,7 +237,7 @@ func getCommentsHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Printf("Error retrieving comments: %v", err)
-		http.Error(w, "Failed to retrieve comments", http.StatusInternalServerError)
+		apierrors.WriteErrorWithRequestID(w, apierrors.DatabaseError("Failed to retrieve comments").WithDetails(err.Error()), requestID)
 		return
 	}
 

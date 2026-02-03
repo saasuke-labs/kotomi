@@ -696,6 +696,57 @@ export RATE_LIMIT_GET=1000     # Higher limits for development
 export RATE_LIMIT_POST=50
 ```
 
+### Logging & Error Handling
+
+Kotomi uses structured JSON logging for all HTTP requests and responses:
+
+**Features:**
+- **Structured JSON logs**: All logs are output as JSON for easy parsing and analysis
+- **Request tracking**: Every request receives a unique `X-Request-ID` header for tracing
+- **Automatic logging**: All HTTP requests and responses are logged with:
+  - Timestamp (UTC)
+  - Log level (INFO, WARN, ERROR)
+  - Request ID
+  - HTTP method and path
+  - Status code
+  - Duration
+  - Remote IP address
+  - User agent
+- **Error responses**: API errors return consistent JSON responses with error codes and request IDs
+- **Privacy-focused**: Query parameters are stripped from logs to prevent logging sensitive data
+
+**Log Format Example:**
+```json
+{
+  "timestamp": "2026-02-03T12:00:00Z",
+  "level": "INFO",
+  "message": "HTTP Request",
+  "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "method": "GET",
+  "path": "/api/v1/site/my-site/page/home/comments",
+  "status_code": 200,
+  "duration": "15.234ms",
+  "remote_addr": "192.168.1.1",
+  "user_agent": "Mozilla/5.0..."
+}
+```
+
+**Error Response Format:**
+```json
+{
+  "code": "BAD_REQUEST",
+  "message": "Invalid JSON format",
+  "details": "unexpected end of JSON input",
+  "request_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**Request Tracking:**
+- Each request automatically receives a unique request ID
+- Request IDs are returned in the `X-Request-ID` response header
+- Request IDs are included in all log entries and error responses
+- External request IDs (e.g., from load balancers) are preserved if provided
+
 ### Admin Panel Configuration (Optional)
 
 To enable the admin panel with Auth0 authentication, set these environment variables:

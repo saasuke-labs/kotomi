@@ -396,6 +396,52 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 - **Testing:** Comprehensive unit tests with 63% coverage
 - **Applied To:** All API routes (`/api/*`)
 
+#### 3. **Error Handling & Logging** ✅
+- **Status:** Fully Implemented
+- **Description:** Structured error responses and JSON logging for production observability
+- **Error Handling Features:**
+  - Structured JSON error responses with standardized format
+  - Error codes for easy programmatic handling (BAD_REQUEST, UNAUTHORIZED, etc.)
+  - Request ID included in all error responses for tracing
+  - Error details field for debugging information
+  - Consistent error format across all API endpoints
+- **Logging Features:**
+  - Structured JSON logging for all HTTP requests and responses
+  - Request tracking with unique request IDs (UUID)
+  - X-Request-ID header in all responses
+  - Log fields: timestamp, level, message, request_id, method, path, status_code, duration, remote_addr, user_agent
+  - Privacy-focused: Query parameters stripped from logs
+  - Log levels: INFO (2xx/3xx), WARN (4xx), ERROR (5xx)
+  - Remote IP detection supports X-Forwarded-For and X-Real-IP headers
+- **Error Response Format:**
+  ```json
+  {
+    "code": "VALIDATION_ERROR",
+    "message": "Text is required",
+    "details": "optional error details",
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+  ```
+- **Log Format Example:**
+  ```json
+  {
+    "timestamp": "2026-02-03T12:00:00Z",
+    "level": "INFO",
+    "message": "HTTP Request",
+    "request_id": "550e8400-e29b-41d4-a716-446655440000",
+    "method": "GET",
+    "path": "/api/v1/site/my-site/page/home/comments",
+    "status_code": 200,
+    "duration": "15.234ms",
+    "remote_addr": "192.168.1.1",
+    "user_agent": "Mozilla/5.0..."
+  }
+  ```
+- **Location:** `pkg/errors/errors.go`, `pkg/middleware/logging.go`, `pkg/middleware/requestid.go`
+- **Testing:** Comprehensive unit tests for all components
+- **Applied To:** All routes (logging), API endpoints (structured errors)
+- **Benefit:** Production-ready observability with request tracing and debugging capabilities
+
 #### 4. **User Authentication for Comments and Reactions** ✅ PARTIALLY IMPLEMENTED (65%)
 - **Status:** External JWT Complete (100%), Kotomi-Provided Auth Infrastructure (30%)
 - **Description:** JWT-based authentication for comment and reaction APIs
@@ -476,8 +522,8 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 ### 🟡 Important Issues (Should Fix Before Production)
 
 1. ✅ **API Versioning** - COMPLETED
-2. **Error Handling** - Some endpoints may not have comprehensive error handling
-3. **Logging & Monitoring** - Limited observability for production debugging
+2. ✅ **Error Handling** - COMPLETED (Structured JSON error responses with error codes)
+3. ✅ **Logging & Monitoring** - COMPLETED (Structured JSON logging with request tracking)
 4. **Documentation** - Limited API documentation for developers integrating Kotomi
 5. **Configuration Management** - Limited validation of environment variables
 
@@ -544,8 +590,8 @@ Kotomi is a dynamic content service designed to add comments, reactions, and mod
 4. ✅ **Security Audit** - COMPLETED
 5. ✅ **Add API Versioning** - COMPLETED
 6. ✅ **Create Frontend Widget** - COMPLETED
-7. **Improve Error Handling** - Consistent error responses
-8. **Add Logging** - Structured logging for production debugging
+7. ✅ **Improve Error Handling** - COMPLETED (Consistent JSON error responses with error codes)
+8. ✅ **Add Logging** - COMPLETED (Structured JSON logging with request IDs)
 
 ### Medium-term (After Initial Deployment)
 1. Add automatic moderation with AI
@@ -604,8 +650,8 @@ go tool cover -html=coverage.out -o coverage.html
 4. **No Automatic Backups** - Database backups must be managed manually
 5. **Session Store** - Uses cookie-based sessions (consider Redis for distributed deployments)
 6. **No Health Metrics** - `/healthz` endpoint only returns "OK", no detailed metrics
-7. **Limited Error Messages** - Some errors return generic HTTP 500 without details
-8. **No Request Logging** - HTTP requests are not logged in structured format
+7. ~~**Limited Error Messages** - Some errors return generic HTTP 500 without details~~ - ✅ **FIXED** (Structured JSON errors with codes)
+8. ~~**No Request Logging** - HTTP requests are not logged in structured format~~ - ✅ **FIXED** (Structured JSON logging)
 9. **Template Loading** - Templates loaded at startup, requires restart to update
 
 ---

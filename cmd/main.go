@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -45,7 +46,7 @@ type InMemoryStoreAdapter struct {
 func (a *InMemoryStoreAdapter) AddPageComment(site, page string, comment interface{}) error {
 	c, ok := comment.(comments.Comment)
 	if !ok {
-		return nil
+		return fmt.Errorf("expected comments.Comment, got %T", comment)
 	}
 	a.SitePagesIndex.AddPageComment(site, page, c)
 	return nil

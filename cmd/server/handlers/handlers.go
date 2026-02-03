@@ -95,13 +95,18 @@ func GetUrlParams(r *http.Request) (map[string]string, error) {
 }
 
 // GetUserIdentifier extracts a user identifier from the request
+// WARNING: This function reads client-provided headers which can be spoofed.
+// Only use when behind a trusted reverse proxy that sanitizes these headers.
+// - X-User-ID: Should only be set by trusted middleware, not from client requests
+// - X-Forwarded-For/X-Real-IP: Only reliable when behind properly configured reverse proxy
 func GetUserIdentifier(r *http.Request) string {
-	// Try to get user from Auth (preferred)
+	// Try to get user from Auth (preferred) - NOTE: This header can be spoofed if not validated
+	// TODO: This should only be read if set by internal middleware, not from client
 	if userID := r.Header.Get("X-User-ID"); userID != "" {
 		return userID
 	}
 	
-	// Fall back to IP address
+	// Fall back to IP address - only reliable behind trusted proxy
 	ip := r.Header.Get("X-Forwarded-For")
 	if ip == "" {
 		ip = r.Header.Get("X-Real-IP")

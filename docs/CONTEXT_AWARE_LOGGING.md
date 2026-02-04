@@ -137,13 +137,28 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 
 1. **Enrich Context Early**: Add contextual fields as soon as they're available in your handler
 2. **Use Context Consistently**: Pass the enriched context to all function calls (database operations, etc.)
-3. **Use *Context Methods**: Always use `ErrorContext`, `InfoContext`, `WarnContext`, etc. instead of `Error`, `Info`, `Warn`
-4. **Add Additional Fields**: You can still add method-specific fields to log calls:
+3. **Use *Context Methods for Logging**: Always use `ErrorContext`, `InfoContext`, `WarnContext`, etc. instead of `Error`, `Info`, `Warn`
+4. **Use Middleware for Non-Logging Purposes**: When you need request ID for non-logging purposes (e.g., error responses), use `middleware.GetRequestID(r)` instead of `logging.GetRequestID(ctx)` to avoid coupling non-logging code to the logging package
+5. **Add Additional Fields**: You can still add method-specific fields to log calls:
    ```go
    logger.InfoContext(ctx, "moderation completed", 
        "decision", result.Decision,
        "confidence", result.Confidence)
    ```
+
+### Example: Error Handling
+
+```go
+// For logging - use context
+s.Logger.ErrorContext(ctx, "failed to add comment", "error", err)
+
+// For error responses - use middleware
+apierrors.WriteError(w, 
+    apierrors.DatabaseError("Failed to add comment").
+        WithRequestID(middleware.GetRequestID(r)))
+```
+
+This separation keeps logging concerns (automatic field propagation via context) separate from general request handling (explicit request ID retrieval).
 
 ## Testing
 
@@ -165,9 +180,9 @@ When migrating existing code:
 
 1. Add import: `"github.com/saasuke-labs/kotomi/pkg/logging"`
 2. Enrich context at handler entry with `logging.WithSiteID()`, `logging.WithPageID()`, etc.
-3. Replace `Logger.Error()` with `Logger.ErrorContext(ctx)`
-4. Remove manual additions of `"request_id"`, `"site_id"`, `"page_id"`, `"comment_id"`
-5. Use `logging.GetRequestID(ctx)` instead of `middleware.GetRequestID(r)` where needed
+3. Replace `Logger.Error()` with `Logger.ErrorContext(ctx)` for logging
+4. Remove manual additions of `"request_id"`, `"site_id"`, `"page_id"`, `"comment_id"` from log calls
+5. For non-logging purposes (e.g., error responses), use `middleware.GetRequestID(r)` instead of `logging.GetRequestID(ctx)`
 
 ## Related ADRs
 

@@ -40,7 +40,7 @@ func (s *ServerHandlers) PostComments(w http.ResponseWriter, r *http.Request) {
 	if len(vars) == 0 {
 		parsedVars, err := GetUrlParams(r)
 		if err != nil {
-			apierrors.WriteErrorWithRequestID(w, apierrors.BadRequest("Invalid URL"), logging.GetRequestID(ctx))
+			apierrors.WriteErrorWithRequestID(w, apierrors.BadRequest("Invalid URL"), middleware.GetRequestID(r))
 			return
 		}
 		vars = parsedVars
@@ -56,20 +56,20 @@ func (s *ServerHandlers) PostComments(w http.ResponseWriter, r *http.Request) {
 	// Get authenticated user from context (set by JWT middleware)
 	user := middleware.GetUserFromContext(ctx)
 	if user == nil {
-		apierrors.WriteErrorWithRequestID(w, apierrors.Unauthorized("Authentication required"), logging.GetRequestID(ctx))
+		apierrors.WriteErrorWithRequestID(w, apierrors.Unauthorized("Authentication required"), middleware.GetRequestID(r))
 		return
 	}
 
 	// Decode body as a Comment
 	var comment comments.Comment
 	if err := json.NewDecoder(r.Body).Decode(&comment); err != nil {
-		apierrors.WriteErrorWithRequestID(w, apierrors.InvalidJSON("Invalid JSON format").WithDetails(err.Error()), logging.GetRequestID(ctx))
+		apierrors.WriteErrorWithRequestID(w, apierrors.InvalidJSON("Invalid JSON format").WithDetails(err.Error()), middleware.GetRequestID(r))
 		return
 	}
 	
 	// Validate required fields
 	if comment.Text == "" {
-		apierrors.WriteErrorWithRequestID(w, apierrors.ValidationError("Text is required"), logging.GetRequestID(ctx))
+		apierrors.WriteErrorWithRequestID(w, apierrors.ValidationError("Text is required"), middleware.GetRequestID(r))
 		return
 	}
 	
@@ -111,7 +111,7 @@ func (s *ServerHandlers) PostComments(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.CommentStore.AddPageComment(ctx, siteId, pageId, comment); err != nil {
 		s.Logger.ErrorContext(ctx, "failed to add comment", "error", err)
-		apierrors.WriteErrorWithRequestID(w, apierrors.DatabaseError("Failed to add comment").WithDetails(err.Error()), logging.GetRequestID(ctx))
+		apierrors.WriteErrorWithRequestID(w, apierrors.DatabaseError("Failed to add comment").WithDetails(err.Error()), middleware.GetRequestID(r))
 		return
 	}
 
@@ -175,7 +175,7 @@ func (s *ServerHandlers) GetComments(w http.ResponseWriter, r *http.Request) {
 	if len(vars) == 0 {
 		parsedVars, err := GetUrlParams(r)
 		if err != nil {
-			apierrors.WriteErrorWithRequestID(w, apierrors.BadRequest("Invalid URL"), logging.GetRequestID(ctx))
+			apierrors.WriteErrorWithRequestID(w, apierrors.BadRequest("Invalid URL"), middleware.GetRequestID(r))
 			return
 		}
 		vars = parsedVars
@@ -191,7 +191,7 @@ func (s *ServerHandlers) GetComments(w http.ResponseWriter, r *http.Request) {
 	commentsData, err := s.CommentStore.GetPageComments(ctx, siteId, pageId)
 	if err != nil {
 		s.Logger.ErrorContext(ctx, "failed to retrieve comments", "error", err)
-		apierrors.WriteErrorWithRequestID(w, apierrors.DatabaseError("Failed to retrieve comments").WithDetails(err.Error()), logging.GetRequestID(ctx))
+		apierrors.WriteErrorWithRequestID(w, apierrors.DatabaseError("Failed to retrieve comments").WithDetails(err.Error()), middleware.GetRequestID(r))
 		return
 	}
 
@@ -228,7 +228,7 @@ func (s *ServerHandlers) UpdateComment(w http.ResponseWriter, r *http.Request) {
 	// Get authenticated user from context
 	user := middleware.GetUserFromContext(ctx)
 	if user == nil {
-		apierrors.WriteError(w, apierrors.Unauthorized("Authentication required").WithRequestID(logging.GetRequestID(ctx)))
+		apierrors.WriteError(w, apierrors.Unauthorized("Authentication required").WithRequestID(middleware.GetRequestID(r)))
 		return
 	}
 
@@ -237,45 +237,45 @@ func (s *ServerHandlers) UpdateComment(w http.ResponseWriter, r *http.Request) {
 		Text string `json:"text"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&updateReq); err != nil {
-		apierrors.WriteError(w, apierrors.InvalidJSON("Invalid request body").WithRequestID(logging.GetRequestID(ctx)))
+		apierrors.WriteError(w, apierrors.InvalidJSON("Invalid request body").WithRequestID(middleware.GetRequestID(r)))
 		return
 	}
 
 	if updateReq.Text == "" {
-		apierrors.WriteError(w, apierrors.ValidationError("Text is required").WithRequestID(logging.GetRequestID(ctx)))
+		apierrors.WriteError(w, apierrors.ValidationError("Text is required").WithRequestID(middleware.GetRequestID(r)))
 		return
 	}
 
 	// Get the comment to verify ownership
 	comment, err := s.CommentStore.GetCommentByID(ctx, commentID)
 	if err != nil {
-		apierrors.WriteError(w, apierrors.NotFound("Comment not found").WithRequestID(logging.GetRequestID(ctx)))
+		apierrors.WriteError(w, apierrors.NotFound("Comment not found").WithRequestID(middleware.GetRequestID(r)))
 		return
 	}
 
 	// Verify the comment belongs to this site
 	if comment.SiteID != siteID {
-		apierrors.WriteError(w, apierrors.NotFound("Comment not found").WithRequestID(logging.GetRequestID(ctx)))
+		apierrors.WriteError(w, apierrors.NotFound("Comment not found").WithRequestID(middleware.GetRequestID(r)))
 		return
 	}
 
 	// Verify ownership - user can only edit their own comments
 	if comment.AuthorID != user.ID {
-		apierrors.WriteError(w, apierrors.Forbidden("Forbidden - you can only edit your own comments").WithRequestID(logging.GetRequestID(ctx)))
+		apierrors.WriteError(w, apierrors.Forbidden("Forbidden - you can only edit your own comments").WithRequestID(middleware.GetRequestID(r)))
 		return
 	}
 
 	// Update the comment text
 	if err := s.CommentStore.UpdateCommentText(ctx, commentID, updateReq.Text); err != nil {
 		s.Logger.ErrorContext(ctx, "failed to update comment", "error", err)
-		apierrors.WriteError(w, apierrors.DatabaseError("Failed to update comment").WithRequestID(logging.GetRequestID(ctx)))
+		apierrors.WriteError(w, apierrors.DatabaseError("Failed to update comment").WithRequestID(middleware.GetRequestID(r)))
 		return
 	}
 
 	// Retrieve and return the updated comment
 	updatedComment, err := s.CommentStore.GetCommentByID(ctx, commentID)
 	if err != nil {
-		apierrors.WriteError(w, apierrors.DatabaseError("Failed to retrieve updated comment").WithRequestID(logging.GetRequestID(ctx)))
+		apierrors.WriteError(w, apierrors.DatabaseError("Failed to retrieve updated comment").WithRequestID(middleware.GetRequestID(r)))
 		return
 	}
 
@@ -308,33 +308,33 @@ func (s *ServerHandlers) DeleteComment(w http.ResponseWriter, r *http.Request) {
 	// Get authenticated user from context
 	user := middleware.GetUserFromContext(ctx)
 	if user == nil {
-		apierrors.WriteError(w, apierrors.Unauthorized("Authentication required").WithRequestID(logging.GetRequestID(ctx)))
+		apierrors.WriteError(w, apierrors.Unauthorized("Authentication required").WithRequestID(middleware.GetRequestID(r)))
 		return
 	}
 
 	// Get the comment to verify ownership
 	comment, err := s.CommentStore.GetCommentByID(ctx, commentID)
 	if err != nil {
-		apierrors.WriteError(w, apierrors.NotFound("Comment not found").WithRequestID(logging.GetRequestID(ctx)))
+		apierrors.WriteError(w, apierrors.NotFound("Comment not found").WithRequestID(middleware.GetRequestID(r)))
 		return
 	}
 
 	// Verify the comment belongs to this site
 	if comment.SiteID != siteID {
-		apierrors.WriteError(w, apierrors.NotFound("Comment not found").WithRequestID(logging.GetRequestID(ctx)))
+		apierrors.WriteError(w, apierrors.NotFound("Comment not found").WithRequestID(middleware.GetRequestID(r)))
 		return
 	}
 
 	// Verify ownership - user can only delete their own comments
 	if comment.AuthorID != user.ID {
-		apierrors.WriteError(w, apierrors.Forbidden("Forbidden - you can only delete your own comments").WithRequestID(logging.GetRequestID(ctx)))
+		apierrors.WriteError(w, apierrors.Forbidden("Forbidden - you can only delete your own comments").WithRequestID(middleware.GetRequestID(r)))
 		return
 	}
 
 	// Delete the comment
 	if err := s.CommentStore.DeleteComment(ctx, commentID); err != nil {
 		s.Logger.ErrorContext(ctx, "failed to delete comment", "error", err)
-		apierrors.WriteError(w, apierrors.DatabaseError("Failed to delete comment").WithRequestID(logging.GetRequestID(ctx)))
+		apierrors.WriteError(w, apierrors.DatabaseError("Failed to delete comment").WithRequestID(middleware.GetRequestID(r)))
 		return
 	}
 

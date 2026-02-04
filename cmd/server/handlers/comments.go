@@ -52,7 +52,6 @@ func (s *ServerHandlers) PostComments(w http.ResponseWriter, r *http.Request) {
 	// Enrich context with site_id and page_id for automatic logging
 	ctx = logging.WithSiteID(ctx, siteId)
 	ctx = logging.WithPageID(ctx, pageId)
-	r = r.WithContext(ctx)
 
 	// Get authenticated user from context (set by JWT middleware)
 	user := middleware.GetUserFromContext(ctx)
@@ -84,7 +83,6 @@ func (s *ServerHandlers) PostComments(w http.ResponseWriter, r *http.Request) {
 
 	// Enrich context with comment_id for logging
 	ctx = logging.WithCommentID(ctx, comment.ID)
-	r = r.WithContext(ctx)
 
 	// Apply AI moderation if enabled
 	if s.Moderator != nil && s.ModerationConfigStore != nil {

@@ -90,6 +90,12 @@ docker run -p 8080:8080 -v kotomi-data:/app/data kotomi
 - [Widget Examples](frontend/examples/) - Working examples and templates
 - [Authentication API Guide](docs/AUTHENTICATION_API.md) - JWT authentication setup and examples
 
+### Release & Deployment
+
+- **[Release Setup Quick Start](docs/RELEASE_SETUP_QUICKSTART.md)** - 30-minute setup guide for CI/CD pipeline
+- [Release Process Documentation](docs/RELEASE_PROCESS.md) - Complete release process with GCP configuration
+- [Deployment Monitoring Guide](docs/DEPLOYMENT_MONITORING.md) - Monitor production deployments
+
 ### Additional Documentation
 
 - [Security Guide](docs/security.md) - Security best practices and vulnerability reporting

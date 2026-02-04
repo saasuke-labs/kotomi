@@ -152,7 +152,6 @@ jobs:
           docker push "$IMAGE"
 
       - name: Deploy to Cloud Run
-        if: false
         run: |
           echo "Deploying ${{ secrets.GCP_REGION}}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/kotomi/kotomi:${{ steps.vars.outputs.version }} to Cloud Run"
           gcloud run deploy kotomi-prod \

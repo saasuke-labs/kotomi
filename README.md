@@ -77,6 +77,15 @@ docker run -p 8080:8080 -v kotomi-data:/app/data kotomi
 
 **Note:** The `-v kotomi-data:/app/data` flag creates a Docker volume to persist your comment database across container restarts.
 
+### GCP Cloud Run Deployment
+
+For production deployment to Google Cloud Platform, see the **[GCP Deployment Setup Guide](docs/GCP_DEPLOYMENT_SETUP.md)**.
+
+The GitHub Actions workflow automatically:
+- Runs tests on every push
+- Builds and pushes Docker images to Artifact Registry
+- Deploys to Cloud Run on main branch
+
 ## Documentation & Guides
 
 ### 🚀 Quick Starts

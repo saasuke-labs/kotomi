@@ -5,6 +5,9 @@ import (
 	"time"
 )
 
+// Compile-time check to ensure MockModerator implements Moderator interface
+var _ Moderator = (*MockModerator)(nil)
+
 // MockModerator is a simple rule-based moderator for testing or when AI is not available
 type MockModerator struct{}
 

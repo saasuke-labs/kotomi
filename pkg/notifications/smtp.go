@@ -7,6 +7,9 @@ import (
 	"net/smtp"
 )
 
+// Compile-time check to ensure SMTPProvider implements EmailProvider interface
+var _ EmailProvider = (*SMTPProvider)(nil)
+
 // SMTPProvider implements email sending via SMTP
 type SMTPProvider struct {
 	host       string

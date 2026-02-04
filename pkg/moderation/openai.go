@@ -10,6 +10,9 @@ import (
 	"time"
 )
 
+// Compile-time check to ensure OpenAIModerator implements Moderator interface
+var _ Moderator = (*OpenAIModerator)(nil)
+
 // OpenAIModerator implements the Moderator interface using OpenAI's API
 type OpenAIModerator struct {
 	APIKey     string

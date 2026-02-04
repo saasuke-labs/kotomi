@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -66,6 +67,12 @@ func (a *InMemoryStoreAdapter) Close() error {
 }
 
 func main() {
+	// Initialize structured logger
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	slog.SetDefault(logger)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -79,9 +86,10 @@ func main() {
 
 	sqliteStore, err := comments.NewSQLiteStore(dbPath)
 	if err != nil {
+		logger.Error("failed to initialize SQLite store", "error", err)
 		log.Fatalf("Failed to initialize SQLite store: %v", err)
 	}
-	log.Printf("Using SQLite database at: %s", dbPath)
+	logger.Info("database initialized", "path", dbPath)
 
 	// Get database connection
 	db := sqliteStore.GetDB()
@@ -89,23 +97,23 @@ func main() {
 	// Initialize Auth0 config (optional, won't fail if not configured)
 	auth0Config, err := auth.NewAuth0Config()
 	if err != nil {
-		log.Printf("Auth0 not configured: %v", err)
-		log.Println("Admin panel will not be available. Set AUTH0_* environment variables to enable.")
+		logger.Warn("Auth0 not configured", "error", err)
+		logger.Info("admin panel will not be available - set AUTH0_* environment variables to enable")
 	}
 
 	// Initialize session store
 	if err := auth.InitSessionStore(); err != nil {
-		log.Printf("Session store initialization warning: %v", err)
+		logger.Warn("session store initialization warning", "error", err)
 	}
 
 	// Load templates
 	templates, err := template.ParseGlob("templates/**/*.html")
 	if err != nil {
-		log.Printf("Warning: Failed to load templates: %v", err)
+		logger.Warn("failed to load templates", "error", err)
 		// Try alternative pattern
 		templates, err = template.ParseGlob("templates/*.html")
 		if err != nil {
-			log.Printf("Warning: Failed to load templates with alternative pattern: %v", err)
+			logger.Warn("failed to load templates with alternative pattern", "error", err)
 		}
 	}
 
@@ -131,7 +139,7 @@ func main() {
 		for _, file := range templateFiles {
 			_, err := templates.ParseFiles(file)
 			if err != nil {
-				log.Printf("Warning: Could not load template %s: %v", file, err)
+				logger.Warn("could not load template", "file", file, "error", err)
 			}
 		}
 	}
@@ -142,10 +150,10 @@ func main() {
 	openaiAPIKey := os.Getenv("OPENAI_API_KEY")
 	if openaiAPIKey != "" {
 		moderator = moderation.NewOpenAIModerator(openaiAPIKey)
-		log.Println("AI moderation enabled with OpenAI")
+		logger.Info("AI moderation enabled", "provider", "openai")
 	} else {
 		moderator = moderation.NewMockModerator()
-		log.Println("Using mock moderation (set OPENAI_API_KEY for AI moderation)")
+		logger.Info("using mock moderation - set OPENAI_API_KEY for AI moderation")
 	}
 
 	// Set up graceful shutdown
@@ -155,7 +163,7 @@ func main() {
 	// Initialize notification queue
 	notificationQueue := notifications.NewQueue(db, 30*time.Second, 10)
 	go notificationQueue.Start(ctx)
-	log.Println("Notification queue processor started")
+	logger.Info("notification queue processor started")
 
 	// Create server configuration
 	cfg := server.Config{
@@ -166,11 +174,13 @@ func main() {
 		Moderator:             moderator,
 		ModerationConfigStore: moderationConfigStore,
 		NotificationQueue:     notificationQueue,
+		Logger:                logger,
 	}
 
 	// Create server
 	srv, err := server.New(cfg)
 	if err != nil {
+		logger.Error("failed to create server", "error", err)
 		log.Fatalf("Failed to create server: %v", err)
 	}
 
@@ -186,8 +196,9 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("Server running at http://localhost:%s", port)
+		logger.Info("server starting", "port", port, "address", "http://localhost:"+port)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("server failed", "error", err)
 			log.Fatalf("Server failed: %v", err)
 		}
 	}()
@@ -196,7 +207,7 @@ func main() {
 	<-ctx.Done()
 	stop()
 
-	log.Println("Shutting down gracefully...")
+	logger.Info("shutting down gracefully...")
 
 	// Create shutdown context with timeout
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -204,13 +215,13 @@ func main() {
 
 	// Shutdown server
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
-		log.Printf("Server shutdown error: %v", err)
+		logger.Error("server shutdown error", "error", err)
 	}
 
 	// Close database connection
 	if err := sqliteStore.Close(); err != nil {
-		log.Printf("Error closing database: %v", err)
+		logger.Error("error closing database", "error", err)
 	}
 
-	log.Println("Server stopped")
+	logger.Info("server stopped")
 }

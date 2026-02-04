@@ -3,6 +3,7 @@ package server
 import (
 	"database/sql"
 	"html/template"
+	"log/slog"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -21,6 +22,7 @@ type Server struct {
 	Moderator             moderation.Moderator
 	ModerationConfigStore *moderation.ConfigStore
 	NotificationQueue     *notifications.Queue
+	Logger                *slog.Logger
 }
 
 // New creates a new Server instance with the provided configuration
@@ -33,6 +35,7 @@ func New(cfg Config) (*Server, error) {
 		Moderator:             cfg.Moderator,
 		ModerationConfigStore: cfg.ModerationConfigStore,
 		NotificationQueue:     cfg.NotificationQueue,
+		Logger:                cfg.Logger,
 	}
 	
 	return server, nil

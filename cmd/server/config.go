@@ -3,6 +3,7 @@ package server
 import (
 	"database/sql"
 	"html/template"
+	"log/slog"
 
 	"github.com/saasuke-labs/kotomi/pkg/auth"
 	"github.com/saasuke-labs/kotomi/pkg/comments"
@@ -19,4 +20,5 @@ type Config struct {
 	Moderator             moderation.Moderator
 	ModerationConfigStore *moderation.ConfigStore
 	NotificationQueue     *notifications.Queue
+	Logger                *slog.Logger
 }

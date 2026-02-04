@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -25,6 +25,7 @@ type ServerHandlers struct {
 	Moderator             moderation.Moderator
 	ModerationConfigStore *moderation.ConfigStore
 	NotificationQueue     *notifications.Queue
+	Logger                *slog.Logger
 }
 
 // NewHandlers creates a new ServerHandlers instance
@@ -36,6 +37,7 @@ func NewHandlers(
 	moderator moderation.Moderator,
 	moderationConfigStore *moderation.ConfigStore,
 	notificationQueue *notifications.Queue,
+	logger *slog.Logger,
 ) *ServerHandlers {
 	return &ServerHandlers{
 		CommentStore:          commentStore,
@@ -45,11 +47,12 @@ func NewHandlers(
 		Moderator:             moderator,
 		ModerationConfigStore: moderationConfigStore,
 		NotificationQueue:     notificationQueue,
+		Logger:                logger,
 	}
 }
 
 // WriteJsonResponse writes a JSON response to the http.ResponseWriter
-func WriteJsonResponse(w http.ResponseWriter, data interface{}) {
+func (h *ServerHandlers) WriteJsonResponse(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	
@@ -59,7 +62,7 @@ func WriteJsonResponse(w http.ResponseWriter, data interface{}) {
 	
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		// Note: WriteHeader was already called, so we can't change status code
-		log.Printf("Failed to encode response: %v", err)
+		h.Logger.Error("failed to encode response", "error", err)
 	}
 }
 

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
@@ -26,7 +25,7 @@ func (s *ServerHandlers) GetHealthz(w http.ResponseWriter, r *http.Request) {
 		Message: "OK",
 	}
 
-	WriteJsonResponse(w, jsonResponse)
+	s.WriteJsonResponse(w, jsonResponse)
 }
 
 // Login initiates the Auth0 login flow
@@ -92,8 +91,10 @@ func (s *ServerHandlers) Callback(w http.ResponseWriter, r *http.Request) {
 
 	token, err := s.Auth0Config.ExchangeCode(r.Context(), code)
 	if err != nil {
-		log.Printf("Failed to exchange code: %v", err)
 		requestID := middleware.GetRequestID(r)
+		s.Logger.Error("failed to exchange code",
+			"error", err,
+			"request_id", requestID)
 		apierrors.WriteError(w, apierrors.InternalServerError("Failed to exchange code").WithRequestID(requestID))
 		return
 	}
@@ -101,8 +102,10 @@ func (s *ServerHandlers) Callback(w http.ResponseWriter, r *http.Request) {
 	// Get user info
 	userInfo, err := s.Auth0Config.GetUserInfo(r.Context(), token)
 	if err != nil {
-		log.Printf("Failed to get user info: %v", err)
 		requestID := middleware.GetRequestID(r)
+		s.Logger.Error("failed to get user info",
+			"error", err,
+			"request_id", requestID)
 		apierrors.WriteError(w, apierrors.InternalServerError("Failed to get user info").WithRequestID(requestID))
 		return
 	}
@@ -111,8 +114,11 @@ func (s *ServerHandlers) Callback(w http.ResponseWriter, r *http.Request) {
 	adminUserStore := models.NewAdminUserStore(s.DB)
 	user, err := adminUserStore.GetByAuth0Sub(r.Context(), userInfo.Sub)
 	if err != nil {
-		log.Printf("Error checking user: %v", err)
 		requestID := middleware.GetRequestID(r)
+		s.Logger.Error("error checking user",
+			"error", err,
+			"auth0_sub", userInfo.Sub,
+			"request_id", requestID)
 		apierrors.WriteError(w, apierrors.DatabaseError("Database error").WithRequestID(requestID))
 		return
 	}
@@ -121,12 +127,17 @@ func (s *ServerHandlers) Callback(w http.ResponseWriter, r *http.Request) {
 		// Create new user
 		user, err = adminUserStore.Create(r.Context(), userInfo.Email, userInfo.Name, userInfo.Sub)
 		if err != nil {
-			log.Printf("Failed to create user: %v", err)
 			requestID := middleware.GetRequestID(r)
+			s.Logger.Error("failed to create user",
+				"error", err,
+				"email", userInfo.Email,
+				"request_id", requestID)
 			apierrors.WriteError(w, apierrors.DatabaseError("Failed to create user").WithRequestID(requestID))
 			return
 		}
-		log.Printf("Created new user: %s", user.Email)
+		s.Logger.Info("created new user",
+			"email", user.Email,
+			"user_id", user.ID)
 	}
 
 	// Store user info in session
@@ -150,7 +161,10 @@ func (s *ServerHandlers) Callback(w http.ResponseWriter, r *http.Request) {
 func (s *ServerHandlers) Logout(w http.ResponseWriter, r *http.Request) {
 	// Clear session
 	if err := auth.ClearSession(w, r); err != nil {
-		log.Printf("Error clearing session: %v", err)
+		requestID := middleware.GetRequestID(r)
+		s.Logger.Error("error clearing session",
+			"error", err,
+			"request_id", requestID)
 	}
 
 	// Redirect to Auth0 logout
@@ -196,8 +210,11 @@ func (s *ServerHandlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.Templates.ExecuteTemplate(w, "admin/dashboard.html", data); err != nil {
-		log.Printf("Template error: %v", err)
 		requestID := middleware.GetRequestID(r)
+		s.Logger.Error("template error",
+			"error", err,
+			"template", "admin/dashboard.html",
+			"request_id", requestID)
 		apierrors.WriteError(w, apierrors.InternalServerError("Template error").WithRequestID(requestID))
 	}
 }

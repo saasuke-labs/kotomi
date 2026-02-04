@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -84,13 +83,22 @@ func (s *ServerHandlers) PostComments(w http.ResponseWriter, r *http.Request) {
 			// Analyze comment with AI moderation
 			result, err := s.Moderator.AnalyzeComment(comment.Text, *config)
 			if err != nil {
-				log.Printf("AI moderation failed: %v", err)
+				s.Logger.Error("AI moderation failed",
+					"error", err,
+					"comment_id", comment.ID,
+					"site_id", siteId,
+					"request_id", requestID)
 				// Continue with default status on error
 			} else {
 				// Determine status based on moderation result
 				comment.Status = moderation.DetermineStatus(result, *config)
-				log.Printf("AI moderation result for comment %s: decision=%s, confidence=%.2f, reason=%s",
-					comment.ID, result.Decision, result.Confidence, result.Reason)
+				s.Logger.Info("AI moderation completed",
+					"comment_id", comment.ID,
+					"decision", result.Decision,
+					"confidence", result.Confidence,
+					"reason", result.Reason,
+					"site_id", siteId,
+					"request_id", requestID)
 			}
 		}
 	}
@@ -101,7 +109,12 @@ func (s *ServerHandlers) PostComments(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.CommentStore.AddPageComment(r.Context(), siteId, pageId, comment); err != nil {
-		log.Printf("Error adding comment: %v", err)
+		s.Logger.Error("failed to add comment",
+			"error", err,
+			"site_id", siteId,
+			"page_id", pageId,
+			"comment_id", comment.ID,
+			"request_id", requestID)
 		apierrors.WriteErrorWithRequestID(w, apierrors.DatabaseError("Failed to add comment").WithDetails(err.Error()), requestID)
 		return
 	}
@@ -135,16 +148,23 @@ func (s *ServerHandlers) PostComments(w http.ResponseWriter, r *http.Request) {
 						unsubscribeURL,
 					)
 					if err != nil {
-						log.Printf("Warning: Failed to enqueue notification: %v", err)
+						s.Logger.Warn("failed to enqueue notification",
+							"error", err,
+							"site_id", siteId,
+							"comment_id", comment.ID,
+							"request_id", requestID)
 					} else {
-						log.Printf("Enqueued new comment notification for site %s", siteId)
+						s.Logger.Info("enqueued new comment notification",
+							"site_id", siteId,
+							"comment_id", comment.ID,
+							"request_id", requestID)
 					}
 				}
 			}
 		}
 	}
 
-	WriteJsonResponse(w, comment)
+	s.WriteJsonResponse(w, comment)
 }
 
 // GetComments retrieves all comments for a page
@@ -177,12 +197,16 @@ func (s *ServerHandlers) GetComments(w http.ResponseWriter, r *http.Request) {
 	
 	commentsData, err := s.CommentStore.GetPageComments(r.Context(), siteId, pageId)
 	if err != nil {
-		log.Printf("Error retrieving comments: %v", err)
+		s.Logger.Error("failed to retrieve comments",
+			"error", err,
+			"site_id", siteId,
+			"page_id", pageId,
+			"request_id", requestID)
 		apierrors.WriteErrorWithRequestID(w, apierrors.DatabaseError("Failed to retrieve comments").WithDetails(err.Error()), requestID)
 		return
 	}
 
-	WriteJsonResponse(w, commentsData)
+	s.WriteJsonResponse(w, commentsData)
 }
 
 // UpdateComment updates a comment's text (owner only)
@@ -255,8 +279,12 @@ func (s *ServerHandlers) UpdateComment(w http.ResponseWriter, r *http.Request) {
 
 	// Update the comment text
 	if err := s.CommentStore.UpdateCommentText(r.Context(), commentID, updateReq.Text); err != nil {
-		log.Printf("Error updating comment: %v", err)
 		requestID := middleware.GetRequestID(r)
+		s.Logger.Error("failed to update comment",
+			"error", err,
+			"comment_id", commentID,
+			"site_id", siteID,
+			"request_id", requestID)
 		apierrors.WriteError(w, apierrors.DatabaseError("Failed to update comment").WithRequestID(requestID))
 		return
 	}
@@ -269,7 +297,7 @@ func (s *ServerHandlers) UpdateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteJsonResponse(w, updatedComment)
+	s.WriteJsonResponse(w, updatedComment)
 }
 
 // DeleteComment deletes a comment (owner only)
@@ -322,8 +350,12 @@ func (s *ServerHandlers) DeleteComment(w http.ResponseWriter, r *http.Request) {
 
 	// Delete the comment
 	if err := s.CommentStore.DeleteComment(r.Context(), commentID); err != nil {
-		log.Printf("Error deleting comment: %v", err)
 		requestID := middleware.GetRequestID(r)
+		s.Logger.Error("failed to delete comment",
+			"error", err,
+			"comment_id", commentID,
+			"site_id", siteID,
+			"request_id", requestID)
 		apierrors.WriteError(w, apierrors.DatabaseError("Failed to delete comment").WithRequestID(requestID))
 		return
 	}

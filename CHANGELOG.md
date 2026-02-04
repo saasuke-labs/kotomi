@@ -5,6 +5,26 @@ All notable changes to Kotomi will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Smoke test scripts for deployment validation
+  - Basic smoke test (`scripts/smoke_test.sh`) - validates health, APIs, admin panel, docs
+  - Authenticated smoke test (`scripts/smoke_test_authenticated.sh`) - tests full JWT flow
+- Comprehensive beta program documentation
+  - Beta Tester Onboarding Checklist with day-by-day process
+  - Beta Feedback Collection Guide with templates and processes
+  - Beta Support Plan with SLAs and response times
+  - Deployment Monitoring Guide with metrics and procedures
+  - Beta Iteration & Patch Release Process documentation
+- GitHub issue templates for structured feedback
+  - Bug report template with impact assessment
+  - Feature request template with priority levels
+- Phase 2 implementation summary document
+
+### Changed
+- Updated documentation to use correct health endpoint (`/healthz` instead of `/health`)
+
 ## [0.1.0-beta.1] - 2026-02-04
 
 ### Added

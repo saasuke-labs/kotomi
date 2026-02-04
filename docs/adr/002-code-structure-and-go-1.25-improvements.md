@@ -1,9 +1,18 @@
 # ADR 002: Code Structure and Go 1.25 Improvements
 
-**Status:** Proposed  
+**Status:** In Progress (Phase 4 Completed)  
 **Date:** 2026-02-03  
+**Last Updated:** 2026-02-04  
 **Authors:** Kotomi Development Team  
 **Deciders:** Engineering Team  
+
+## Implementation Status
+
+- ✅ **Phase 1**: Foundation - Server struct and dependency injection (Completed)
+- ✅ **Phase 2**: Reliability - Database connection pool configuration (Completed)
+- ✅ **Phase 3**: Observability - Structured logging with slog (Completed)
+- ✅ **Phase 4**: Context Propagation - Context-aware logging (Completed 2026-02-04)
+  - See [Context-Aware Logging Guide](../CONTEXT_AWARE_LOGGING.md) for details
 
 ## Context and Problem Statement
 

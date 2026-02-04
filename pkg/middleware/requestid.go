@@ -1,14 +1,11 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/saasuke-labs/kotomi/pkg/logging"
 )
-
-// ContextKeyRequestID is the context key for storing request IDs
-const ContextKeyRequestID ContextKey = "request_id"
 
 // RequestIDMiddleware adds a unique request ID to each request
 func RequestIDMiddleware(next http.Handler) http.Handler {
@@ -24,18 +21,15 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 		// Add request ID to response headers
 		w.Header().Set("X-Request-ID", requestID)
 		
-		// Add request ID to context
-		ctx := context.WithValue(r.Context(), ContextKeyRequestID, requestID)
+		// Add request ID to context using the logging package
+		ctx := logging.WithRequestID(r.Context(), requestID)
 		
 		// Call the next handler with the updated context
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-// GetRequestID retrieves the request ID from the context
+// GetRequestID retrieves the request ID from the request's context
 func GetRequestID(r *http.Request) string {
-	if requestID, ok := r.Context().Value(ContextKeyRequestID).(string); ok {
-		return requestID
-	}
-	return ""
+	return logging.GetRequestID(r.Context())
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/saasuke-labs/kotomi/cmd/server"
 	"github.com/saasuke-labs/kotomi/pkg/auth"
 	"github.com/saasuke-labs/kotomi/pkg/comments"
+	"github.com/saasuke-labs/kotomi/pkg/logging"
 	"github.com/saasuke-labs/kotomi/pkg/moderation"
 	"github.com/saasuke-labs/kotomi/pkg/notifications"
 )
@@ -67,10 +68,12 @@ func (a *InMemoryStoreAdapter) Close() error {
 }
 
 func main() {
-	// Initialize structured logger
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	// Initialize structured logger with context-aware handler
+	jsonHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
-	}))
+	})
+	contextHandler := logging.NewContextHandler(jsonHandler)
+	logger := slog.New(contextHandler)
 	slog.SetDefault(logger)
 
 	port := os.Getenv("PORT")

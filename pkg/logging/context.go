@@ -133,8 +133,16 @@ func (h *ContextHandler) WithGroup(name string) slog.Handler {
 	return &ContextHandler{handler: h.handler.WithGroup(name)}
 }
 
-// LoggerFromContext creates a logger that will use context values when logging
-// This is a convenience function to get a logger bound to a specific context
+// LoggerFromContext creates a logger with context fields pre-filled as attributes.
+// This is a convenience function for when you need a logger instance to pass around
+// rather than using the *Context methods (InfoContext, ErrorContext, etc.) directly.
+// 
+// Use this when:
+// - You need to pass a logger to a function that doesn't accept context
+// - You want a logger instance bound to specific context values
+// 
+// Otherwise, prefer using the *Context methods directly with ContextHandler,
+// which automatically extracts fields from context on each log call.
 func LoggerFromContext(ctx context.Context, baseLogger *slog.Logger) *slog.Logger {
 	// Create a child logger with pre-filled context values
 	var attrs []any

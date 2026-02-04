@@ -29,7 +29,7 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// GetRequestID retrieves the request ID from the request context
+// GetRequestID retrieves the request ID from the request's context
 func GetRequestID(r *http.Request) string {
 	return logging.GetRequestID(r.Context())
 }

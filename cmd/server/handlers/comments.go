@@ -34,12 +34,13 @@ import (
 // @Router /site/{siteId}/page/{pageId}/comments [post]
 func (s *ServerHandlers) PostComments(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	ctx := r.Context()
 	
 	// Fallback to manual parsing if vars is empty (e.g., in unit tests)
 	if len(vars) == 0 {
 		parsedVars, err := GetUrlParams(r)
 		if err != nil {
-			apierrors.WriteErrorWithRequestID(w, apierrors.BadRequest("Invalid URL"), middleware.GetRequestID(r))
+			apierrors.WriteErrorWithRequestID(w, apierrors.BadRequest("Invalid URL"), logging.GetRequestID(ctx))
 			return
 		}
 		vars = parsedVars
@@ -49,7 +50,6 @@ func (s *ServerHandlers) PostComments(w http.ResponseWriter, r *http.Request) {
 	pageId := vars["pageId"]
 
 	// Enrich context with site_id and page_id for automatic logging
-	ctx := r.Context()
 	ctx = logging.WithSiteID(ctx, siteId)
 	ctx = logging.WithPageID(ctx, pageId)
 	r = r.WithContext(ctx)
@@ -171,12 +171,13 @@ func (s *ServerHandlers) PostComments(w http.ResponseWriter, r *http.Request) {
 // @Router /site/{siteId}/page/{pageId}/comments [get]
 func (s *ServerHandlers) GetComments(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	ctx := r.Context()
 	
 	// Fallback to manual parsing if vars is empty (e.g., in unit tests)
 	if len(vars) == 0 {
 		parsedVars, err := GetUrlParams(r)
 		if err != nil {
-			apierrors.WriteErrorWithRequestID(w, apierrors.BadRequest("Invalid URL"), logging.GetRequestID(r.Context()))
+			apierrors.WriteErrorWithRequestID(w, apierrors.BadRequest("Invalid URL"), logging.GetRequestID(ctx))
 			return
 		}
 		vars = parsedVars
@@ -186,7 +187,6 @@ func (s *ServerHandlers) GetComments(w http.ResponseWriter, r *http.Request) {
 	pageId := vars["pageId"]
 
 	// Enrich context with site_id and page_id for automatic logging
-	ctx := r.Context()
 	ctx = logging.WithSiteID(ctx, siteId)
 	ctx = logging.WithPageID(ctx, pageId)
 	

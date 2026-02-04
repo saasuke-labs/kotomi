@@ -32,8 +32,9 @@ FROM alpine:3.19
 
 WORKDIR /app
 
-# Create non-root user and directories
-RUN addgroup -g 1000 kotomi 2>/dev/null || true && \
+# Install wget for health checks
+RUN apk add --no-cache wget || echo "wget install failed, health check may not work" && \
+    addgroup -g 1000 kotomi 2>/dev/null || true && \
     adduser -D -u 1000 -G kotomi kotomi 2>/dev/null || true && \
     mkdir -p /app/data && \
     chown -R 1000:1000 /app/data 2>/dev/null || true

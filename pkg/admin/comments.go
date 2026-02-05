@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/saasuke-labs/kotomi/pkg/auth"
 	"github.com/saasuke-labs/kotomi/pkg/comments"
+	"github.com/saasuke-labs/kotomi/pkg/db"
 	"github.com/saasuke-labs/kotomi/pkg/models"
 	"github.com/saasuke-labs/kotomi/pkg/notifications"
 )
@@ -20,15 +21,15 @@ import (
 // CommentsHandler handles comment moderation requests
 type CommentsHandler struct {
 	db                *sql.DB
-	commentStore      *comments.SQLiteStore
+	commentStore      db.Store
 	templates         *template.Template
 	notificationQueue *notifications.Queue
 }
 
 // NewCommentsHandler creates a new comments handler
-func NewCommentsHandler(db *sql.DB, commentStore *comments.SQLiteStore, templates *template.Template) *CommentsHandler {
+func NewCommentsHandler(sqlDB *sql.DB, commentStore db.Store, templates *template.Template) *CommentsHandler {
 	return &CommentsHandler{
-		db:                db,
+		db:                sqlDB,
 		commentStore:      commentStore,
 		templates:         templates,
 		notificationQueue: nil, // Will be set later if needed

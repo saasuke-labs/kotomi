@@ -34,6 +34,7 @@ jobs:
 
       - name: Run unit tests
         run: |
+          # Uses SQLite by default (DB_PROVIDER not set)
           go test ./pkg/... ./cmd/... -v -race -coverprofile=coverage.out -covermode=atomic
 
       - name: Upload coverage to Codecov
@@ -70,6 +71,7 @@ jobs:
 
       - name: Run integration tests
         run: |
+          # Uses SQLite by default (DB_PROVIDER not set)
           go test ./pkg/comments/ -run Integration -v
 
   e2e-tests:

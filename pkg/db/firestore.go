@@ -46,43 +46,38 @@ func NewFirestoreStore(ctx context.Context, projectID string) (*FirestoreStore, 
 }
 
 // AddPageComment adds a comment to a specific page
-func (s *FirestoreStore) AddPageComment(ctx context.Context, site, page string, comment interface{}) error {
-	c, ok := comment.(comments.Comment)
-	if !ok {
-		return fmt.Errorf("expected comments.Comment, got %T", comment)
-	}
-
+func (s *FirestoreStore) AddPageComment(ctx context.Context, site, page string, comment comments.Comment) error {
 	// Set timestamps if not already set
-	if c.CreatedAt.IsZero() {
-		c.CreatedAt = time.Now()
+	if comment.CreatedAt.IsZero() {
+		comment.CreatedAt = time.Now()
 	}
-	if c.UpdatedAt.IsZero() {
-		c.UpdatedAt = time.Now()
+	if comment.UpdatedAt.IsZero() {
+		comment.UpdatedAt = time.Now()
 	}
 	// Set default status if not set
-	if c.Status == "" {
-		c.Status = "pending"
+	if comment.Status == "" {
+		comment.Status = "pending"
 	}
 
 	// Store comment in Firestore with optimized structure
 	// Collection: comments/{commentID}
 	// This allows direct access by ID and efficient queries
-	_, err := s.client.Collection("comments").Doc(c.ID).Set(ctx, map[string]interface{}{
-		"id":                c.ID,
+	_, err := s.client.Collection("comments").Doc(comment.ID).Set(ctx, map[string]interface{}{
+		"id":                comment.ID,
 		"site_id":           site,
 		"page_id":           page,
-		"author":            c.Author,
-		"author_id":         c.AuthorID,
-		"author_email":      c.AuthorEmail,
-		"author_verified":   c.AuthorVerified,
-		"author_reputation": c.AuthorReputation,
-		"text":              c.Text,
-		"parent_id":         c.ParentID,
-		"status":            c.Status,
-		"moderated_by":      c.ModeratedBy,
-		"moderated_at":      c.ModeratedAt,
-		"created_at":        c.CreatedAt,
-		"updated_at":        c.UpdatedAt,
+		"author":            comment.Author,
+		"author_id":         comment.AuthorID,
+		"author_email":      comment.AuthorEmail,
+		"author_verified":   comment.AuthorVerified,
+		"author_reputation": comment.AuthorReputation,
+		"text":              comment.Text,
+		"parent_id":         comment.ParentID,
+		"status":            comment.Status,
+		"moderated_by":      comment.ModeratedBy,
+		"moderated_at":      comment.ModeratedAt,
+		"created_at":        comment.CreatedAt,
+		"updated_at":        comment.UpdatedAt,
 	})
 
 	if err != nil {
@@ -139,7 +134,7 @@ func (s *FirestoreStore) AddPageComment(ctx context.Context, site, page string, 
 }
 
 // GetPageComments retrieves all comments for a specific page
-func (s *FirestoreStore) GetPageComments(ctx context.Context, site, page string) ([]interface{}, error) {
+func (s *FirestoreStore) GetPageComments(ctx context.Context, site, page string) ([]comments.Comment, error) {
 	// Query with composite index: site_id + page_id + created_at
 	query := s.client.Collection("comments").
 		Where("site_id", "==", site).
@@ -149,7 +144,7 @@ func (s *FirestoreStore) GetPageComments(ctx context.Context, site, page string)
 	iter := query.Documents(ctx)
 	defer iter.Stop()
 
-	var result []interface{}
+	var result []comments.Comment
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {
@@ -167,7 +162,7 @@ func (s *FirestoreStore) GetPageComments(ctx context.Context, site, page string)
 }
 
 // GetCommentsBySite retrieves comments for a site with optional status filter
-func (s *FirestoreStore) GetCommentsBySite(ctx context.Context, siteID string, status string) ([]interface{}, error) {
+func (s *FirestoreStore) GetCommentsBySite(ctx context.Context, siteID string, status string) ([]comments.Comment, error) {
 	query := s.client.Collection("comments").Where("site_id", "==", siteID)
 
 	if status != "" {
@@ -179,7 +174,7 @@ func (s *FirestoreStore) GetCommentsBySite(ctx context.Context, siteID string, s
 	iter := query.Documents(ctx)
 	defer iter.Stop()
 
-	var result []interface{}
+	var result []comments.Comment
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {
@@ -197,7 +192,7 @@ func (s *FirestoreStore) GetCommentsBySite(ctx context.Context, siteID string, s
 }
 
 // GetCommentByID retrieves a specific comment by ID
-func (s *FirestoreStore) GetCommentByID(ctx context.Context, commentID string) (interface{}, error) {
+func (s *FirestoreStore) GetCommentByID(ctx context.Context, commentID string) (*comments.Comment, error) {
 	doc, err := s.client.Collection("comments").Doc(commentID).Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get comment: %w", err)

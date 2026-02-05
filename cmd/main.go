@@ -95,12 +95,6 @@ func main() {
 
 	// Get database connection (will be nil for non-SQL databases like Firestore)
 	sqlDB := store.GetDB()
-	
-	// For backward compatibility, get the underlying SQLite store if available
-	var sqliteStore *comments.SQLiteStore
-	if adapter, ok := store.(*db.SQLiteAdapter); ok {
-		sqliteStore = adapter.GetSQLiteStore()
-	}
 
 	// Initialize Auth0 config (optional, won't fail if not configured)
 	auth0Config, err := auth.NewAuth0Config()
@@ -186,12 +180,9 @@ func main() {
 	}
 
 	// Create server configuration
-	// Note: CommentStore expects *comments.SQLiteStore for backward compatibility
-	// When using Firestore, we pass nil for sqliteStore and the server should handle it
-	// For full Firestore support, server.Config should be updated to use the Store interface
 	cfg := server.Config{
-		CommentStore:          sqliteStore,  // May be nil for Firestore
-		DB:                    sqlDB,        // May be nil for Firestore
+		CommentStore:          store,
+		DB:                    sqlDB,
 		Templates:             templates,
 		Auth0Config:           auth0Config,
 		Moderator:             moderator,
@@ -242,7 +233,7 @@ func main() {
 	}
 
 	// Close database connection
-	if err := sqliteStore.Close(); err != nil {
+	if err := store.Close(); err != nil {
 		logger.Error("error closing database", "error", err)
 	}
 

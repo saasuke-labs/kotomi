@@ -53,13 +53,8 @@ func TestSQLiteAdapter(t *testing.T) {
 		t.Fatalf("Failed to get comment by ID: %v", err)
 	}
 
-	c, ok := result.(*comments.Comment)
-	if !ok {
-		t.Fatalf("Expected *comments.Comment, got %T", result)
-	}
-
-	if c.ID != "test-1" {
-		t.Errorf("Expected ID 'test-1', got '%s'", c.ID)
+	if result.ID != "test-1" {
+		t.Errorf("Expected ID 'test-1', got '%s'", result.ID)
 	}
 
 	// Test UpdateCommentStatus
@@ -74,9 +69,8 @@ func TestSQLiteAdapter(t *testing.T) {
 		t.Fatalf("Failed to get comment after status update: %v", err)
 	}
 
-	c, _ = result.(*comments.Comment)
-	if c.Status != "approved" {
-		t.Errorf("Expected status 'approved', got '%s'", c.Status)
+	if result.Status != "approved" {
+		t.Errorf("Expected status 'approved', got '%s'", result.Status)
 	}
 
 	// Test GetDB

@@ -6,14 +6,14 @@ import (
 	"log/slog"
 
 	"github.com/saasuke-labs/kotomi/pkg/auth"
-	"github.com/saasuke-labs/kotomi/pkg/comments"
+	"github.com/saasuke-labs/kotomi/pkg/db"
 	"github.com/saasuke-labs/kotomi/pkg/moderation"
 	"github.com/saasuke-labs/kotomi/pkg/notifications"
 )
 
 // Config holds the configuration for creating a Server
 type Config struct {
-	CommentStore          *comments.SQLiteStore
+	CommentStore          db.Store
 	DB                    *sql.DB
 	Templates             *template.Template
 	Auth0Config           *auth.Auth0Config

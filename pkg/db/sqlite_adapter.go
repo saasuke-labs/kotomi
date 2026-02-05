@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
 
 	"github.com/saasuke-labs/kotomi/pkg/comments"
 )
@@ -23,42 +22,22 @@ func NewSQLiteAdapter(dbPath string) (*SQLiteAdapter, error) {
 }
 
 // AddPageComment adds a comment to a specific page
-func (a *SQLiteAdapter) AddPageComment(ctx context.Context, site, page string, comment interface{}) error {
-	c, ok := comment.(comments.Comment)
-	if !ok {
-		return fmt.Errorf("invalid comment type: expected comments.Comment, got %T", comment)
-	}
-	return a.store.AddPageComment(ctx, site, page, c)
+func (a *SQLiteAdapter) AddPageComment(ctx context.Context, site, page string, comment comments.Comment) error {
+	return a.store.AddPageComment(ctx, site, page, comment)
 }
 
 // GetPageComments retrieves all comments for a specific page
-func (a *SQLiteAdapter) GetPageComments(ctx context.Context, site, page string) ([]interface{}, error) {
-	commentsList, err := a.store.GetPageComments(ctx, site, page)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]interface{}, len(commentsList))
-	for i, c := range commentsList {
-		result[i] = c
-	}
-	return result, nil
+func (a *SQLiteAdapter) GetPageComments(ctx context.Context, site, page string) ([]comments.Comment, error) {
+	return a.store.GetPageComments(ctx, site, page)
 }
 
 // GetCommentsBySite retrieves comments for a site with optional status filter
-func (a *SQLiteAdapter) GetCommentsBySite(ctx context.Context, siteID string, status string) ([]interface{}, error) {
-	commentsList, err := a.store.GetCommentsBySite(ctx, siteID, status)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]interface{}, len(commentsList))
-	for i, c := range commentsList {
-		result[i] = c
-	}
-	return result, nil
+func (a *SQLiteAdapter) GetCommentsBySite(ctx context.Context, siteID string, status string) ([]comments.Comment, error) {
+	return a.store.GetCommentsBySite(ctx, siteID, status)
 }
 
 // GetCommentByID retrieves a specific comment by ID
-func (a *SQLiteAdapter) GetCommentByID(ctx context.Context, commentID string) (interface{}, error) {
+func (a *SQLiteAdapter) GetCommentByID(ctx context.Context, commentID string) (*comments.Comment, error) {
 	return a.store.GetCommentByID(ctx, commentID)
 }
 
@@ -90,9 +69,4 @@ func (a *SQLiteAdapter) GetDB() *sql.DB {
 // Close closes the database connection
 func (a *SQLiteAdapter) Close() error {
 	return a.store.Close()
-}
-
-// GetSQLiteStore returns the underlying SQLite store for compatibility
-func (a *SQLiteAdapter) GetSQLiteStore() *comments.SQLiteStore {
-	return a.store
 }

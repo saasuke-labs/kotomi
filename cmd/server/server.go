@@ -8,14 +8,14 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/saasuke-labs/kotomi/pkg/auth"
-	"github.com/saasuke-labs/kotomi/pkg/comments"
+	"github.com/saasuke-labs/kotomi/pkg/db"
 	"github.com/saasuke-labs/kotomi/pkg/moderation"
 	"github.com/saasuke-labs/kotomi/pkg/notifications"
 )
 
 // Server holds all dependencies for the application
 type Server struct {
-	CommentStore          *comments.SQLiteStore
+	CommentStore          db.Store
 	DB                    *sql.DB
 	Templates             *template.Template
 	Auth0Config           *auth.Auth0Config

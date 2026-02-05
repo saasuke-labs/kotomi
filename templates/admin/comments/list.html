@@ -55,6 +55,7 @@
 <script>
 function toggleAllComments(checkbox) {
     const checkboxes = document.querySelectorAll('.comment-checkbox');
+    if (checkboxes.length === 0) return; // No checkboxes to toggle
     checkboxes.forEach(cb => cb.checked = checkbox.checked);
 }
 
@@ -74,7 +75,23 @@ function bulkApprove() {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({comment_ids: ids})
-        }).then(() => location.reload());
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to approve comments');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Failed to approve some comments');
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error.message);
+        });
     }
 }
 
@@ -89,7 +106,23 @@ function bulkReject() {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({comment_ids: ids})
-        }).then(() => location.reload());
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to reject comments');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Failed to reject some comments');
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error.message);
+        });
     }
 }
 
@@ -104,7 +137,23 @@ function bulkDelete() {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({comment_ids: ids})
-        }).then(() => location.reload());
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to delete comments');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Failed to delete some comments');
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error.message);
+        });
     }
 }
 </script>

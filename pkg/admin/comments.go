@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/saasuke-labs/kotomi/pkg/auth"
@@ -371,10 +372,15 @@ func (h *CommentsHandler) searchComments(ctx context.Context, siteID, status, se
 		args = append(args, status)
 	}
 
-	// Add search filter
-	search = "%" + search + "%"
-	query += " AND (c.text LIKE ? OR c.author LIKE ? OR c.author_email LIKE ? OR p.path LIKE ?)"
-	args = append(args, search, search, search, search)
+	// Add search filter with escaped wildcards
+	// Escape special LIKE characters: %, _, and \
+	escapedSearch := search
+	escapedSearch = strings.ReplaceAll(escapedSearch, "\\", "\\\\")
+	escapedSearch = strings.ReplaceAll(escapedSearch, "%", "\\%")
+	escapedSearch = strings.ReplaceAll(escapedSearch, "_", "\\_")
+	searchPattern := "%" + escapedSearch + "%"
+	query += " AND (c.text LIKE ? ESCAPE '\\' OR c.author LIKE ? ESCAPE '\\' OR c.author_email LIKE ? ESCAPE '\\' OR p.path LIKE ? ESCAPE '\\')"
+	args = append(args, searchPattern, searchPattern, searchPattern, searchPattern)
 
 	query += " ORDER BY c.created_at DESC"
 
@@ -426,24 +432,39 @@ func (h *CommentsHandler) BulkApprove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Approve each comment
+	successCount := 0
+	// Approve each comment with proper authorization check
 	for _, commentID := range req.CommentIDs {
-		// Verify ownership (basic check)
+		// Get comment and verify ownership
 		_, err := h.commentStore.GetCommentByID(r.Context(), commentID)
 		if err != nil {
 			continue // Skip invalid comments
 		}
 		
+		// Verify site ownership
+		siteID, err := h.commentStore.GetCommentSiteID(r.Context(), commentID)
+		if err != nil {
+			continue
+		}
+		
+		siteStore := models.NewSiteStore(h.db)
+		site, err := siteStore.GetByID(r.Context(), siteID)
+		if err != nil || site == nil || site.OwnerID != userID {
+			continue // Skip if not owner
+		}
+		
 		err = h.commentStore.UpdateCommentStatus(r.Context(), commentID, "approved", userID)
 		if err != nil {
 			log.Printf("Failed to approve comment %s: %v", commentID, err)
+			continue
 		}
+		successCount++
 	}
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
-		"count":   len(req.CommentIDs),
+		"count":   successCount,
 	})
 }
 
@@ -463,24 +484,39 @@ func (h *CommentsHandler) BulkReject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Reject each comment
+	successCount := 0
+	// Reject each comment with proper authorization check
 	for _, commentID := range req.CommentIDs {
-		// Verify ownership (basic check)
+		// Get comment and verify ownership
 		_, err := h.commentStore.GetCommentByID(r.Context(), commentID)
 		if err != nil {
 			continue // Skip invalid comments
 		}
 		
+		// Verify site ownership
+		siteID, err := h.commentStore.GetCommentSiteID(r.Context(), commentID)
+		if err != nil {
+			continue
+		}
+		
+		siteStore := models.NewSiteStore(h.db)
+		site, err := siteStore.GetByID(r.Context(), siteID)
+		if err != nil || site == nil || site.OwnerID != userID {
+			continue // Skip if not owner
+		}
+		
 		err = h.commentStore.UpdateCommentStatus(r.Context(), commentID, "rejected", userID)
 		if err != nil {
 			log.Printf("Failed to reject comment %s: %v", commentID, err)
+			continue
 		}
+		successCount++
 	}
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
-		"count":   len(req.CommentIDs),
+		"count":   successCount,
 	})
 }
 
@@ -500,23 +536,38 @@ func (h *CommentsHandler) BulkDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Delete each comment
+	successCount := 0
+	// Delete each comment with proper authorization check
 	for _, commentID := range req.CommentIDs {
-		// Verify ownership (basic check)
+		// Get comment and verify ownership
 		_, err := h.commentStore.GetCommentByID(r.Context(), commentID)
 		if err != nil {
 			continue // Skip invalid comments
 		}
 		
+		// Verify site ownership
+		siteID, err := h.commentStore.GetCommentSiteID(r.Context(), commentID)
+		if err != nil {
+			continue
+		}
+		
+		siteStore := models.NewSiteStore(h.db)
+		site, err := siteStore.GetByID(r.Context(), siteID)
+		if err != nil || site == nil || site.OwnerID != userID {
+			continue // Skip if not owner
+		}
+		
 		err = h.commentStore.DeleteComment(r.Context(), commentID)
 		if err != nil {
 			log.Printf("Failed to delete comment %s: %v", commentID, err)
+			continue
 		}
+		successCount++
 	}
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
-		"count":   len(req.CommentIDs),
+		"count":   successCount,
 	})
 }

@@ -1,0 +1,136 @@
+{{template "base.html" .}}
+
+{{define "title"}}User Management - {{.Site.Name}} - Kotomi Admin{{end}}
+
+{{define "content"}}
+<hgroup>
+    <h1>User Management</h1>
+    <h2>{{.Site.Name}}</h2>
+</hgroup>
+
+<nav>
+    <ul>
+        <li><a href="/admin/sites/{{.Site.ID}}">← Back to Site</a></li>
+        <li><a href="/admin/sites/{{.Site.ID}}/analytics">Analytics</a></li>
+        <li><a href="/admin/sites/{{.Site.ID}}/comments">Comments</a></li>
+    </ul>
+</nav>
+
+<!-- Statistics Overview -->
+<div class="grid">
+    <article>
+        <header><strong>Total Users</strong></header>
+        <h2>{{.Stats.TotalUsers}}</h2>
+    </article>
+    <article>
+        <header><strong>Active Users (7d)</strong></header>
+        <h2>{{.Stats.ActiveUsers}}</h2>
+    </article>
+    <article>
+        <header><strong>Verified Users</strong></header>
+        <h2>{{.Stats.VerifiedUsers}}</h2>
+    </article>
+    <article>
+        <header><strong>Avg Reputation</strong></header>
+        <h2>{{.Stats.AverageReputation}}</h2>
+    </article>
+</div>
+
+<!-- Search and Filter -->
+<article>
+    <form method="GET" action="/admin/sites/{{.Site.ID}}/users">
+        <div class="grid">
+            <input type="search" name="search" placeholder="Search by name or email..." value="{{.Search}}">
+            <select name="status">
+                <option value="">All Statuses</option>
+                <option value="active" {{if eq .StatusFilter "active"}}selected{{end}}>Active</option>
+                <option value="verified" {{if eq .StatusFilter "verified"}}selected{{end}}>Verified</option>
+                <option value="new" {{if eq .StatusFilter "new"}}selected{{end}}>New Users (7d)</option>
+            </select>
+            <button type="submit">Search</button>
+        </div>
+    </form>
+</article>
+
+<!-- Users Table -->
+{{if .Users}}
+<figure>
+    <table role="grid">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Reputation</th>
+                <th>Comments</th>
+                <th>Last Seen</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Users}}
+            <tr>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        {{if .AvatarURL}}
+                        <img src="{{.AvatarURL}}" alt="{{.Name}}" style="width: 32px; height: 32px; border-radius: 50%;">
+                        {{end}}
+                        <div>
+                            <strong>{{.Name}}</strong>
+                            {{if .ProfileURL}}
+                            <br><small><a href="{{.ProfileURL}}" target="_blank">View Profile</a></small>
+                            {{end}}
+                        </div>
+                    </div>
+                </td>
+                <td>{{if .Email}}{{.Email}}{{else}}<em>Not provided</em>{{end}}</td>
+                <td>
+                    {{if .IsVerified}}
+                    <span style="color: green;">✓ Verified</span>
+                    {{else}}
+                    <span style="color: gray;">Unverified</span>
+                    {{end}}
+                </td>
+                <td>{{.ReputationScore}}</td>
+                <td>{{.CommentCount}}</td>
+                <td>
+                    {{if .LastSeen}}
+                    <time datetime="{{.LastSeen.Format "2006-01-02T15:04:05Z07:00"}}">
+                        {{.LastSeen.Format "Jan 2, 2006"}}
+                    </time>
+                    {{end}}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <a href="/admin/sites/{{$.Site.ID}}/users/{{.ID}}" role="button" class="secondary" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">View</a>
+                        <button 
+                            hx-delete="/admin/sites/{{$.Site.ID}}/users/{{.ID}}" 
+                            hx-confirm="Are you sure you want to delete this user? All their comments and reactions will be permanently removed."
+                            hx-target="closest tr"
+                            hx-swap="outerHTML swap:1s"
+                            class="secondary outline" 
+                            style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">
+                            Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</figure>
+{{else}}
+<article>
+    <p>No users found{{if .Search}} matching "{{.Search}}"{{end}}.</p>
+    {{if not .Search}}
+    <p>Users will appear here once they start commenting on your site.</p>
+    {{end}}
+</article>
+{{end}}
+
+<style>
+    table img {
+        object-fit: cover;
+    }
+</style>
+{{end}}

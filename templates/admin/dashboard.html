@@ -8,30 +8,91 @@
     <h2>Welcome back{{if .User.Name}}, {{.User.Name}}{{end}}!</h2>
 </hgroup>
 
+<!-- Overall Statistics -->
 <div class="grid">
     <article>
         <header><strong>Sites</strong></header>
-        <p>{{.SitesCount}} site{{if ne .SitesCount 1}}s{{end}}</p>
+        <h2>{{.SitesCount}}</h2>
         <footer>
             <a href="/admin/sites" role="button">Manage Sites</a>
         </footer>
     </article>
 
     <article>
-        <header><strong>Comments</strong></header>
-        <p>{{.PendingCount}} pending comment{{if ne .PendingCount 1}}s{{end}}</p>
+        <header><strong>Pending Comments</strong></header>
+        <h2>{{.PendingCount}}</h2>
         <footer>
-            <a href="/admin/comments?status=pending" role="button">Moderate</a>
+            {{if gt .PendingCount 0}}
+            <a href="/admin/sites" role="button">Moderate Now</a>
+            {{else}}
+            <small>No pending comments</small>
+            {{end}}
         </footer>
+    </article>
+
+    <article>
+        <header><strong>Total Comments</strong></header>
+        <h2>{{.TotalComments}}</h2>
+    </article>
+
+    <article>
+        <header><strong>Total Users</strong></header>
+        <h2>{{.TotalUsers}}</h2>
     </article>
 </div>
 
-{{if eq .SitesCount 0}}
+{{if gt .SitesCount 0}}
+<!-- Sites List -->
+<article>
+    <header><strong>Your Sites</strong></header>
+    <table role="grid">
+        <thead>
+            <tr>
+                <th>Site</th>
+                <th>Domain</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Sites}}
+            <tr>
+                <td>
+                    <strong>{{.Name}}</strong>
+                    {{if .Description}}<br><small>{{.Description}}</small>{{end}}
+                </td>
+                <td>{{if .Domain}}{{.Domain}}{{else}}<em>No domain set</em>{{end}}</td>
+                <td>{{.CreatedAt.Format "Jan 2, 2006"}}</td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <a href="/admin/sites/{{.ID}}" role="button" class="secondary" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">View</a>
+                        <a href="/admin/sites/{{.ID}}/users" role="button" class="secondary outline" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Users</a>
+                        <a href="/admin/sites/{{.ID}}/analytics" role="button" class="secondary outline" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Analytics</a>
+                    </div>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</article>
+{{else}}
+<!-- Get Started Card -->
 <article>
     <header><strong>Get Started</strong></header>
     <p>Create your first site to start managing comments on your pages.</p>
     <footer>
         <a href="/admin/sites/new" role="button">Create Your First Site</a>
+    </footer>
+</article>
+{{end}}
+
+{{if gt .PendingCount 0}}
+<!-- Alert for pending moderation -->
+<article style="border-left: 4px solid orange;">
+    <header><strong>⚠️ Action Required</strong></header>
+    <p>You have <strong>{{.PendingCount}}</strong> comment{{if ne .PendingCount 1}}s{{end}} waiting for moderation.</p>
+    <footer>
+        <a href="/admin/sites" role="button">Review Comments</a>
     </footer>
 </article>
 {{end}}

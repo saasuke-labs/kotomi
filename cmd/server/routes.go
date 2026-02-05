@@ -168,9 +168,9 @@ func (s *Server) RegisterRoutes(router *mux.Router) {
 		adminRouter.HandleFunc("/sites/{siteId}/auth/config", authConfigHandler.DeleteAuthConfig).Methods("DELETE")
 
 		// User management handlers (Phase 2)
-		userMgmtHandler := admin.NewUserManagementHandler(s.DB)
-		adminRouter.HandleFunc("/sites/{siteId}/users", userMgmtHandler.ListUsersHandler).Methods("GET")
-		adminRouter.HandleFunc("/sites/{siteId}/users/{userId}", userMgmtHandler.GetUserHandler).Methods("GET")
+		userMgmtHandler := admin.NewUserManagementHandler(s.DB, s.Templates)
+		adminRouter.HandleFunc("/sites/{siteId}/users", userMgmtHandler.ListUsersPage).Methods("GET")
+		adminRouter.HandleFunc("/sites/{siteId}/users/{userId}", userMgmtHandler.GetUserDetailPage).Methods("GET")
 		adminRouter.HandleFunc("/sites/{siteId}/users/{userId}", userMgmtHandler.DeleteUserHandler).Methods("DELETE")
 
 		// Export/Import handlers

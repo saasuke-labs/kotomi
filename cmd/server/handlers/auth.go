@@ -170,7 +170,7 @@ func (s *ServerHandlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get sites count
+	// Get sites
 	siteStore := models.NewSiteStore(s.DB)
 	sites, err := siteStore.GetByOwner(ctx, userID)
 	if err != nil {
@@ -178,10 +178,40 @@ func (s *ServerHandlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Calculate aggregate statistics across all sites
+	var pendingCount, totalComments, totalUsers, totalReactions int
+	for _, site := range sites {
+		// Pending comments
+		var pending int
+		s.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM comments WHERE site_id = ? AND status = 'pending'", site.ID).Scan(&pending)
+		pendingCount += pending
+		
+		// Total comments
+		var total int
+		s.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM comments WHERE site_id = ?", site.ID).Scan(&total)
+		totalComments += total
+		
+		// Total users
+		var users int
+		s.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE site_id = ?", site.ID).Scan(&users)
+		totalUsers += users
+		
+		// Total reactions
+		var reactions int
+		s.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM reactions r JOIN pages p ON r.page_id = p.id WHERE p.site_id = ?", site.ID).Scan(&reactions)
+		var commentReactions int
+		s.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM reactions r JOIN comments c ON r.comment_id = c.id WHERE c.site_id = ?", site.ID).Scan(&commentReactions)
+		totalReactions += reactions + commentReactions
+	}
+
 	data := map[string]interface{}{
-		"User":         user,
-		"SitesCount":   len(sites),
-		"PendingCount": 0, // TODO: implement pending comments count
+		"User":           user,
+		"Sites":          sites,
+		"SitesCount":     len(sites),
+		"PendingCount":   pendingCount,
+		"TotalComments":  totalComments,
+		"TotalUsers":     totalUsers,
+		"TotalReactions": totalReactions,
 	}
 
 	if err := s.Templates.ExecuteTemplate(w, "admin/dashboard.html", data); err != nil {

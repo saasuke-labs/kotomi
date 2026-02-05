@@ -1,0 +1,160 @@
+{{template "base.html" .}}
+
+{{define "title"}}{{.User.Name}} - User Details - Kotomi Admin{{end}}
+
+{{define "content"}}
+<nav>
+    <ul>
+        <li><a href="/admin/sites/{{.Site.ID}}/users">← Back to Users</a></li>
+    </ul>
+</nav>
+
+<hgroup>
+    <h1>User Details</h1>
+    <h2>{{.User.Name}}</h2>
+</hgroup>
+
+<!-- User Info Card -->
+<article>
+    <header><strong>User Information</strong></header>
+    <div class="grid">
+        <div>
+            {{if .User.AvatarURL}}
+            <img src="{{.User.AvatarURL}}" alt="{{.User.Name}}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
+            {{end}}
+            <dl>
+                <dt><strong>Name</strong></dt>
+                <dd>{{.User.Name}}</dd>
+                
+                <dt><strong>Email</strong></dt>
+                <dd>{{if .User.Email}}{{.User.Email}}{{else}}<em>Not provided</em>{{end}}</dd>
+                
+                <dt><strong>User ID</strong></dt>
+                <dd><code>{{.User.ID}}</code></dd>
+                
+                {{if .User.ProfileURL}}
+                <dt><strong>Profile</strong></dt>
+                <dd><a href="{{.User.ProfileURL}}" target="_blank">{{.User.ProfileURL}}</a></dd>
+                {{end}}
+            </dl>
+        </div>
+        <div>
+            <dl>
+                <dt><strong>Status</strong></dt>
+                <dd>
+                    {{if .User.IsVerified}}
+                    <span style="color: green;">✓ Verified</span>
+                    {{else}}
+                    <span style="color: gray;">Unverified</span>
+                    {{end}}
+                </dd>
+                
+                <dt><strong>Reputation Score</strong></dt>
+                <dd>{{.User.ReputationScore}}</dd>
+                
+                <dt><strong>First Seen</strong></dt>
+                <dd>{{.User.FirstSeen.Format "Jan 2, 2006 at 3:04 PM"}}</dd>
+                
+                <dt><strong>Last Seen</strong></dt>
+                <dd>{{.User.LastSeen.Format "Jan 2, 2006 at 3:04 PM"}}</dd>
+                
+                {{if .User.Roles}}
+                <dt><strong>Roles</strong></dt>
+                <dd>
+                    {{range $i, $role := .User.Roles}}
+                        {{if $i}}, {{end}}<kbd>{{$role}}</kbd>
+                    {{end}}
+                </dd>
+                {{end}}
+            </dl>
+        </div>
+    </div>
+</article>
+
+<!-- Activity Statistics -->
+<div class="grid">
+    <article>
+        <header><strong>Total Comments</strong></header>
+        <h2>{{.Activity.TotalComments}}</h2>
+    </article>
+    <article>
+        <header><strong>Approved Comments</strong></header>
+        <h2>{{.Activity.ApprovedComments}}</h2>
+    </article>
+    <article>
+        <header><strong>Pending Comments</strong></header>
+        <h2>{{.Activity.PendingComments}}</h2>
+    </article>
+    <article>
+        <header><strong>Rejected Comments</strong></header>
+        <h2>{{.Activity.RejectedComments}}</h2>
+    </article>
+</div>
+
+<div class="grid">
+    <article>
+        <header><strong>Total Reactions</strong></header>
+        <h2>{{.Activity.TotalReactions}}</h2>
+    </article>
+    <article>
+        <header><strong>Approval Rate</strong></header>
+        <h2>{{.Activity.ApprovalRate}}%</h2>
+    </article>
+    <article>
+        <header><strong>Account Age</strong></header>
+        <h2>{{.Activity.AccountAgeDays}} days</h2>
+    </article>
+    <article>
+        <header><strong>Activity Level</strong></header>
+        <h2>{{.Activity.ActivityLevel}}</h2>
+    </article>
+</div>
+
+<!-- Recent Comments -->
+{{if .RecentComments}}
+<article>
+    <header><strong>Recent Comments</strong></header>
+    <table role="grid">
+        <thead>
+            <tr>
+                <th>Comment</th>
+                <th>Page</th>
+                <th>Status</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .RecentComments}}
+            <tr>
+                <td>{{if gt (len .Text) 100}}{{slice .Text 0 100}}...{{else}}{{.Text}}{{end}}</td>
+                <td><small>{{.PagePath}}</small></td>
+                <td>
+                    {{if eq .Status "approved"}}<span style="color: green;">✓ Approved</span>{{end}}
+                    {{if eq .Status "pending"}}<span style="color: orange;">⏱ Pending</span>{{end}}
+                    {{if eq .Status "rejected"}}<span style="color: red;">✗ Rejected</span>{{end}}
+                </td>
+                <td>{{.CreatedAt.Format "Jan 2, 2006"}}</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+    <footer>
+        <a href="/admin/sites/{{.Site.ID}}/comments?author={{.User.ID}}">View All Comments →</a>
+    </footer>
+</article>
+{{end}}
+
+<!-- Actions -->
+<article>
+    <header><strong>Actions</strong></header>
+    <div style="display: flex; gap: 1rem;">
+        <button 
+            hx-delete="/admin/sites/{{.Site.ID}}/users/{{.User.ID}}" 
+            hx-confirm="Are you sure you want to delete this user? All their comments and reactions will be permanently removed. This action cannot be undone."
+            hx-on::after-request="window.location='/admin/sites/{{.Site.ID}}/users'"
+            class="secondary">
+            Delete User
+        </button>
+    </div>
+</article>
+{{end}}

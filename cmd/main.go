@@ -138,6 +138,8 @@ func main() {
 			"templates/admin/reactions/form.html",
 			"templates/admin/moderation/form.html",
 			"templates/admin/notifications/form.html",
+			"templates/admin/users/list.html",
+			"templates/admin/users/detail.html",
 		}
 		for _, file := range templateFiles {
 			_, err := templates.ParseFiles(file)

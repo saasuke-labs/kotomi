@@ -15,7 +15,7 @@ import (
 
 // Server holds all dependencies for the application
 type Server struct {
-	CommentStore          *comments.SQLiteStore
+	CommentStore          comments.Store
 	DB                    *sql.DB
 	Templates             *template.Template
 	Auth0Config           *auth.Auth0Config

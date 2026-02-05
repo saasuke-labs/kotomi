@@ -20,13 +20,13 @@ import (
 // CommentsHandler handles comment moderation requests
 type CommentsHandler struct {
 	db                *sql.DB
-	commentStore      *comments.SQLiteStore
+	commentStore      comments.Store
 	templates         *template.Template
 	notificationQueue *notifications.Queue
 }
 
 // NewCommentsHandler creates a new comments handler
-func NewCommentsHandler(db *sql.DB, commentStore *comments.SQLiteStore, templates *template.Template) *CommentsHandler {
+func NewCommentsHandler(db *sql.DB, commentStore comments.Store, templates *template.Template) *CommentsHandler {
 	return &CommentsHandler{
 		db:                db,
 		commentStore:      commentStore,

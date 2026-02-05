@@ -30,7 +30,7 @@ Give your pages a voice
 Kotomi is built with simplicity and performance in mind:
 
 - **Go 1.24** - Modern, fast, and efficient
-- **SQLite Storage** - Persistent, reliable database with zero configuration
+- **Flexible Database** - SQLite (zero config) or PostgreSQL (production scale)
 - **REST API** - Standard HTTP endpoints for easy integration
 - **HTMX** - Server-side rendering with smooth interactivity
 - **Auth0** - Secure authentication for admin panel
@@ -725,7 +725,42 @@ Kotomi can be configured using environment variables:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PORT` | Server port | `8080` |
-| `DB_PATH` | Path to SQLite database file | `./kotomi.db` |
+| `DB_TYPE` | Database type: `sqlite` or `postgres` | `sqlite` |
+| `DB_PATH` | Path to SQLite database file (when `DB_TYPE=sqlite`) | `./kotomi.db` |
+| `DATABASE_URL` | PostgreSQL connection string (when `DB_TYPE=postgres`) | - |
+
+#### Database Configuration
+
+Kotomi supports two database backends:
+
+**SQLite (Default)**
+- Zero configuration required
+- Perfect for small to medium sites
+- Used for E2E tests
+- Example:
+  ```bash
+  export DB_TYPE=sqlite
+  export DB_PATH=./kotomi.db
+  ```
+
+**PostgreSQL**
+- Recommended for production deployments with high traffic
+- Works with managed database services (Supabase, AWS RDS, GCP Cloud SQL, etc.)
+- Better concurrency handling
+- Example:
+  ```bash
+  export DB_TYPE=postgres
+  export DATABASE_URL=postgres://user:password@host:5432/database?sslmode=require
+  ```
+
+**Supabase Setup Example:**
+1. Create a new project in [Supabase](https://supabase.com/)
+2. Get your connection string from Project Settings > Database > Connection String (URI)
+3. Configure Kotomi:
+   ```bash
+   export DB_TYPE=postgres
+   export DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres
+   ```
 
 ### CORS Configuration (Optional)
 

@@ -13,7 +13,7 @@ import (
 
 // Config holds the configuration for creating a Server
 type Config struct {
-	CommentStore          *comments.SQLiteStore
+	CommentStore          comments.Store
 	DB                    *sql.DB
 	Templates             *template.Template
 	Auth0Config           *auth.Auth0Config

@@ -137,6 +137,11 @@ func (s *Server) RegisterRoutes(router *mux.Router) {
 		adminRouter.HandleFunc("/comments/{commentId}/approve", commentsHandler.ApproveComment).Methods("POST")
 		adminRouter.HandleFunc("/comments/{commentId}/reject", commentsHandler.RejectComment).Methods("POST")
 		adminRouter.HandleFunc("/comments/{commentId}", commentsHandler.DeleteComment).Methods("DELETE")
+		
+		// Bulk comment actions
+		adminRouter.HandleFunc("/comments/bulk/approve", commentsHandler.BulkApprove).Methods("POST")
+		adminRouter.HandleFunc("/comments/bulk/reject", commentsHandler.BulkReject).Methods("POST")
+		adminRouter.HandleFunc("/comments/bulk/delete", commentsHandler.BulkDelete).Methods("POST")
 
 		// Reactions handlers
 		reactionsHandler := admin.NewReactionsHandler(s.DB, s.Templates)

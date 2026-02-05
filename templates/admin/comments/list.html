@@ -5,12 +5,39 @@
         <h3>Moderate comments for your site</h3>
     </hgroup>
 
+    <!-- Search Bar -->
+    <article style="margin-bottom: 1rem;">
+        <form method="GET" action="/admin/sites/{{.SiteID}}/comments">
+            <div class="grid">
+                <input type="search" name="search" placeholder="Search by author, text, or page..." value="{{.Search}}">
+                <input type="hidden" name="status" value="{{.Status}}">
+                <button type="submit">Search</button>
+            </div>
+        </form>
+    </article>
+
+    <!-- Status Filter Buttons -->
     <div class="grid" style="margin-bottom: 1rem;">
-        <button hx-get="/admin/sites/{{.SiteID}}/comments" hx-target="#comments-list" {{if eq .Status ""}}class="contrast"{{end}}>All</button>
-        <button hx-get="/admin/sites/{{.SiteID}}/comments?status=pending" hx-target="#comments-list" {{if eq .Status "pending"}}class="contrast"{{end}}>Pending</button>
-        <button hx-get="/admin/sites/{{.SiteID}}/comments?status=approved" hx-target="#comments-list" {{if eq .Status "approved"}}class="contrast"{{end}}>Approved</button>
-        <button hx-get="/admin/sites/{{.SiteID}}/comments?status=rejected" hx-target="#comments-list" {{if eq .Status "rejected"}}class="contrast"{{end}}>Rejected</button>
+        <button hx-get="/admin/sites/{{.SiteID}}/comments{{if .Search}}?search={{.Search}}{{end}}" hx-target="#comments-list" {{if eq .Status ""}}class="contrast"{{end}}>All</button>
+        <button hx-get="/admin/sites/{{.SiteID}}/comments?status=pending{{if .Search}}&search={{.Search}}{{end}}" hx-target="#comments-list" {{if eq .Status "pending"}}class="contrast"{{end}}>Pending</button>
+        <button hx-get="/admin/sites/{{.SiteID}}/comments?status=approved{{if .Search}}&search={{.Search}}{{end}}" hx-target="#comments-list" {{if eq .Status "approved"}}class="contrast"{{end}}>Approved</button>
+        <button hx-get="/admin/sites/{{.SiteID}}/comments?status=rejected{{if .Search}}&search={{.Search}}{{end}}" hx-target="#comments-list" {{if eq .Status "rejected"}}class="contrast"{{end}}>Rejected</button>
     </div>
+
+    <!-- Bulk Actions -->
+    {{if .Comments}}
+    <article style="margin-bottom: 1rem;">
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="checkbox" id="select-all-comments" onchange="toggleAllComments(this)">
+            <label for="select-all-comments" style="margin: 0;">Select All</label>
+            <div style="margin-left: auto; display: flex; gap: 0.5rem;">
+                <button class="secondary" onclick="bulkApprove()">Approve Selected</button>
+                <button class="secondary" onclick="bulkReject()">Reject Selected</button>
+                <button class="secondary outline" onclick="bulkDelete()">Delete Selected</button>
+            </div>
+        </div>
+    </article>
+    {{end}}
 
     <div class="comments">
         {{if .Comments}}
@@ -19,9 +46,66 @@
         {{end}}
         {{else}}
         <article>
-            <p>No comments found.</p>
+            <p>No comments found{{if .Search}} matching "{{.Search}}"{{end}}.</p>
         </article>
         {{end}}
     </div>
 </div>
+
+<script>
+function toggleAllComments(checkbox) {
+    const checkboxes = document.querySelectorAll('.comment-checkbox');
+    checkboxes.forEach(cb => cb.checked = checkbox.checked);
+}
+
+function getSelectedCommentIds() {
+    const checkboxes = document.querySelectorAll('.comment-checkbox:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function bulkApprove() {
+    const ids = getSelectedCommentIds();
+    if (ids.length === 0) {
+        alert('Please select at least one comment');
+        return;
+    }
+    if (confirm(`Approve ${ids.length} comment(s)?`)) {
+        fetch('/admin/comments/bulk/approve', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({comment_ids: ids})
+        }).then(() => location.reload());
+    }
+}
+
+function bulkReject() {
+    const ids = getSelectedCommentIds();
+    if (ids.length === 0) {
+        alert('Please select at least one comment');
+        return;
+    }
+    if (confirm(`Reject ${ids.length} comment(s)?`)) {
+        fetch('/admin/comments/bulk/reject', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({comment_ids: ids})
+        }).then(() => location.reload());
+    }
+}
+
+function bulkDelete() {
+    const ids = getSelectedCommentIds();
+    if (ids.length === 0) {
+        alert('Please select at least one comment');
+        return;
+    }
+    if (confirm(`Permanently delete ${ids.length} comment(s)? This action cannot be undone.`)) {
+        fetch('/admin/comments/bulk/delete', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({comment_ids: ids})
+        }).then(() => location.reload());
+    }
+}
+</script>
 {{end}}

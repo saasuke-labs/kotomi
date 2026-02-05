@@ -15,6 +15,7 @@ import (
 	"github.com/saasuke-labs/kotomi/cmd/server"
 	"github.com/saasuke-labs/kotomi/pkg/auth"
 	"github.com/saasuke-labs/kotomi/pkg/comments"
+	"github.com/saasuke-labs/kotomi/pkg/db"
 	"github.com/saasuke-labs/kotomi/pkg/logging"
 	"github.com/saasuke-labs/kotomi/pkg/moderation"
 	"github.com/saasuke-labs/kotomi/pkg/notifications"
@@ -81,21 +82,25 @@ func main() {
 		port = "8080"
 	}
 
-	// Initialize the comment store
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath == "" {
-		dbPath = "./kotomi.db"
-	}
-
-	sqliteStore, err := comments.NewSQLiteStore(dbPath)
+	// Initialize the database store based on configuration
+	dbConfig := db.ConfigFromEnv()
+	logger.Info("initializing database", "provider", dbConfig.Provider)
+	
+	store, err := db.NewStore(context.Background(), dbConfig)
 	if err != nil {
-		logger.Error("failed to initialize SQLite store", "error", err)
-		log.Fatalf("Failed to initialize SQLite store: %v", err)
+		logger.Error("failed to initialize database store", "error", err, "provider", dbConfig.Provider)
+		log.Fatalf("Failed to initialize database store: %v", err)
 	}
-	logger.Info("database initialized", "path", dbPath)
+	logger.Info("database initialized", "provider", dbConfig.Provider)
 
-	// Get database connection
-	db := sqliteStore.GetDB()
+	// Get database connection (will be nil for non-SQL databases like Firestore)
+	sqlDB := store.GetDB()
+	
+	// For backward compatibility, get the underlying SQLite store if available
+	var sqliteStore *comments.SQLiteStore
+	if adapter, ok := store.(*db.SQLiteAdapter); ok {
+		sqliteStore = adapter.GetSQLiteStore()
+	}
 
 	// Initialize Auth0 config (optional, won't fail if not configured)
 	auth0Config, err := auth.NewAuth0Config()
@@ -150,7 +155,11 @@ func main() {
 	}
 
 	// Initialize AI moderation
-	moderationConfigStore := moderation.NewConfigStore(db)
+	// Note: Moderation requires SQL database (not available with Firestore)
+	var moderationConfigStore *moderation.ConfigStore
+	if sqlDB != nil {
+		moderationConfigStore = moderation.NewConfigStore(sqlDB)
+	}
 	var moderator moderation.Moderator
 	openaiAPIKey := os.Getenv("OPENAI_API_KEY")
 	if openaiAPIKey != "" {
@@ -166,14 +175,20 @@ func main() {
 	defer stop()
 
 	// Initialize notification queue
-	notificationQueue := notifications.NewQueue(db, 30*time.Second, 10)
-	go notificationQueue.Start(ctx)
-	logger.Info("notification queue processor started")
+	// Note: Notifications require SQL database (not available with Firestore)
+	var notificationQueue *notifications.Queue
+	if sqlDB != nil {
+		notificationQueue = notifications.NewQueue(sqlDB, 30*time.Second, 10)
+		go notificationQueue.Start(ctx)
+		logger.Info("notification queue processor started")
+	} else {
+		logger.Warn("notification queue disabled - requires SQL database")
+	}
 
 	// Create server configuration
 	cfg := server.Config{
-		CommentStore:          sqliteStore,
-		DB:                    db,
+		CommentStore:          sqliteStore,  // Use sqliteStore for backward compatibility
+		DB:                    sqlDB,
 		Templates:             templates,
 		Auth0Config:           auth0Config,
 		Moderator:             moderator,

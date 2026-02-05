@@ -30,7 +30,9 @@ Give your pages a voice
 Kotomi is built with simplicity and performance in mind:
 
 - **Go 1.24** - Modern, fast, and efficient
-- **SQLite Storage** - Persistent, reliable database with zero configuration
+- **Multiple Database Options**:
+  - **SQLite** (default) - Zero-configuration, perfect for local development and CI
+  - **Firestore** - Scalable NoSQL for production deployments
 - **REST API** - Standard HTTP endpoints for easy integration
 - **HTMX** - Server-side rendering with smooth interactivity
 - **Auth0** - Secure authentication for admin panel
@@ -76,6 +78,27 @@ docker run -p 8080:8080 -v kotomi-data:/app/data kotomi
 ```
 
 **Note:** The `-v kotomi-data:/app/data` flag creates a Docker volume to persist your comment database across container restarts.
+
+### Database Configuration
+
+Kotomi supports multiple database backends:
+
+**SQLite (Default)**:
+```bash
+# No configuration needed, SQLite is the default
+# Optionally set custom path:
+export DB_PATH=./kotomi.db
+go run cmd/main.go
+```
+
+**Firestore (Production)**:
+```bash
+export DB_PROVIDER=firestore
+export FIRESTORE_PROJECT_ID=your-gcp-project-id
+go run cmd/main.go
+```
+
+For detailed Firestore setup instructions, see [Firestore Setup Guide](docs/FIRESTORE_SETUP.md).
 
 ### GCP Cloud Run Deployment
 

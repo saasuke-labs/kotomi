@@ -1,6 +1,9 @@
 {{define "comments/row.html"}}
 <article id="comment-{{.ID}}" style="margin-bottom: 1rem;">
-    <div style="display: flex; justify-content: space-between; align-items: start;">
+    <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem;">
+        <div style="flex-shrink: 0;">
+            <input type="checkbox" class="comment-checkbox" value="{{.ID}}">
+        </div>
         <div style="flex-grow: 1;">
             <strong>{{.Author}}</strong>
             <span class="badge" data-status="{{.Status}}">{{.Status}}</span>

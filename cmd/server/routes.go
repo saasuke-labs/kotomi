@@ -137,6 +137,11 @@ func (s *Server) RegisterRoutes(router *mux.Router) {
 		adminRouter.HandleFunc("/comments/{commentId}/approve", commentsHandler.ApproveComment).Methods("POST")
 		adminRouter.HandleFunc("/comments/{commentId}/reject", commentsHandler.RejectComment).Methods("POST")
 		adminRouter.HandleFunc("/comments/{commentId}", commentsHandler.DeleteComment).Methods("DELETE")
+		
+		// Bulk comment actions
+		adminRouter.HandleFunc("/comments/bulk/approve", commentsHandler.BulkApprove).Methods("POST")
+		adminRouter.HandleFunc("/comments/bulk/reject", commentsHandler.BulkReject).Methods("POST")
+		adminRouter.HandleFunc("/comments/bulk/delete", commentsHandler.BulkDelete).Methods("POST")
 
 		// Reactions handlers
 		reactionsHandler := admin.NewReactionsHandler(s.DB, s.Templates)
@@ -168,9 +173,9 @@ func (s *Server) RegisterRoutes(router *mux.Router) {
 		adminRouter.HandleFunc("/sites/{siteId}/auth/config", authConfigHandler.DeleteAuthConfig).Methods("DELETE")
 
 		// User management handlers (Phase 2)
-		userMgmtHandler := admin.NewUserManagementHandler(s.DB)
-		adminRouter.HandleFunc("/sites/{siteId}/users", userMgmtHandler.ListUsersHandler).Methods("GET")
-		adminRouter.HandleFunc("/sites/{siteId}/users/{userId}", userMgmtHandler.GetUserHandler).Methods("GET")
+		userMgmtHandler := admin.NewUserManagementHandler(s.DB, s.Templates)
+		adminRouter.HandleFunc("/sites/{siteId}/users", userMgmtHandler.ListUsersPage).Methods("GET")
+		adminRouter.HandleFunc("/sites/{siteId}/users/{userId}", userMgmtHandler.GetUserDetailPage).Methods("GET")
 		adminRouter.HandleFunc("/sites/{siteId}/users/{userId}", userMgmtHandler.DeleteUserHandler).Methods("DELETE")
 
 		// Export/Import handlers

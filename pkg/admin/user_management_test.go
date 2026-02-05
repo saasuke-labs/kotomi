@@ -80,7 +80,7 @@ func setupUserManagementTest(t *testing.T) (*UserManagementHandler, *comments.SQ
 		t.Fatalf("Failed to create test user 2: %v", err)
 	}
 
-	handler := NewUserManagementHandler(db)
+	handler := NewUserManagementHandler(db, nil) // Pass nil for templates in tests
 
 	// Return handler, store, siteID, and adminUserID for tests to use
 	return handler, store, testSiteID, adminUser.ID

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"html/template"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -19,6 +21,18 @@ import (
 	"github.com/saasuke-labs/kotomi/pkg/moderation"
 	"github.com/saasuke-labs/kotomi/pkg/notifications"
 )
+
+// maskConnectionString masks sensitive information in connection strings for logging
+func maskConnectionString(connStr string) string {
+	// For postgres connection strings, mask password
+	if strings.Contains(connStr, "postgres://") {
+		parts := strings.Split(connStr, "@")
+		if len(parts) == 2 {
+			return "postgres://***:***@" + parts[1]
+		}
+	}
+	return "***masked***"
+}
 
 // @title Kotomi API
 // @version 1.0
@@ -81,21 +95,60 @@ func main() {
 		port = "8080"
 	}
 
-	// Initialize the comment store
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath == "" {
-		dbPath = "./kotomi.db"
+	// Initialize the comment store based on DB_TYPE environment variable
+	// DB_TYPE can be "sqlite" (default) or "postgres"
+	dbType := os.Getenv("DB_TYPE")
+	if dbType == "" {
+		dbType = "sqlite"
 	}
 
-	sqliteStore, err := comments.NewSQLiteStore(dbPath)
+	var commentStore comments.Store
+	var db *sql.DB
+	var err error
+
+	switch dbType {
+	case "postgres":
+		// PostgreSQL setup using DATABASE_URL
+		databaseURL := os.Getenv("DATABASE_URL")
+		if databaseURL == "" {
+			logger.Error("DATABASE_URL is required when DB_TYPE=postgres")
+			log.Fatalf("DATABASE_URL is required when DB_TYPE=postgres")
+		}
+		
+		postgresStore, err := comments.NewPostgresStore(databaseURL)
+		if err != nil {
+			logger.Error("failed to initialize PostgreSQL store", "error", err)
+			log.Fatalf("Failed to initialize PostgreSQL store: %v", err)
+		}
+		commentStore = postgresStore
+		db = postgresStore.GetDB()
+		logger.Info("database initialized", "type", "postgres", "url", maskConnectionString(databaseURL))
+
+	case "sqlite":
+		// SQLite setup using DB_PATH
+		dbPath := os.Getenv("DB_PATH")
+		if dbPath == "" {
+			dbPath = "./kotomi.db"
+		}
+		
+		sqliteStore, err := comments.NewSQLiteStore(dbPath)
+		if err != nil {
+			logger.Error("failed to initialize SQLite store", "error", err)
+			log.Fatalf("Failed to initialize SQLite store: %v", err)
+		}
+		commentStore = sqliteStore
+		db = sqliteStore.GetDB()
+		logger.Info("database initialized", "type", "sqlite", "path", dbPath)
+
+	default:
+		logger.Error("unsupported DB_TYPE", "type", dbType)
+		log.Fatalf("Unsupported DB_TYPE: %s (supported: sqlite, postgres)", dbType)
+	}
+
 	if err != nil {
-		logger.Error("failed to initialize SQLite store", "error", err)
-		log.Fatalf("Failed to initialize SQLite store: %v", err)
+		logger.Error("failed to initialize database", "error", err)
+		log.Fatalf("Failed to initialize database: %v", err)
 	}
-	logger.Info("database initialized", "path", dbPath)
-
-	// Get database connection
-	db := sqliteStore.GetDB()
 
 	// Initialize Auth0 config (optional, won't fail if not configured)
 	auth0Config, err := auth.NewAuth0Config()
@@ -172,7 +225,7 @@ func main() {
 
 	// Create server configuration
 	cfg := server.Config{
-		CommentStore:          sqliteStore,
+		CommentStore:          commentStore,
 		DB:                    db,
 		Templates:             templates,
 		Auth0Config:           auth0Config,
@@ -224,7 +277,7 @@ func main() {
 	}
 
 	// Close database connection
-	if err := sqliteStore.Close(); err != nil {
+	if err := commentStore.Close(); err != nil {
 		logger.Error("error closing database", "error", err)
 	}
 

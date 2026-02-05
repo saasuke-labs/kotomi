@@ -18,7 +18,7 @@ import (
 
 // ServerHandlers wraps the server dependencies for handler methods
 type ServerHandlers struct {
-	CommentStore          *comments.SQLiteStore
+	CommentStore          comments.Store
 	DB                    *sql.DB
 	Templates             *template.Template
 	Auth0Config           *auth.Auth0Config
@@ -30,7 +30,7 @@ type ServerHandlers struct {
 
 // NewHandlers creates a new ServerHandlers instance
 func NewHandlers(
-	commentStore *comments.SQLiteStore,
+	commentStore comments.Store,
 	db *sql.DB,
 	templates *template.Template,
 	auth0Config *auth.Auth0Config,

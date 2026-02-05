@@ -145,11 +145,6 @@ func main() {
 		log.Fatalf("Unsupported DB_TYPE: %s (supported: sqlite, postgres)", dbType)
 	}
 
-	if err != nil {
-		logger.Error("failed to initialize database", "error", err)
-		log.Fatalf("Failed to initialize database: %v", err)
-	}
-
 	// Initialize Auth0 config (optional, won't fail if not configured)
 	auth0Config, err := auth.NewAuth0Config()
 	if err != nil {

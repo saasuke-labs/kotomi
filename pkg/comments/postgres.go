@@ -23,6 +23,11 @@ func NewPostgresStore(connectionString string) (*PostgresStore, error) {
 	}
 
 	// Configure connection pool for production
+	// 25 max connections provides good balance for typical web applications:
+	// - Handles moderate concurrent load (each HTTP request may use 1-2 connections)
+	// - Prevents connection pool exhaustion under load
+	// - Respects common PostgreSQL connection limits (default: 100)
+	// - Can be tuned based on specific deployment needs
 	db.SetMaxOpenConns(25)                 // Limit concurrent connections
 	db.SetMaxIdleConns(5)                  // Keep some connections warm
 	db.SetConnMaxLifetime(5 * time.Minute) // Recycle old connections

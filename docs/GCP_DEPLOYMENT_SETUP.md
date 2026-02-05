@@ -17,7 +17,7 @@ Kotomi uses GitHub Actions to automatically build, test, and deploy to Google Cl
 - Google Cloud CLI installed locally (for initial setup)
 - Admin access to your GitHub repository
 
-> **⚠️ Important Note**: When setting up Cloud Run deployments via GitHub Actions, the service account used by GitHub Actions must have permission to act as the Cloud Run runtime service account. This guide includes all necessary IAM bindings in Step 4. If you encounter "Permission 'iam.serviceaccounts.actAs' denied" errors, see the Troubleshooting section.
+> **⚠️ Important Note**: When setting up Cloud Run deployments via GitHub Actions, the service account used by GitHub Actions must have permission to act as the Cloud Run runtime service account. This guide includes all necessary IAM bindings in the "Create Service Account" section below. If you encounter "Permission 'iam.serviceaccounts.actAs' denied" errors, see the [Troubleshooting section](#troubleshooting) or the [Quick Fix Guide](./DEPLOYMENT_FIX_QUICKSTART.md).
 
 ## GCP Setup
 

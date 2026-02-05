@@ -4,7 +4,7 @@
 Your GitHub Actions deployment is failing with:
 ```
 ERROR: Permission 'iam.serviceaccounts.actAs' denied on service account 
-460407116118-compute@developer.gserviceaccount.com
+[PROJECT_NUMBER]-compute@developer.gserviceaccount.com
 ```
 
 ## Root Cause

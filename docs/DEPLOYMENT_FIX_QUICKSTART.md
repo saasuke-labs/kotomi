@@ -17,7 +17,7 @@ Run these commands in your terminal:
 
 ```bash
 # Set your project ID
-export PROJECT_ID="your-project-id"  # Replace with your actual project ID
+export PROJECT_ID="YOUR_PROJECT_ID"  # Replace with your actual project ID
 
 # Get project number
 export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')

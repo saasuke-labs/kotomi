@@ -186,9 +186,12 @@ func main() {
 	}
 
 	// Create server configuration
+	// Note: CommentStore expects *comments.SQLiteStore for backward compatibility
+	// When using Firestore, we pass nil for sqliteStore and the server should handle it
+	// For full Firestore support, server.Config should be updated to use the Store interface
 	cfg := server.Config{
-		CommentStore:          sqliteStore,  // Use sqliteStore for backward compatibility
-		DB:                    sqlDB,
+		CommentStore:          sqliteStore,  // May be nil for Firestore
+		DB:                    sqlDB,        // May be nil for Firestore
 		Templates:             templates,
 		Auth0Config:           auth0Config,
 		Moderator:             moderator,

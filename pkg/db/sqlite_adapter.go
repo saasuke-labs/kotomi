@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/saasuke-labs/kotomi/pkg/comments"
 )
@@ -25,7 +26,7 @@ func NewSQLiteAdapter(dbPath string) (*SQLiteAdapter, error) {
 func (a *SQLiteAdapter) AddPageComment(ctx context.Context, site, page string, comment interface{}) error {
 	c, ok := comment.(comments.Comment)
 	if !ok {
-		return nil
+		return fmt.Errorf("invalid comment type: expected comments.Comment, got %T", comment)
 	}
 	return a.store.AddPageComment(ctx, site, page, c)
 }

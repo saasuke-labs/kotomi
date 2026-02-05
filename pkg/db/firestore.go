@@ -10,6 +10,8 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/saasuke-labs/kotomi/pkg/comments"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // FirestoreStore provides Firestore-based persistent storage for comments
@@ -91,16 +93,22 @@ func (s *FirestoreStore) AddPageComment(ctx context.Context, site, page string, 
 	siteRef := s.client.Collection("sites").Doc(site)
 	_, err = siteRef.Get(ctx)
 	if err != nil {
-		// Site doesn't exist, create it
-		_, err = siteRef.Set(ctx, map[string]interface{}{
-			"id":         site,
-			"owner_id":   "system",
-			"name":       site,
-			"created_at": time.Now(),
-			"updated_at": time.Now(),
-		})
-		if err != nil {
-			log.Printf("Warning: Could not auto-create site: %v", err)
+		// Check if it's a "not found" error vs other errors
+		if status.Code(err) == codes.NotFound {
+			// Site doesn't exist, create it
+			_, err = siteRef.Set(ctx, map[string]interface{}{
+				"id":         site,
+				"owner_id":   "system",
+				"name":       site,
+				"created_at": time.Now(),
+				"updated_at": time.Now(),
+			})
+			if err != nil {
+				log.Printf("Warning: Could not auto-create site: %v", err)
+			}
+		} else {
+			// Other errors (permission, network, etc.)
+			log.Printf("Warning: Error checking site existence: %v", err)
 		}
 	}
 
@@ -108,16 +116,22 @@ func (s *FirestoreStore) AddPageComment(ctx context.Context, site, page string, 
 	pageRef := s.client.Collection("pages").Doc(page)
 	_, err = pageRef.Get(ctx)
 	if err != nil {
-		// Page doesn't exist, create it
-		_, err = pageRef.Set(ctx, map[string]interface{}{
-			"id":         page,
-			"site_id":    site,
-			"path":       page,
-			"created_at": time.Now(),
-			"updated_at": time.Now(),
-		})
-		if err != nil {
-			log.Printf("Warning: Could not auto-create page: %v", err)
+		// Check if it's a "not found" error vs other errors
+		if status.Code(err) == codes.NotFound {
+			// Page doesn't exist, create it
+			_, err = pageRef.Set(ctx, map[string]interface{}{
+				"id":         page,
+				"site_id":    site,
+				"path":       page,
+				"created_at": time.Now(),
+				"updated_at": time.Now(),
+			})
+			if err != nil {
+				log.Printf("Warning: Could not auto-create page: %v", err)
+			}
+		} else {
+			// Other errors (permission, network, etc.)
+			log.Printf("Warning: Error checking page existence: %v", err)
 		}
 	}
 

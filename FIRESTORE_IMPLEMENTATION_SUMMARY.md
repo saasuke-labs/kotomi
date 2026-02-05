@@ -2,35 +2,44 @@
 
 ## Overview
 
-Successfully implemented Google Cloud Firestore as an alternative database backend for Kotomi, while maintaining SQLite as the default for CI, local development, and small deployments.
+Successfully implemented Google Cloud Firestore as an alternative database backend for Kotomi, while maintaining SQLite as the default for CI, local development, and small deployments. The implementation uses a unified `Store` interface, making the entire codebase unaware of the specific database implementation being used.
 
 ## Implementation Details
 
 ### Architecture
 
-Created a clean database abstraction layer in `pkg/db/`:
+Created a clean, unified database abstraction layer in `pkg/db/`:
 
 ```
 pkg/db/
-├── interface.go        - Store interface definition
-├── factory.go          - Factory function to create database stores
+├── interface.go        - Store interface with concrete types
+├── factory.go          - Factory function to create database stores  
 ├── sqlite_adapter.go   - Adapter wrapping existing SQLite implementation
-├── firestore.go        - New Firestore implementation
+├── firestore.go        - Firestore implementation
 └── db_test.go          - Comprehensive tests
 ```
+
+### Key Design Principles
+
+1. **Single Interface**: All code uses `db.Store` interface - no direct dependencies on SQLite or Firestore
+2. **Type Safety**: Interface uses concrete `comments.Comment` types instead of `interface{}`
+3. **Zero Duplication**: Removed dual references - only one `store` variable throughout
+4. **True Abstraction**: Comments package and handlers are completely database-agnostic
 
 ### Key Components
 
 1. **Store Interface** (`interface.go`)
-   - Defines common operations for all database implementations
-   - Includes CommentStore interface with CRUD operations
-   - Supports both SQL and NoSQL databases
+   - Unified interface for all database operations
+   - Uses concrete `comments.Comment` types for type safety
+   - Includes methods: AddPageComment, GetPageComments, GetCommentsBySite, GetCommentByID, UpdateCommentStatus, UpdateCommentText, DeleteComment, GetCommentSiteID
+   - No embedded interfaces - single, flat interface definition
+   - Provides GetDB() for SQL-specific operations (returns nil for NoSQL)
 
 2. **SQLite Adapter** (`sqlite_adapter.go`)
-   - Wraps existing `comments.SQLiteStore`
-   - Implements Store interface
-   - Maintains 100% backward compatibility
-   - Provides error handling for type assertions
+   - Thin wrapper around existing `comments.SQLiteStore`
+   - Implements Store interface directly
+   - No type conversions needed - passes through concrete types
+   - Maintains 100% backward compatibility with existing SQLite code
 
 3. **Firestore Implementation** (`firestore.go`)
    - Full CRUD operations for comments
@@ -38,11 +47,38 @@ pkg/db/
    - Composite indexes for efficient queries
    - Auto-creation of sites and pages
    - Proper error handling with gRPC status codes
+   - Works with concrete types directly
 
 4. **Factory Function** (`factory.go`)
    - Creates appropriate database based on configuration
    - Reads from environment variables
    - Defaults to SQLite for backward compatibility
+   - Returns unified `db.Store` interface
+
+### Unified Usage Pattern
+
+All code throughout the application now uses the same pattern:
+
+```go
+// In cmd/main.go
+store, err := db.NewStore(ctx, db.ConfigFromEnv())
+
+// In server configuration  
+cfg := server.Config{
+    CommentStore: store,  // db.Store interface
+    // ...
+}
+
+// In handlers
+func (s *ServerHandlers) PostComments(w http.ResponseWriter, r *http.Request) {
+    // CommentStore is db.Store - works with SQLite or Firestore
+    comment := comments.Comment{...}
+    err := s.CommentStore.AddPageComment(ctx, siteId, pageId, comment)
+    // ...
+}
+```
+
+No code needs to know whether it's using SQLite or Firestore!
 
 ### Database Selection
 

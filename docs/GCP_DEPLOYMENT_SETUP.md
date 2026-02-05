@@ -17,6 +17,8 @@ Kotomi uses GitHub Actions to automatically build, test, and deploy to Google Cl
 - Google Cloud CLI installed locally (for initial setup)
 - Admin access to your GitHub repository
 
+> **⚠️ Important Note**: When setting up Cloud Run deployments via GitHub Actions, the service account used by GitHub Actions must have permission to act as the Cloud Run runtime service account. This guide includes all necessary IAM bindings in Step 4. If you encounter "Permission 'iam.serviceaccounts.actAs' denied" errors, see the Troubleshooting section.
+
 ## GCP Setup
 
 ### 1. Create a GCP Project
@@ -74,6 +76,14 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
   --role="roles/artifactregistry.writer"
 
 gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/iam.serviceAccountUser"
+
+# Allow GitHub Actions SA to act as the Compute Engine default service account
+# This is required for Cloud Run to deploy services
+export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+gcloud iam service-accounts add-iam-policy-binding \
+  ${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
   --member="serviceAccount:${SA_EMAIL}" \
   --role="roles/iam.serviceAccountUser"
 ```
@@ -250,6 +260,49 @@ Expected response:
 - `roles/run.admin`
 - `roles/artifactregistry.writer`
 - `roles/iam.serviceAccountUser`
+
+### Deployment Fails: Service Account actAs Permission Error
+
+**Symptom**: 
+```
+ERROR: Permission 'iam.serviceaccounts.actAs' denied on service account 
+[PROJECT_NUMBER]-compute@developer.gserviceaccount.com
+```
+
+**Root Cause**: The GitHub Actions service account doesn't have permission to act as the Compute Engine default service account, which is required for Cloud Run deployments.
+
+**Solution**: Grant the GitHub Actions service account permission to act as the compute service account:
+
+```bash
+# Get your project ID and number
+export PROJECT_ID=$(gcloud config get-value project)
+export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+export SA_EMAIL="github-actions@${PROJECT_ID}.iam.gserviceaccount.com"
+
+# Grant actAs permission on the compute service account
+gcloud iam service-accounts add-iam-policy-binding \
+  ${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/iam.serviceAccountUser"
+```
+
+**Alternative Solution**: Use a custom service account for Cloud Run instead of the default compute service account:
+
+1. Create a custom service account for Cloud Run:
+```bash
+gcloud iam service-accounts create kotomi-runtime \
+  --display-name="Kotomi Runtime Service Account"
+```
+
+2. Grant it necessary permissions (if accessing other GCP services).
+
+3. Update the deployment command in `.github/workflows/deploy_kotomi.yaml` to specify the service account:
+```yaml
+gcloud run deploy kotomi-prod \
+  --image "$IMAGE" \
+  --service-account "kotomi-runtime@${PROJECT_ID}.iam.gserviceaccount.com" \
+  ...other flags...
+```
 
 ### Docker Build Fails
 

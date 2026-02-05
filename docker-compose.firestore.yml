@@ -1,0 +1,51 @@
+# Docker Compose Example with Firestore
+
+version: '3.8'
+
+services:
+  kotomi:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      # Database Configuration - Firestore
+      - DB_PROVIDER=firestore
+      - FIRESTORE_PROJECT_ID=${GCP_PROJECT_ID}
+      
+      # Google Cloud Authentication
+      # Option 1: Use Application Default Credentials (recommended for GCP)
+      # No additional env vars needed when running on Cloud Run, GKE, etc.
+      
+      # Option 2: Use service account key file
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
+      
+      # Other Configuration
+      - PORT=8080
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN}
+      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
+      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    
+    volumes:
+      # Mount service account key if using Option 2
+      - ./gcp-credentials:/app/credentials:ro
+    
+    restart: unless-stopped
+
+# For local development with SQLite:
+# 
+# services:
+#   kotomi:
+#     build: .
+#     ports:
+#       - "8080:8080"
+#     environment:
+#       - DB_PROVIDER=sqlite
+#       - DB_PATH=/app/data/kotomi.db
+#       - PORT=8080
+#     volumes:
+#       - kotomi-data:/app/data
+#     restart: unless-stopped
+# 
+# volumes:
+#   kotomi-data:

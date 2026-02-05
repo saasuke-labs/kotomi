@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kotomi - Give your pages a voice</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .hero-section {
+            padding: 2rem 0;
+        }
+        .brand-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+        .slogan {
+            font-size: 1.5rem;
+            color: var(--muted-color);
+            margin-bottom: 2rem;
+        }
+        .features-list {
+            list-style: none;
+            padding: 0;
+        }
+        .features-list li {
+            padding: 0.5rem 0;
+            color: var(--color);
+        }
+        .features-list li::before {
+            content: "✓ ";
+            color: var(--primary);
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+        .login-widget {
+            background: var(--card-background-color);
+            border: 1px solid var(--card-border-color);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            text-align: center;
+        }
+        .coming-soon-badge {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            padding: 1rem;
+            background: var(--background-color);
+            border-top: 1px solid var(--card-border-color);
+        }
+    </style>
+</head>
+<body>
+    <main class="container hero-section">
+        <div class="grid">
+            <!-- Left side: Title and Slogan -->
+            <div>
+                <hgroup>
+                    <h1 class="brand-title">Kotomi</h1>
+                    <p class="slogan">Give your pages a voice</p>
+                </hgroup>
+                <p>A lightweight, modern commenting and reactions system for your static sites.</p>
+                <ul class="features-list">
+                    <li>💬 Comments System</li>
+                    <li>👍 Reactions & Emoji</li>
+                    <li>🔐 Secure Authentication</li>
+                    <li>⚡ Built with HTMX</li>
+                    <li>🪶 Lightweight & Fast</li>
+                </ul>
+            </div>
+
+            <!-- Right side: Mock Login Widget -->
+            <div>
+                <article class="login-widget">
+                    <div class="coming-soon-badge">Coming Soon</div>
+                    <hgroup>
+                        <h2>Sign In</h2>
+                        <h3>Access your dashboard</h3>
+                    </hgroup>
+                    <form>
+                        <input 
+                            type="email" 
+                            name="email" 
+                            placeholder="Email" 
+                            disabled
+                            aria-label="Email"
+                        >
+                        <input 
+                            type="password" 
+                            name="password" 
+                            placeholder="Password" 
+                            disabled
+                            aria-label="Password"
+                        >
+                        <button type="button" disabled>Sign In</button>
+                    </form>
+                    <p><small>Authentication coming soon. Stay tuned!</small></p>
+                </article>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <small>Kotomi &copy; 2024 - Open Source Commenting System | <a href="https://github.com/saasuke-labs/kotomi" target="_blank">GitHub</a></small>
+    </footer>
+</body>
+</html>

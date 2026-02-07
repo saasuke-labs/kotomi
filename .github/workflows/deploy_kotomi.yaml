@@ -19,7 +19,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.x'
+          go-version: "1.25.x"
 
       - name: Cache Go modules
         uses: actions/cache@v3
@@ -56,7 +56,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.x'
+          go-version: "1.25.x"
 
       - name: Cache Go modules
         uses: actions/cache@v3
@@ -86,7 +86,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.x'
+          go-version: "1.25.x"
 
       - name: Cache Go modules
         uses: actions/cache@v3
@@ -107,9 +107,105 @@ jobs:
           DB_PATH: ./kotomi_test.db
           PORT: 8888
 
+  terraform-plan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: infras/terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: infras/terraform
+        run: terraform plan
+        env:
+          TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_gcp_region: ${{ secrets.GCP_REGION }}
+          TF_VAR_auth0_domain: ${{ secrets.AUTH0_DOMAIN }}
+          TF_VAR_auth0_mgmt_client_id: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
+          TF_VAR_auth0_mgmt_client_secret: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
+          TF_VAR_auth0_callback_urls: ${{ secrets.AUTH0_CALLBACK_URLS }}
+          TF_VAR_auth0_logout_urls: ${{ secrets.AUTH0_LOGOUT_URLS }}
+          TF_VAR_auth0_web_origins: ${{ secrets.AUTH0_WEB_ORIGINS }}
+          TF_VAR_firestore_database_name: ${{ secrets.FIRESTORE_DATABASE_NAME || '(default)' }}
+          TF_VAR_create_firestore_database: ${{ secrets.CREATE_FIRESTORE_DATABASE || 'true' }}
+          TF_VAR_service_account_name: ${{ secrets.FIRESTORE_SERVICE_ACCOUNT_NAME || 'kotomi-firestore' }}
+          TF_VAR_create_service_account_key: ${{ secrets.CREATE_SERVICE_ACCOUNT_KEY || 'false' }}
+
+  terraform-apply:
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, e2e-tests, terraform-plan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: infras/terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: infras/terraform
+        run: terraform plan
+        env:
+          TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_gcp_region: ${{ secrets.GCP_REGION }}
+          TF_VAR_auth0_domain: ${{ secrets.AUTH0_DOMAIN }}
+          TF_VAR_auth0_mgmt_client_id: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
+          TF_VAR_auth0_mgmt_client_secret: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
+          TF_VAR_auth0_callback_urls: ${{ secrets.AUTH0_CALLBACK_URLS }}
+          TF_VAR_auth0_logout_urls: ${{ secrets.AUTH0_LOGOUT_URLS }}
+          TF_VAR_auth0_web_origins: ${{ secrets.AUTH0_WEB_ORIGINS }}
+          TF_VAR_firestore_database_name: ${{ secrets.FIRESTORE_DATABASE_NAME || '(default)' }}
+          TF_VAR_create_firestore_database: ${{ secrets.CREATE_FIRESTORE_DATABASE || 'true' }}
+          TF_VAR_service_account_name: ${{ secrets.FIRESTORE_SERVICE_ACCOUNT_NAME || 'kotomi-firestore' }}
+          TF_VAR_create_service_account_key: ${{ secrets.CREATE_SERVICE_ACCOUNT_KEY || 'false' }}
+
+      - name: Terraform Apply
+        working-directory: infras/terraform
+        run: terraform apply -auto-approve
+        env:
+          TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_gcp_region: ${{ secrets.GCP_REGION }}
+          TF_VAR_auth0_domain: ${{ secrets.AUTH0_DOMAIN }}
+          TF_VAR_auth0_mgmt_client_id: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
+          TF_VAR_auth0_mgmt_client_secret: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
+          TF_VAR_auth0_callback_urls: ${{ secrets.AUTH0_CALLBACK_URLS }}
+          TF_VAR_auth0_logout_urls: ${{ secrets.AUTH0_LOGOUT_URLS }}
+          TF_VAR_auth0_web_origins: ${{ secrets.AUTH0_WEB_ORIGINS }}
+          TF_VAR_firestore_database_name: ${{ secrets.FIRESTORE_DATABASE_NAME || '(default)' }}
+          TF_VAR_create_firestore_database: ${{ secrets.CREATE_FIRESTORE_DATABASE || 'true' }}
+          TF_VAR_service_account_name: ${{ secrets.FIRESTORE_SERVICE_ACCOUNT_NAME || 'kotomi-firestore' }}
+          TF_VAR_create_service_account_key: ${{ secrets.CREATE_SERVICE_ACCOUNT_KEY || 'false' }}
+
   build-and-deploy:
     runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests, e2e-tests]
+    needs: [unit-tests, integration-tests, e2e-tests, terraform-apply]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
@@ -122,7 +218,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.x'
+          go-version: "1.25.x"
 
       - name: Read VERSION and metadata
         id: vars

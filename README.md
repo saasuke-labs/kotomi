@@ -109,6 +109,8 @@ The GitHub Actions workflow automatically:
 - Builds and pushes Docker images to Artifact Registry
 - Deploys to Cloud Run on main branch
 
+**🔧 Troubleshooting Deployment?** If you're getting permission errors, see the [Deployment Fix Quickstart](docs/DEPLOYMENT_FIX_QUICKSTART.md).
+
 ## Documentation & Guides
 
 ### 🚀 Quick Starts

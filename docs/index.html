@@ -1,508 +1,221 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<!-- Styles, fonts and scripts come from the main site (saasuke-labs.com/static/). -->
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kotomi – Comments & Reactions for Static Sites</title>
+    <title>Kotomi · Comments for static sites · Saasuke Labs</title>
+    <meta
+      name="description"
+      content="Kotomi adds comments and reactions to static sites: one self-hosted service, an embeddable widget and an admin panel for moderation."
+    />
+    <meta property="og:site_name" content="Saasuke Labs" />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="Kotomi · Comments for static sites · Saasuke Labs"
+    />
+    <meta
+      property="og:description"
+      content="Kotomi adds comments and reactions to static sites: one self-hosted service, an embeddable widget and an admin panel for moderation."
+    />
+    <meta property="og:image" content="https://saasuke-labs.com/static/logo.png" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="icon" type="image/png" href="/static/logo.png" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Saasuke Labs releases"
+      href="/static/data/releases.xml"
+    />
 
-    <!-- Dark mode toggle -->
     <script>
-      function toggleDarkMode() {
-        document.documentElement.classList.toggle("dark")
-      }
+      // Apply the saved theme before first paint.
+      try {
+        var t = localStorage.getItem("theme");
+        if (t) document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Shippori+Mincho:wght@600;800&display=swap"
+    />
+    <link rel="stylesheet" href="/static/site.css" />
 
-    <!-- Google Analytics -->
+    <!-- Google tag (gtag.js) -->
     <script
       async
       src="https://www.googletagmanager.com/gtag/js?id=G-7ZYXW0159J"
     ></script>
     <script>
-      window.dataLayer = window.dataLayer || []
+      window.dataLayer = window.dataLayer || [];
       function gtag() {
-        dataLayer.push(arguments)
+        dataLayer.push(arguments);
       }
-      gtag("js", new Date())
-      gtag("config", "G-7ZYXW0159J")
+      gtag("js", new Date());
+      gtag("config", "G-7ZYXW0159J");
     </script>
-
-    <!-- Styles: Tailwind-free CSS -->
-    <style>
-      /* --- Theme variables --- */
-      :root {
-        --bg: #ffffff;
-        --text: #1f2937; /* gray-800 */
-        --muted: #6b7280; /* gray-500/600 */
-        --panel-bg: #ffffff;
-        --alt-bg: #f3f4f6; /* gray-100 */
-        --accent: #db2777; /* pink-600 */
-        --accent-hover: #be185d; /* darker */
-        --accent-400: #f472b6; /* pink-400 */
-        --border: #d1d5db; /* gray-300 */
-        --border-dark: #9ca3af; /* gray-400 */
-        --shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-      }
-      html.dark {
-        --bg: #111827; /* gray-900 */
-        --text: #f3f4f6; /* gray-100 */
-        --muted: #d1d5db; /* gray-300 */
-        --panel-bg: #0b1220; /* near gray-900 but distinct */
-        --alt-bg: #1f2937; /* gray-800 */
-        --accent: #f472b6; /* pink-400 in dark */
-        --accent-hover: #f9a8d4; /* pink-300 */
-        --accent-400: #f472b6;
-        --border: #374151; /* gray-700 */
-        --border-dark: #4b5563; /* gray-600 */
-        --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-      }
-
-      /* --- Base --- */
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-      }
-      html,
-      body {
-        height: 100%;
-      }
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
-          "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji",
-          "Segoe UI Emoji", "Segoe UI Symbol";
-        line-height: 1.5;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        transition: background-color 0.3s ease, color 0.3s ease;
-      }
-      img {
-        max-width: 100%;
-        display: block;
-      }
-      a {
-        color: inherit;
-      }
-
-      /* --- Layout helpers --- */
-      .container {
-        max-width: 72rem;
-        margin: 0 auto;
-        padding: 0 1rem;
-      }
-      .flex {
-        display: flex;
-      }
-      .items-center {
-        align-items: center;
-      }
-      .justify-between {
-        justify-content: space-between;
-      }
-      .gap-1 {
-        gap: 0.25rem;
-      }
-      .gap-2 {
-        gap: 0.5rem;
-      }
-
-      /* --- Header --- */
-      header.site-header {
-        background: var(--panel-bg);
-        box-shadow: var(--shadow);
-      }
-      .site-header-inner {
-        padding: 1rem 1rem;
-      }
-      @media (min-width: 640px) {
-        .site-header-inner {
-          padding: 1rem;
-        }
-      }
-
-      .brand {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-      }
-      .brand img {
-        height: 40px;
-        width: auto;
-      }
-      .brand-name {
-        font-size: 1.5rem; /* 24px */
-        font-weight: 700;
-        color: var(--accent);
-      }
-
-      nav.site-nav {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-      }
-      .nav-link {
-        color: #4b5563; /* gray-600 */
-        text-decoration: none;
-        transition: color 0.2s ease;
-      }
-      html.dark .nav-link {
-        color: #d1d5db;
-      }
-      .nav-link:hover {
-        color: var(--accent);
-      }
-
-      .btn-outline {
-        font-size: 0.875rem;
-        padding: 0.25rem 0.75rem;
-        border-radius: 0.5rem;
-        border: 1px solid var(--border);
-        background: transparent;
-        color: inherit;
-        cursor: pointer;
-        transition: background-color 0.2s ease, border-color 0.2s ease;
-      }
-      .btn-outline:hover {
-        background: rgba(107, 114, 128, 0.1);
-      }
-      html.dark .btn-outline {
-        border-color: var(--border-dark);
-      }
-      html.dark .btn-outline:hover {
-        background: rgba(55, 65, 81, 0.5);
-      }
-
-      /* --- Hero --- */
-      .hero {
-        text-align: center;
-        padding: 6rem 1.5rem;
-      }
-      .hero-title {
-        margin: 0 0 0 0;
-        font-weight: 800;
-        letter-spacing: -0.01em;
-        color: var(--text);
-        font-size: 2.25rem; /* 36px */
-      }
-      @media (min-width: 640px) {
-        .hero-title {
-          font-size: 3rem; /* 48px */
-        }
-      }
-      .hero-sub1 {
-        margin: 0 auto 2rem auto;
-        max-width: 40rem;
-        font-size: 1.5rem;
-        color: var(--muted);
-      }
-
-      .hero-sub2 {
-        margin: 0 auto 1.5rem auto;
-        max-width: 40rem;
-        font-size: 1.125rem;
-        color: var(--muted);
-      }
-      .emoji-row {
-        display: inline-flex;
-        gap: 0.5rem;
-        margin-bottom: 2rem;
-        font-size: 1.5rem;
-      }
-      .btn-primary {
-        display: inline-block;
-        background: var(--accent);
-        color: #ffffff;
-        padding: 0.75rem 1.5rem;
-        border-radius: 9999px;
-        text-decoration: none;
-        box-shadow: 0 4px 10px rgba(219, 39, 119, 0.25);
-        transition: background-color 0.2s ease, transform 0.05s ease;
-      }
-      .btn-primary:hover {
-        background: var(--accent-hover);
-      }
-      .btn-primary:active {
-        transform: translateY(1px);
-      }
-
-      /* --- Sections --- */
-      .section-alt {
-        background: var(--alt-bg);
-      }
-      .section {
-        padding: 5rem 1.5rem;
-      }
-
-      .section-title {
-        text-align: center;
-        margin: 0 0 3rem 0;
-        font-size: 1.875rem; /* 30px */
-        font-weight: 700;
-        color: var(--text);
-      }
-
-      /* --- Cards --- */
-      .features {
-        max-width: 56rem;
-        margin: 0 auto;
-      }
-      .card {
-        background: var(--panel-bg);
-        border-radius: 0.75rem;
-        box-shadow: var(--shadow);
-        padding: 1.5rem;
-        margin-bottom: 2.5rem;
-      }
-      .card h3 {
-        margin: 0 0 0.5rem 0;
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: var(--accent);
-      }
-      .card p {
-        margin: 0;
-        color: var(--muted);
-      }
-
-      /* --- Footer --- */
-      footer.site-footer {
-        text-align: center;
-        font-size: 0.875rem;
-        color: #6b7280; /* gray-500 */
-        padding: 1.5rem 1rem;
-        background: var(--panel-bg);
-      }
-      html.dark footer.site-footer {
-        color: #9ca3af;
-      }
-      .link-accent {
-        color: var(--accent);
-        text-decoration: none;
-      }
-      .link-accent:hover {
-        text-decoration: underline;
-      }
-    </style>
   </head>
   <body>
-    <!-- Header -->
+    <a class="skip" href="#main">Skip to content</a>
+
     <header class="site-header">
-      <div
-        class="container site-header-inner flex justify-between items-center"
-      >
-        <div class="brand">
-          <img
-            src="https://saasuke-labs.github.io/static/logo.png"
-            alt="Saasuke-Labs Logo"
-          />
-          <span class="brand-name">Kotomi</span>
-        </div>
-        <nav class="site-nav">
-          <a href="#features" class="nav-link">Features</a>
-          <a href="https://github.com/saasuke-labs/kotomi" class="nav-link"
+      <div class="wrap">
+        <a class="brand" href="/">
+          <img src="/static/logo.png" alt="" width="34" height="42" />
+          Saasuke Labs
+        </a>
+        <nav class="site-nav" aria-label="Main">
+          <a href="/#tools">Tools</a>
+          <a href="/releases/">Releases</a>
+          <a
+            class="nav-optional"
+            href="https://github.com/saasuke-labs"
+            rel="noopener"
             >GitHub</a
           >
-          <button onclick="toggleDarkMode()" class="btn-outline">
-            Toggle Dark Mode
+          <button
+            class="theme-toggle"
+            type="button"
+            aria-label="Switch between light and dark theme"
+            data-theme-toggle
+          >
+            ◐
           </button>
-          <div>
-            <script
-              type="text/javascript"
-              src="https://storage.ko-fi.com/cdn/widget/Widget_2.js"
-            ></script>
-            <script type="text/javascript">
-              kofiwidget2.init("Support me on Ko-fi", "#f472b6", "V7V61FM5Z5")
-              kofiwidget2.draw()
-            </script>
-            <style>
-              img.kofiimg {
-                display: initial !important;
-                vertical-align: middle;
-                height: 13px !important;
-                width: 20px !important;
-                padding-top: 0 !important;
-                padding-bottom: 0 !important;
-                border: none;
-                margin-top: 0;
-                margin-right: 5px !important;
-                margin-left: 0 !important;
-                margin-bottom: 3px !important;
-                content: url("https://storage.ko-fi.com/cdn/cup-border.png");
-              }
-              .kofiimg:after {
-                vertical-align: middle;
-                height: 25px;
-                padding-top: 0;
-                padding-bottom: 0;
-                border: none;
-                margin-top: 0;
-                margin-right: 6px;
-                margin-left: 0;
-                margin-bottom: 4px !important;
-                content: url("https://storage.ko-fi.com/cdn/whitelogo.svg");
-              }
-              .btn-container {
-                display: inline-block !important;
-                white-space: nowrap;
-                min-width: 160px;
-              }
-              span.kofitext {
-                color: #fff !important;
-                letter-spacing: -0.15px !important;
-                text-wrap: none;
-                vertical-align: middle;
-                line-height: 33px !important;
-                padding: 0;
-                text-align: center;
-                text-decoration: none !important;
-                text-shadow: 0 1px 1px rgba(34, 34, 34, 0.05);
-              }
-              .kofitext a {
-                color: #fff !important;
-                text-decoration: none important;
-              }
-              .kofitext a:hover {
-                color: #fff !important;
-                text-decoration: none;
-              }
-              a.kofi-button {
-                box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.2);
-                line-height: 36px !important;
-                min-width: 150px;
-                display: inline-block !important;
-                background-color: #29abe0;
-                padding: 2px 12px !important;
-                text-align: center !important;
-                border-radius: 7px;
-                color: #fff;
-                cursor: pointer;
-                overflow-wrap: break-word;
-                vertical-align: middle;
-                border: 0 none #fff !important;
-                font-family: "Quicksand", Helvetica, Century Gothic, sans-serif !important;
-                text-decoration: none;
-                text-shadow: none;
-                font-weight: 700 !important;
-                font-size: 14px !important;
-              }
-              a.kofi-button:visited {
-                color: #fff !important;
-                text-decoration: none !important;
-              }
-              a.kofi-button:hover {
-                opacity: 0.85;
-                color: #f5f5f5 !important;
-                text-decoration: none !important;
-              }
-              a.kofi-button:active {
-                color: #f5f5f5 !important;
-                text-decoration: none !important;
-              }
-              .kofitext img.kofiimg {
-                height: 15px !important;
-                width: 22px !important;
-                display: initial;
-                animation: kofi-wiggle 3s infinite;
-              }
-              @keyframes kofi-wiggle {
-                0% {
-                  transform: rotate(0) scale(1);
-                }
-                60% {
-                  transform: rotate(0) scale(1);
-                }
-                75% {
-                  transform: rotate(0) scale(1.12);
-                }
-                80% {
-                  transform: rotate(0) scale(1.1);
-                }
-                84% {
-                  transform: rotate(-10deg) scale(1.1);
-                }
-                88% {
-                  transform: rotate(10deg) scale(1.1);
-                }
-                92% {
-                  transform: rotate(-10deg) scale(1.1);
-                }
-                96% {
-                  transform: rotate(10deg) scale(1.1);
-                }
-                100% {
-                  transform: rotate(0) scale(1);
-                }
-              }
-            </style>
-            <link
-              href="https://fonts.googleapis.com/css?family=Quicksand:400,700"
-              rel="stylesheet"
-              type="text/css"
-            />
-          </div>
+          <a class="btn small" href="/sponsor/">Sponsor</a>
         </nav>
       </div>
     </header>
 
-    <!-- Hero -->
-    <main class="hero">
-      <h1 class="hero-title">Kotomi</h1>
-      <p class="hero-sub1">Give your pages a voice.</p>
-      <p class="hero-sub2">
-        Lightweight comments and reactions — made for static sites, enhanced
-        with AI moderation.
-      </p>
-      <a href="#features" class="btn-primary">See Features</a>
+    <main id="main">
+      <section class="page-head">
+        <div class="wrap">
+          <p class="crumbs"><a href="/#tools">Tools</a> / <span>Comments for static sites</span></p>
+          <div class="title-row">
+            <h1>Kotomi</h1>
+            <a class="tag version" data-version="kotomi" href="/releases/#kotomi"></a>
+          </div>
+          <p>Comments and reactions for pages that have no backend. Run one service, embed a widget, moderate from an admin panel. Your readers' words stay on your own server.</p>
+          <div class="actions">
+            <a class="btn" href="https://github.com/saasuke-labs/kotomi" rel="noopener">View on GitHub</a>
+            <a class="btn ghost" href="/releases/#kotomi">Release notes</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="wrap docs">
+          <nav class="docs-toc" aria-label="On this page">
+            <h2>On this page</h2>
+            <ul><li><a href="#status">Status</a></li><li><a href="#run">Run the server</a></li><li><a href="#site">Create a site</a></li><li><a href="#widget">Embed the widget</a></li><li><a href="#moderation">Moderation</a></li><li><a href="#config">Configuration</a></li><li><a href="#api">API</a></li><li><a href="#gengo">With Gengo</a></li><li><a href="#guides">Guides</a></li></ul>
+          </nav>
+          <article class="prose">
+<h2 id="status">Status</h2>
+<p class="note">Kotomi is in beta. It works end to end, but expect changes before 1.0 and keep backups of your database.</p>
+<h2 id="run">Run the server</h2>
+<p>Kotomi is one Go service with an SQLite database, so there is nothing else to provision. With Docker:</p><pre><code><span class="dim">$</span> git clone https://github.com/saasuke-labs/kotomi
+<span class="dim">$</span> cd kotomi
+<span class="dim">$</span> docker build -t kotomi .
+<span class="dim">$</span> docker run -p 8080:8080 -v kotomi-data:/app/data kotomi</code></pre><p>The volume keeps the comment database across restarts. Or run it with Go 1.24 or newer:</p><pre><code><span class="dim">$</span> go run cmd/main.go</code></pre><p>Check that it is up:</p><pre><code><span class="dim">$</span> curl http://localhost:8080/healthz</code></pre>
+<h2 id="site">Create a site</h2>
+<p>Open <code>http://localhost:8080/admin</code> and sign in. The admin panel uses Auth0, which you configure with environment variables; the <a href="https://github.com/saasuke-labs/kotomi/blob/main/docs/ADMIN_PANEL_GUIDE.md" rel="noopener">admin panel guide</a> walks through it.</p><p>Create a site and note its ID. One Kotomi instance can serve several sites, each with its own pages, reactions and moderation settings.</p>
+<h2 id="widget">Embed the widget</h2>
+<p>Add the stylesheet, a container and the script to your page template. The widget has no dependencies.</p><pre><code>&lt;link rel="stylesheet" href="https://comments.example.com/static/kotomi.css" /&gt;
+
+&lt;div id="kotomi-comments"&gt;&lt;/div&gt;
+
+&lt;script src="https://comments.example.com/static/kotomi.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  new Kotomi({
+    baseUrl: "https://comments.example.com",
+    siteId: "my-blog",
+    pageId: "hello-world",
+  }).render();
+&lt;/script&gt;</code></pre><div class="table-scroll"><table><thead><tr><th>Option</th><th>Default</th><th>What it does</th></tr></thead><tbody><tr><td><code>baseUrl</code></td><td>required</td><td>URL of your Kotomi server.</td></tr><tr><td><code>siteId</code></td><td>required</td><td>The site ID from the admin panel.</td></tr><tr><td><code>pageId</code></td><td>required</td><td>A unique ID for the page.</td></tr><tr><td><code>container</code></td><td><code>#kotomi-comments</code></td><td>CSS selector of the element to render into.</td></tr><tr><td><code>theme</code></td><td><code>light</code></td><td><code>light</code> or <code>dark</code>.</td></tr><tr><td><code>enableReactions</code></td><td><code>true</code></td><td>Show emoji reactions.</td></tr><tr><td><code>enableReplies</code></td><td><code>true</code></td><td>Allow threaded replies.</td></tr><tr><td><code>jwtToken</code></td><td><code>null</code></td><td>Token for signed-in readers.</td></tr></tbody></table></div>
+<h2 id="moderation">Moderation</h2>
+<p>Every comment has a status: pending, approved or rejected. From the admin panel you can filter by status, approve or reject in one click and delete spam.</p><p>Automatic moderation is optional. With an OpenAI API key set, each comment is scored for spam, offensive language, aggressive tone and off-topic content, then handled by thresholds you set per site:</p><ul><li>Low scores are approved automatically.</li><li>Middle scores wait for manual review.</li><li>High scores are rejected automatically.</li></ul><p>Without a key, a built-in rule-based moderator is used.</p>
+<h2 id="config">Configuration</h2>
+<p>Kotomi is configured with environment variables. The common ones:</p><div class="table-scroll"><table><thead><tr><th>Variable</th><th>Default</th><th>What it does</th></tr></thead><tbody><tr><td><code>PORT</code></td><td><code>8080</code></td><td>Port the server listens on.</td></tr><tr><td><code>DB_PATH</code></td><td><code>./kotomi.db</code></td><td>Path of the SQLite database file.</td></tr><tr><td><code>DB_PROVIDER</code></td><td>SQLite</td><td>Set to <code>firestore</code> to store data in Firestore.</td></tr><tr><td><code>FIRESTORE_PROJECT_ID</code></td><td>none</td><td>Google Cloud project, when using Firestore.</td></tr><tr><td><code>CORS_ALLOWED_ORIGINS</code></td><td><code>*</code></td><td>Comma-separated origins allowed to call the API. Set this to your site's origin in production.</td></tr><tr><td><code>OPENAI_API_KEY</code></td><td>none</td><td>Enables AI-assisted moderation.</td></tr></tbody></table></div><p>Rate limits, email notifications, export and import, and logging are covered in the <a href="https://github.com/saasuke-labs/kotomi#configuration" rel="noopener">README</a>.</p>
+<h2 id="api">API</h2>
+<p>The widget talks to a REST API that you can call directly. Readers are authenticated with JWTs that your own site issues. In development mode the server hosts interactive documentation at <code>/swagger/index.html</code>.</p>
+<h2 id="gengo">With Gengo</h2>
+<p>Add the widget to the page template of a <a href="/gengo/">Gengo</a> site and use a value from the page metadata as <code>pageId</code>. The <a href="https://github.com/saasuke-labs/kotomi/blob/main/docs/GENGO_QUICK_START.md" rel="noopener">five-minute quick start</a> has the full template. Gengo can also read comments at build time through its <a href="/gengo/#data">data sources</a>.</p>
+<h2 id="guides">Guides</h2>
+<ul><li><a href="https://github.com/saasuke-labs/kotomi/blob/main/docs/ADMIN_PANEL_GUIDE.md" rel="noopener">Admin panel guide</a></li><li><a href="https://github.com/saasuke-labs/kotomi/blob/main/docs/AUTHENTICATION_API.md" rel="noopener">Authentication API</a></li><li><a href="https://github.com/saasuke-labs/kotomi/blob/main/docs/GENGO_INTEGRATION_GUIDE.md" rel="noopener">Complete Gengo integration guide</a></li><li><a href="https://github.com/saasuke-labs/kotomi/blob/main/docs/FIRESTORE_SETUP.md" rel="noopener">Firestore setup</a></li><li><a href="https://github.com/saasuke-labs/kotomi/blob/main/docs/GCP_DEPLOYMENT_SETUP.md" rel="noopener">Deploying to Google Cloud Run</a></li><li><a href="https://github.com/saasuke-labs/kotomi/blob/main/docs/DATABASE_BACKUP_RESTORE.md" rel="noopener">Database backup and restore</a></li><li><a href="https://github.com/saasuke-labs/kotomi/blob/main/docs/security.md" rel="noopener">Security</a></li></ul>
+
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="wrap">
+          <div class="cta">
+            <div>
+              <h2>Using Kotomi at work?</h2>
+              <p>
+                Saasuke Labs is independent and maintained in the open.
+                Sponsorship pays for maintenance, documentation and releases.
+              </p>
+            </div>
+            <div class="actions">
+              <a class="btn" href="/sponsor/">Become a sponsor</a>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
 
-    <!-- Features -->
-    <section id="features" class="section section-alt">
-      <div class="features">
-        <h2 class="section-title">What Makes Kotomi Special?</h2>
-
-        <div class="card">
-          <h3>Drop-In Simplicity</h3>
-          <p>
-            Just embed one script and Kotomi handles the rest — no backend, no
-            database, no headaches.
+    <footer class="site-footer">
+      <div class="wrap">
+        <div class="about">
+          <a class="brand" href="/">
+            <img src="/static/logo.png" alt="" width="34" height="42" />
+            Saasuke Labs
+          </a>
+          <p style="margin-top: 12px; max-width: 26em">
+            Independent, open tools in Go. This site is built with Gengo and
+            rebuilt on every product release.
           </p>
         </div>
-
-        <div class="card">
-          <h3>Reactions &amp; Emojis</h3>
-          <p>
-            Let users express themselves with likes, laughs, or love — no
-            account required.
-          </p>
+        <div>
+          <h4>Tools</h4>
+          <ul>
+            <li><a href="/gengo/">Gengo</a></li>
+            <li><a href="/nagare/">Nagare</a></li>
+            <li><a href="/kotomi/">Kotomi</a></li>
+          </ul>
         </div>
-
-        <div class="card">
-          <h3>AI-Powered Moderation</h3>
-          <p>
-            Premium plans include GPT-style content filtering to keep your site
-            safe and civil.
-          </p>
+        <div>
+          <h4>Project</h4>
+          <ul>
+            <li><a href="/releases/">Releases</a></li>
+            <li><a href="/static/data/releases.xml">Release feed</a></li>
+            <li>
+              <a href="https://github.com/saasuke-labs" rel="noopener"
+                >GitHub</a
+              >
+            </li>
+          </ul>
         </div>
-
-        <div class="card">
-          <h3>Privacy-Respecting</h3>
-          <p>
-            No tracking, no cookies, no third-party scripts — just local storage
-            and good vibes.
-          </p>
+        <div>
+          <h4>Support</h4>
+          <ul>
+            <li><a href="/sponsor/">Become a sponsor</a></li>
+            <li>
+              <a href="https://github.com/sponsors/saasuke-labs" rel="noopener"
+                >GitHub Sponsors</a
+              >
+            </li>
+            <li>
+              <a href="https://ko-fi.com/saasukelabs" rel="noopener">Ko-fi</a>
+            </li>
+          </ul>
         </div>
       </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="site-footer">
-      Built by
-      <a href="https://saasuke-labs.github.io" class="link-accent"
-        >Saasuke-Labs</a
-      >
-      – © 2025
     </footer>
+
+    <script src="/static/site.js" defer></script>
   </body>
 </html>
